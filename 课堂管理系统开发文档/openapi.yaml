@@ -1,0 +1,2835 @@
+openapi: 3.0.3
+
+# =============================================================================
+# 初二信息技术硬件实践课课堂管理系统 —— 教师端 HTTP + SSE 接口契约
+#
+# 权威性：本文件是前后端联调的唯一依据（Phase 2 放行项）。
+#   - 看板前端据此生成 TS 类型与 Mock，不得自行猜测字段。
+#   - 教师端后端据此实现，字段名/类型/错误码不得私自变更。
+#   - 任何变更必须改本文件并经 team-lead 同步前后端，禁止"代码先行"。
+#
+# 上游依据：SPEC_v1（权威契约）、ARCH_v1（分层与风险）、03 数据库、04 接口（MQTT 侧）
+#
+# 边界说明（重要）：
+#   本文件只定义「看板浏览器 ↔ 教师端 Node」的 HTTP/SSE 契约。
+#   学生机 ↔ SIoT2 的 MQTT 报文契约在 04_接口设计文档.md + SPEC §5，不在此重复定义。
+#   看板浏览器不直连 MQTT（SPEC §4 纪律 3），所有实时数据经 SSE 下发。
+# =============================================================================
+
+info:
+  title: 课堂管理系统 - 教师端 API
+  version: 1.0.0
+  description: |
+    教师端 Node 进程（Express 4.22.2）对外暴露的接口，服务对象是同机运行的大屏看板浏览器。
+
+    ## 架构位置
+
+    ```
+    学生机 Electron ──MQTT WS 1888/ws──► SIoT2 ──MQTT TCP 1883──► 教师端 Node
+                                                                      │
+                                                          唯一聚合点 + SQLite 权威源
+                                                                      │
+                                                    ┌─────────────────┴──────────────┐
+                                                    │  本文件定义的 HTTP + SSE 契约     │
+                                                    └─────────────────┬──────────────┘
+                                                                      ▼
+                                                              大屏看板浏览器
+    ```
+
+    ## 统一响应包装
+
+    除文件下载（`/exports/{exportId}/files/{fileName}`）与 SSE 流（`/dashboard/stream`）外，
+    **所有**端点返回统一信封：
+
+    ```json
+    { "code": 0, "data": { }, "message": "" }
+    ```
+
+    - `code` = 0 表示成功；非 0 表示业务错误，此时 `data` 为 null。
+    - `errorCode` 仅在失败时出现，取值对齐 04 文档错误码表（如 `E-VAL-01`）。
+    - HTTP 状态码同时正确设置（不做"200 包一切"），便于前端用拦截器统一处理。
+
+    ## 时间与标识约定
+
+    - 所有时间戳为 **Unix 毫秒整数**（与 MQTT 信封 `ts` 一致），前端负责本地化显示。
+    - `seat` 为两位字符串（`"01"`–`"50"`），**不是数字**——`"07"` 与 `7` 不等价，禁止隐式转换。
+    - `msgId` / `sessionId` / `taskId` 等标识为字符串，不假设为 UUID 格式。
+
+    ## 认证（部署形态决定）
+
+    默认部署下 Node 仅监听 `127.0.0.1`，看板与服务同机，无需认证。
+    **若因投影需求绑定到局域网地址，必须启用 `X-Teacher-Token`**，否则学生可直接调用
+    `POST /commands/shutdown` 让全班关机——详见 `securitySchemes.TeacherToken` 说明。
+
+  contact:
+    name: 架构负责人 高见远
+
+servers:
+  - url: http://127.0.0.1:{port}/api/v1
+    description: 默认部署（推荐）——仅本机可访问，看板与服务同机运行
+    variables:
+      port:
+        default: '3000'
+        description: 教师端 HTTP 端口，环境变量 HTTP_PORT
+  - url: http://{teacherIp}:{port}/api/v1
+    description: 局域网部署（需投影机/另一台机器访问看板时）——**必须启用 TeacherToken**
+    variables:
+      teacherIp:
+        default: 192.168.1.10
+        description: 教师机局域网 IP
+      port:
+        default: '3000'
+
+tags:
+  - name: System
+    description: 健康检查与前端启动所需配置
+  - name: Session
+    description: 课堂会话生命周期（上课/阶段流转/下课）
+  - name: Student
+    description: 学生登记名单查询
+  - name: Task
+    description: 任务发布与状态查询
+  - name: Equipment
+    description: 器材台账与借还记录
+  - name: Command
+    description: 向学生机下发广播指令（关机/复位）
+  - name: Dashboard
+    description: 大屏看板快照、实时流（SSE）、座位冲突
+  - name: Event
+    description: 事件日志查询
+  - name: Export
+    description: 报表导出与下载
+
+security:
+  - TeacherToken: []
+
+paths:
+
+  # ==========================================================================
+  # System
+  # ==========================================================================
+  /system/health:
+    get:
+      tags: [System]
+      summary: 健康检查（含 SIoT2 连接态）
+      description: |
+        看板顶栏的连接状态指示依赖此端点，同时用于部署自检。
+        前端**不应**用它做高频轮询——连接态变化会经 SSE `connection.changed` 事件推送。
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: 服务存活（`data.mqtt.state` 可能为 offline，此时仍返回 200）
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HealthInfo'
+              examples:
+                online:
+                  summary: MQTT 已连接
+                  value:
+                    code: 0
+                    message: ''
+                    data:
+                      status: ok
+                      uptimeMs: 185000
+                      version: 1.0.0
+                      mqtt:
+                        state: online
+                        brokerUrl: mqtt://192.168.1.50:1883
+                        topicPlan: B
+                        lastConnectedAt: 1693400000000
+                        reconnectAttempts: 0
+                      db:
+                        state: ok
+                        path: data/classroom.db
+                reconnecting:
+                  summary: MQTT 重连中（服务本身健康）
+                  value:
+                    code: 0
+                    message: ''
+                    data:
+                      status: degraded
+                      uptimeMs: 920000
+                      version: 1.0.0
+                      mqtt:
+                        state: reconnecting
+                        brokerUrl: mqtt://192.168.1.50:1883
+                        topicPlan: B
+                        lastConnectedAt: 1693400000000
+                        reconnectAttempts: 3
+                        nextRetryInMs: 8000
+                      db:
+                        state: ok
+                        path: data/classroom.db
+
+  /system/config:
+    get:
+      tags: [System]
+      summary: 前端启动配置
+      description: |
+        看板启动时拉一次。**故意不包含 MQTT 凭据**——看板不直连 MQTT，给了也是泄露面。
+      operationId: getConfig
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClientConfig'
+              example:
+                code: 0
+                message: ''
+                data:
+                  totalSeats: 50
+                  groupSize: 5
+                  groups: [G1, G2, G3, G4, G5, G6, G7, G8, G9, G10]
+                  heartbeatIntervalMs: 15000
+                  offlineThresholdMs: 45000
+                  helpBlinkMs: 1000
+                  shutdownDelaySec: 10
+                  exportFormats: [xlsx, csv]
+
+  # ==========================================================================
+  # Session
+  # ==========================================================================
+  /sessions:
+    post:
+      tags: [Session]
+      summary: 开始上课（创建会话并广播 start）
+      description: |
+        对应大屏「开始上课」按钮。服务端事务内完成：
+        1. 若已有未关闭会话 → 返回 `409` + `E-SESSION-02`（防误点产生双会话）。
+        2. 创建 `t_session`，`phase = checkin`。
+        3. 按 `seats.json` / `equipment.json` 种子预置座位与器材台账。
+        4. 向 `siot/ict_cmd` 发布 `{action:"start"}`（QoS 1）。
+        5. 推送 SSE `phase.changed` + `session.started`。
+
+        步骤 4 失败（MQTT 离线）时**会话仍然创建成功**，返回 `data.broadcast.delivered=false`，
+        看板需提示"指令未送达，恢复连接后请重新广播"。理由：会话是本地权威数据，
+        不应因 broker 抖动而丢失；学生机重连后会经 hello→sync 拿到正确阶段（SPEC AC-11）。
+      operationId: startSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSessionRequest'
+            example:
+              teacher: 张老师
+              className: 初二(3)班
+              totalSeats: 50
+      responses:
+        '201':
+          description: 会话已创建
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SessionWithBroadcast'
+              example:
+                code: 0
+                message: ''
+                data:
+                  sessionId: S-20260830-01
+                  teacher: 张老师
+                  className: 初二(3)班
+                  startTime: 1693400000000
+                  endTime: null
+                  phase: checkin
+                  totalSeats: 50
+                  exportFlag: false
+                  broadcast:
+                    delivered: true
+                    msgId: 550e8400-e29b-41d4-a716-446655440000
+                    topic: siot/ict_cmd
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: 已存在未关闭的会话
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: 40902
+                message: 已有进行中的课堂会话，请先下课或关闭
+                errorCode: E-SESSION-02
+                data: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags: [Session]
+      summary: 历史会话列表
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: phase
+          in: query
+          description: 按阶段过滤
+          schema:
+            $ref: '#/components/schemas/Phase'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Pagination'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/current:
+    get:
+      tags: [Session]
+      summary: 当前进行中的会话
+      description: 看板启动时先调此端点判断是否已在上课；无进行中会话返回 `404` + `E-SESSION-01`。
+      operationId: getCurrentSession
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Session'
+        '404':
+          description: 当前无进行中的会话（看板显示待课状态）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: 40401
+                message: 当前没有进行中的课堂会话
+                errorCode: E-SESSION-01
+                data: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/{sessionId}:
+    get:
+      tags: [Session]
+      summary: 会话���情
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Session'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/{sessionId}/phase:
+    post:
+      tags: [Session]
+      summary: 阶段流转（下课 / 关闭会话）
+      description: |
+        阶段机为**单向不可回退**（防误操作把已归还的课退回登记态）：
+
+        ```
+        checkin ──► task ──► return ──► closed
+            └──────────────────► return   （允许跳过 task 直接下课）
+        ```
+
+        非法流转返回 `409` + `E-PHASE-01`。各目标阶段的副作用：
+
+        | 目标 | MQTT 广播 | 说明 |
+        |------|-----------|------|
+        | `task` | 无 | 仅置阶段；任务内容用 `POST /sessions/{id}/tasks` 发布 |
+        | `return` | `{action:"end"}` | 对应「下课」按钮，学生进入归还确认 |
+        | `closed` | 无 | 归档会话，写 `end_time`；关机指令走 `/commands/shutdown` |
+      operationId: transitionPhase
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phase]
+              properties:
+                phase:
+                  allOf:
+                    - $ref: '#/components/schemas/Phase'
+                    - description: 目标阶段，仅接受 task / return / closed
+            example:
+              phase: return
+      responses:
+        '200':
+          description: 流转成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SessionWithBroadcast'
+        '409':
+          description: 非法阶段流转
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                code: 40901
+                message: 不能从 return 回退到 checkin
+                errorCode: E-PHASE-01
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Student
+  # ==========================================================================
+  /sessions/{sessionId}/students:
+    get:
+      tags: [Student]
+      summary: 登记名单
+      description: |
+        `status=pending` 即「未登记名单」（AC-1 要求大屏展示）。
+        座位由种子文件预置，未登记的座位也会返回，`checkinStatus=pending`、`name=null`。
+      operationId: listStudents
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: status
+          in: query
+          description: 登记状态过滤
+          schema:
+            type: string
+            enum: [pending, done]
+        - name: group
+          in: query
+          description: 小组过滤，如 G2
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Pagination'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/Student'
+                              summary:
+                                $ref: '#/components/schemas/CheckinSummary'
+              example:
+                code: 0
+                message: ''
+                data:
+                  items:
+                    - stuId: S-20260830-01-07
+                      sessionId: S-20260830-01
+                      seat: '07'
+                      groupId: G2
+                      name: 张三
+                      studentNo: '20240007'
+                      checkinTime: 1693400060000
+                      checkinStatus: done
+                      machineId: a3f9
+                      online: true
+                      lastSeenAt: 1693400300000
+                  total: 50
+                  page: 1
+                  limit: 20
+                  hasMore: true
+                  summary:
+                    checkedIn: 47
+                    pending: 3
+                    rate: 0.94
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Task
+  # ==========================================================================
+  /sessions/{sessionId}/tasks:
+    post:
+      tags: [Task]
+      summary: 发布任务（广播 task）
+      description: |
+        对应大屏「发布任务」。副作用：写 `t_task` → 广播 `{action:"task", task:{...}}` →
+        若当前 `phase=checkin` 自动推进为 `task` → 推送 SSE `task.published`。
+
+        发布新任务**不关闭**旧任务；如需关闭用 `POST /tasks/{taskId}/close`。
+        学生端以最后收到的任务为当前任务。
+      operationId: publishTask
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishTaskRequest'
+            example:
+              title: 点亮 LED
+              desc: 用面包板连接 LED 与限流电阻，编写程序使其闪烁
+      responses:
+        '201':
+          description: 任务已发布
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Task'
+                          - type: object
+                            properties:
+                              broadcast:
+                                $ref: '#/components/schemas/BroadcastResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 会话已关闭，不能发布任务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags: [Task]
+      summary: 任务列表（含各状态计数）
+      operationId: listTasks
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TaskWithStats'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tasks/{taskId}/close:
+    post:
+      tags: [Task]
+      summary: 关闭任务
+      description: 写 `close_time`。不广播——学生端按最后一条任务为准，无需感知关闭。
+      operationId: closeTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: T-001
+      responses:
+        '200':
+          description: 已关闭
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Task'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/{sessionId}/tasks/{taskId}/statuses:
+    get:
+      tags: [Task]
+      summary: 某任务的全班状态明细
+      description: 大屏「按任务查全班状态」——最高频查询，已在 `t_task_status(task_id)` 建索引。
+      operationId: listTaskStatuses
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TaskStatusRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Equipment
+  # ==========================================================================
+  /equipment:
+    get:
+      tags: [Equipment]
+      summary: 器材台账
+      description: 来源 `equipment.json` 种子，会话创建时载入 `t_equipment`。
+      operationId: listEquipment
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Equipment'
+              example:
+                code: 0
+                message: ''
+                data:
+                  - eqId: DEV-BOARD
+                    eqName: 开发板
+                    category: 主控
+                    total: 50
+                  - eqId: SENSOR-T
+                    eqName: 温度传感器
+                    category: 传感器
+                    total: 100
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/{sessionId}/borrows:
+    get:
+      tags: [Equipment]
+      summary: 器材借还记录（含汇总）
+      description: AC-2 要求大屏展示器材领取/归还数量，`summary` 直接给聚合值，前端不必自行累加。
+      operationId: listBorrows
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [borrowed, returned]
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Pagination'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/EquipmentBorrow'
+                              summary:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/EquipmentSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Command
+  # ==========================================================================
+  /commands/shutdown:
+    post:
+      tags: [Command]
+      summary: 下发关机指令
+      description: |
+        **本端点是全系统唯一的破坏性操作，服务端必须做三重校验后才广播**（SPEC §10、§11）：
+
+        1. **阶段闸门**：`phase` 必须为 `return` 或 `closed`。否则 `409` + `E-OFF-01`。
+           防止课中误触让全班关机。
+        2. **归还闸门**：`force=false` 时要求全部小组 `allReturned=true`，
+           否则 `409` + `E-RETURN-01` 并在 `data.pendingSeats` 返回未归还座位，
+           看板据此提���教师。`force=true` 由教师显式确认后跳过此闸门（AC-4）。
+        3. **HMAC 签名**：服务端用 `sharedSecret` 计算
+           `sig = HMAC_SHA256(secret, sessionId + "|shutdown|" + ts)` 写入 MQTT 载荷。
+           学生端校验 `sig` 有效、`phase ∈ {return, closed}` 且 `|now - ts| < 60s` 才执行关机。
+           这三条共同防止学生用 MQTTX 伪造或重放关机报文。
+
+        **离线机兜底**（PRD R-7）：`data.offlineSeats` 返回广播时已离线的座位。
+        这些机器收不到指令，看板必须标注"尚未关机"清单交教师现场处理；
+        若它们随后重连，会经 hello→sync 得知已进入关机阶段并由教师端补发。
+        MVP 不承诺 100% 覆盖离线机。
+      operationId: sendShutdown
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  default: false
+                  description: 跳过「全部归还」闸门（教师强制关机，需 UI 二次确认）
+                reason:
+                  type: string
+                  maxLength: 200
+                  description: 强制关机原因，写入事件日志备查
+            example:
+              force: false
+      responses:
+        '200':
+          description: 指令已广播
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShutdownResult'
+              example:
+                code: 0
+                message: ''
+                data:
+                  broadcast:
+                    delivered: true
+                    msgId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+                    topic: siot/ict_cmd
+                  shutdownDelaySec: 10
+                  targetOnline: 48
+                  offlineSeats: ['13', '29']
+                  pendingSeats: []
+        '409':
+          description: 闸门未通过（阶段不符 或 尚有未归还）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                phaseGate:
+                  summary: 阶段闸门拦截
+                  value:
+                    code: 40903
+                    message: 仅在课后归还阶段可下发关机指令，当前阶段 task
+                    errorCode: E-OFF-01
+                    data: null
+                returnGate:
+                  summary: 归还闸门拦截（可用 force 跳过）
+                  value:
+                    code: 40904
+                    message: 尚有 3 个座位未确认归还，如需强制关机请设 force=true
+                    errorCode: E-RETURN-01
+                    data:
+                      pendingSeats: ['13', '22', '29']
+        '503':
+          $ref: '#/components/responses/MqttUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /commands/reset:
+    post:
+      tags: [Command]
+      summary: 复位指定座位的登记
+      description: |
+        教师代操作，用于学生填错信息重填。清除该座位 `t_student` 登记态与本课器材领取记录，
+        并向学生机广播 `{action:"reset", seat}`。学生端仅当 `payload.seat` 等于本机座位时响应。
+      operationId: sendReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seat]
+              properties:
+                seat:
+                  $ref: '#/components/schemas/Seat'
+            example:
+              seat: '07'
+      responses:
+        '200':
+          description: 已复位并广播
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          seat:
+                            $ref: '#/components/schemas/Seat'
+                          broadcast:
+                            $ref: '#/components/schemas/BroadcastResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/MqttUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Dashboard
+  # ==========================================================================
+  /dashboard/snapshot:
+    get:
+      tags: [Dashboard]
+      summary: 大屏全量快照
+      description: |
+        **看板的启动与 F5 恢复依赖此端点**（ARCH ADR-003 的核心收益：刷新不丢状态）。
+
+        推荐前端时序，避免快照与增量之间丢事件：
+        ```
+        1) 先建立 SSE 连接，把收到的事件暂存队列（不渲染）
+        2) 再拉 /dashboard/snapshot 得到 revision
+        3) 用快照渲染，然后回放队列中 revision 更大的事件
+        4) 后续事件直接增量渲染
+        ```
+        `revision` 单调递增，前端若发现 SSE 事件的 `revision` 不连续（跳号），
+        说明中间有丢失，应重新拉快照而不是猜测。
+      operationId: getDashboardSnapshot
+      responses:
+        '200':
+          description: 成功；无进行中会话时 `session` 为 null，看板显示待课页
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardSnapshot'
+              example:
+                code: 0
+                message: ''
+                data:
+                  revision: 1043
+                  serverTs: 1693400400000
+                  session:
+                    sessionId: S-20260830-01
+                    teacher: 张老师
+                    className: 初二(3)班
+                    startTime: 1693400000000
+                    endTime: null
+                    phase: task
+                    totalSeats: 50
+                    exportFlag: false
+                  stats:
+                    checkedIn: 47
+                    pending: 3
+                    checkinRate: 0.94
+                    online: 48
+                    offline: 2
+                    taskDoing: 30
+                    taskDone: 15
+                    taskHelp: 2
+                    returned: 0
+                    borrowRate: 0.92
+                  currentTask:
+                    taskId: T-001
+                    title: 点亮 LED
+                    publishTime: 1693400200000
+                  groups:
+                    - groupId: G2
+                      seats: ['06', '07', '08', '09', '10']
+                      checkedIn: 5
+                      helpCount: 1
+                      doneCount: 2
+                      returned: false
+                      hasHelp: true
+                  seats:
+                    - seat: '07'
+                      groupId: G2
+                      name: 张三
+                      checkinStatus: done
+                      taskStatus: help
+                      returnStatus: pending
+                      online: true
+                      lastSeenAt: 1693400390000
+                      conflict: false
+                  conflicts: []
+                  mqtt:
+                    state: online
+                    reconnectAttempts: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard/stream:
+    get:
+      tags: [Dashboard]
+      summary: 实时事件流（Server-Sent Events）
+      description: |
+        `text/event-stream` 长连接，浏览器用原生 `EventSource`（自带重连，故不用 WebSocket）。
+
+        ```js
+        const es = new EventSource('/api/v1/dashboard/stream');
+        es.addEventListener('student.checkin', e => apply(JSON.parse(e.data)));
+        ```
+
+        ## 帧格式
+
+        每帧含 `id`（= revision）、`event`（事件名）、`data`（JSON）：
+        ```
+        id: 1044
+        event: student.checkin
+        data: {"revision":1044,"ts":1693400401000,"payload":{...}}
+        ```
+
+        服务端每 15s 发一个注释行 `:keepalive` 防代理超时断连；前端可忽略。
+        `EventSource` 重连会带 `Last-Event-ID` 头，服务端**尽力**补发该 revision 之后的事件
+        （内存环形缓冲，容量 500）；若请求的 revision 已被淘汰，服务端发送
+        `stream.reset` 事件，前端收到后**必须**重新拉 `/dashboard/snapshot`。
+
+        ## 事件清单
+
+        | event | 触发 | data.payload |
+        |-------|------|--------------|
+        | `stream.ready` | 连接建立 | `{revision}` 当前版本号 |
+        | `stream.reset` | 增量无法续接 | `{reason}` → 前端重拉快照 |
+        | `session.started` | 开始上课 | `Session` |
+        | `phase.changed` | 阶段流转 | `{from, to}` |
+        | `student.checkin` | 学生登记 | `SeatState` + `stats` 增量 |
+        | `student.online` | 心跳恢复 | `{seat, lastSeenAt}` |
+        | `student.offline` | 超 45s 无心跳 | `{seat, lastSeenAt}` |
+        | `task.published` | 发布任务 | `Task` |
+        | `task.status` | 学生点状态 | `{seat, groupId, taskId, status}` |
+        | `equipment.changed` | 领取/归还 | `{seat, eqId, qty, action}` |
+        | `student.return` | 归还确认 | `{seat, groupId, allReturned}` |
+        | `conflict.detected` | 同 seat 多 machineId | `SeatConflict` |
+        | `command.sent` | 指令已广播 | `{action, msgId, delivered}` |
+        | `connection.changed` | MQTT 连接态变化 | `MqttState` |
+
+        **`task.status` 中 `status=help` 是 AC-3 的 ≤1s 高亮触发源**，前端收到即置顶并闪烁 1s。
+      operationId: streamDashboard
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: 浏览器重连时自动携带，值为上次收到的 revision
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE 流已建立（长连接，不会正常结束）
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: text/event-stream; charset=utf-8
+            Cache-Control:
+              schema:
+                type: string
+                example: no-cache, no-transform
+            Connection:
+              schema:
+                type: string
+                example: keep-alive
+            X-Accel-Buffering:
+              description: 禁用反向代理缓冲，否则 SSE 会被攒包导致看板延迟
+              schema:
+                type: string
+                example: 'no'
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE 原始字节流。单帧 `data` 字段的 JSON 结构见
+                  `components/schemas/SseEvent`；各事件 payload 见 `x-sse-events` 映射。
+              example: |
+                id: 1043
+                event: stream.ready
+                data: {"revision":1043,"ts":1693400400000,"payload":{"revision":1043}}
+
+                id: 1044
+                event: student.checkin
+                data: {"revision":1044,"ts":1693400401000,"payload":{"seat":"07","groupId":"G2","name":"张三","checkinStatus":"done","stats":{"checkedIn":48,"pending":2,"checkinRate":0.96}}}
+
+                :keepalive
+
+                id: 1045
+                event: task.status
+                data: {"revision":1045,"ts":1693400402000,"payload":{"seat":"07","groupId":"G2","taskId":"T-001","status":"help"}}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-sse-events:
+        stream.ready: '#/components/schemas/SseStreamReady'
+        stream.reset: '#/components/schemas/SseStreamReset'
+        session.started: '#/components/schemas/Session'
+        phase.changed: '#/components/schemas/SsePhaseChanged'
+        student.checkin: '#/components/schemas/SseStudentCheckin'
+        student.online: '#/components/schemas/SsePresence'
+        student.offline: '#/components/schemas/SsePresence'
+        task.published: '#/components/schemas/Task'
+        task.status: '#/components/schemas/SseTaskStatus'
+        equipment.changed: '#/components/schemas/SseEquipmentChanged'
+        student.return: '#/components/schemas/SseStudentReturn'
+        conflict.detected: '#/components/schemas/SeatConflict'
+        command.sent: '#/components/schemas/SseCommandSent'
+        connection.changed: '#/components/schemas/MqttState'
+
+  /dashboard/conflicts:
+    get:
+      tags: [Dashboard]
+      summary: 座位号冲突清单
+      description: |
+        对应 ARCH R-02：机房克隆镜像导致多台机器配同一座位号。
+        服务端发现同一 `seat` 上报了不同 `machineId` 即记录冲突。
+        看板必须显式告警（如「座位 07 存在配置冲突」），否则现象会被误判为"网络不稳"。
+      operationId: listConflicts
+      responses:
+        '200':
+          description: 成功（无冲突时为空数组）
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SeatConflict'
+              example:
+                code: 0
+                message: ''
+                data:
+                  - seat: '07'
+                    machineIds: [a3f9, b71c]
+                    firstSeenAt: 1693400100000
+                    lastSeenAt: 1693400380000
+                    messageCount: 14
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Event
+  # ==========================================================================
+  /sessions/{sessionId}/events:
+    get:
+      tags: [Event]
+      summary: 事件日志（大屏事件流）
+      operationId: listEvents
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: type
+          in: query
+          description: 事件类型过滤
+          schema:
+            type: string
+            enum: [checkin, task, return, cmd, shutdown, error]
+        - name: seat
+          in: query
+          schema:
+            $ref: '#/components/schemas/Seat'
+        - name: since
+          in: query
+          description: 仅返回该时间戳之后的事件（Unix 毫秒）
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功（按 ts 降序）
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Pagination'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/EventLog'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==========================================================================
+  # Export
+  # ==========================================================================
+  /sessions/{sessionId}/exports:
+    post:
+      tags: [Export]
+      summary: 生成报表（AC-5）
+      description: |
+        同步生成四类报表并落盘到 `exports/{exportId}/`，返回文件清单。
+        单节课数据量（≤50 学生 / ≤250 业务消息）下同步生成耗时在百毫秒级，
+        **不引入任务队列**——MVP 不做过度设计。
+
+        | 报表 | 数据来源 |
+        |------|----------|
+        | 登记表 | `t_student` + 聚合 `t_equipment_borrow` |
+        | 任务记录 | `t_task` + `t_task_status` |
+        | 器材使用 | `t_equipment_borrow` + `t_equipment` |
+        | 事件日志 | `t_event_log` |
+
+        格式要求（04 文档 §3.3）：xlsx 由 SheetJS 生成含表头样式的多 Sheet；
+        **csv 必须为 UTF-8 with BOM**，否则 Excel 打开中文乱码。
+      operationId: createExport
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                formats:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    enum: [xlsx, csv]
+                  default: [xlsx, csv]
+                reports:
+                  type: array
+                  description: 缺省导出全部四类
+                  items:
+                    type: string
+                    enum: [students, tasks, equipment, events]
+            example:
+              formats: [xlsx, csv]
+      responses:
+        '201':
+          description: 生成完成
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ExportResult'
+              example:
+                code: 0
+                message: ''
+                data:
+                  exportId: E-20260830-01
+                  sessionId: S-20260830-01
+                  createdAt: 1693400500000
+                  files:
+                    - fileName: 登记表_S-20260830-01.xlsx
+                      report: students
+                      format: xlsx
+                      sizeBytes: 18342
+                      downloadUrl: /api/v1/exports/E-20260830-01/files/%E7%99%BB%E8%AE%B0%E8%A1%A8_S-20260830-01.xlsx
+                    - fileName: 登记表_S-20260830-01.csv
+                      report: students
+                      format: csv
+                      sizeBytes: 3120
+                      downloadUrl: /api/v1/exports/E-20260830-01/files/%E7%99%BB%E8%AE%B0%E8%A1%A8_S-20260830-01.csv
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /exports/{exportId}:
+    get:
+      tags: [Export]
+      summary: 导出批次详情
+      operationId: getExport
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: E-20260830-01
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ExportResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /exports/{exportId}/files/{fileName}:
+    get:
+      tags: [Export]
+      summary: 下载报表文件
+      description: |
+        **不走统一响应信封**，直接返回文件字节流。
+
+        安全要求：`fileName` 必须经白名单校验（只允许该 `exportId` 清单内的文件名），
+        禁止路径穿越（`../`）。校验失败返回 `400` + `E-VAL-01`，不要返回 404 以免泄露路径信息。
+      operationId: downloadExportFile
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fileName
+          in: path
+          required: true
+          description: URL-encoded 文件名
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 文件流
+          headers:
+            Content-Disposition:
+              description: 中文文件名需 RFC 5987 编码（`filename*=UTF-8''...`）
+              schema:
+                type: string
+                example: "attachment; filename*=UTF-8''%E7%99%BB%E8%AE%B0%E8%A1%A8.xlsx"
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+                format: binary
+                description: UTF-8 with BOM
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /presets/classes:
+    get:
+      summary: 班级预设列表
+      tags: [presets]
+      responses:
+        '200':
+          description: 班级预设数组
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClassPreset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: 新建班级预设
+      tags: [presets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassPresetInput'
+      responses:
+        '201':
+          description: 创建成功，返回完整预设
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassPreset'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /presets/classes/{presetId}:
+    get:
+      summary: 班级预设详情
+      tags: [presets]
+      parameters:
+        - $ref: '#/components/parameters/PresetId'
+      responses:
+        '200':
+          description: 班级预设
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassPreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: 更新班级预设
+      tags: [presets]
+      parameters:
+        - $ref: '#/components/parameters/PresetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassPresetInput'
+      responses:
+        '200':
+          description: 更新后的班级预设
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassPreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: 删除班级预设
+      tags: [presets]
+      parameters:
+        - $ref: '#/components/parameters/PresetId'
+      responses:
+        '200':
+          description: 删除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /presets/activities:
+    get:
+      summary: 活动预设列表
+      tags: [presets]
+      responses:
+        '200':
+          description: 活动预设数组
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ActivityPreset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: 新建活动预设
+      tags: [presets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityPresetInput'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityPreset'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /presets/activities/{presetId}:
+    get:
+      summary: 活动预设详情
+      tags: [presets]
+      parameters:
+        - $ref: '#/components/parameters/PresetId'
+      responses:
+        '200':
+          description: 活动预设
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityPreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: 更新活动预设
+      tags: [presets]
+      parameters:
+        - $ref: '#/components/parameters/PresetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityPresetInput'
+      responses:
+        '200':
+          description: 更新后的活动预设
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityPreset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: 删除活动预设
+      tags: [presets]
+      parameters:
+        - $ref: '#/components/parameters/PresetId'
+      responses:
+        '200':
+          description: 删除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /presets/export:
+    get:
+      summary: 导出预设包（备份 / 回迁办公端 Preset Studio 继续编辑）
+      description: 返回 kct-preset-package 包对象（classes + activities），由客户端保存为 .kctpreset 文件。
+      tags: [presets]
+      responses:
+        '200':
+          description: 预设包对象
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  data: { $ref: '#/components/schemas/PresetPackage' }
+
+  /presets/import:
+    post:
+      summary: 导入预设包（办公端 Studio → 教室大屏）
+      description: |
+        默认只做预演（校验 + 与本地按 presetId 比对，不落库），返回 added/updated/skipped 清单；
+        带 `?commit=true` 时按预演结果单事务落库（本地较新条目 skipped，不覆盖）。
+      tags: [presets]
+      parameters:
+        - name: commit
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: true 时提交落库；缺省仅预演
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresetPackage'
+      responses:
+        '200':
+          description: 预演或提交结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  data:
+                    type: object
+                    properties:
+                      added: { type: integer, description: 新增条数 }
+                      updated: { type: integer, description: 覆盖条数 }
+                      skipped: { type: integer, description: 跳过条数（本地较新） }
+                      items:
+                        type: array
+                        description: 逐条预演明细（kind/presetId/name/action）
+        '400':
+          description: 包校验失败（E-PKG-01）
+
+  /sessions/{sessionId}/activities:
+    get:
+      summary: 活动列表（含计时状态与各状态计数）
+      tags: [activities]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: 活动数组
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+    post:
+      summary: 发布活动（预设/自定义 + 可选计时）
+      tags: [activities]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityInput'
+      responses:
+        '201':
+          description: 发布成功，返回活动（含计时状态）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activity'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sessions/{sessionId}/activities/{taskId}/timer:
+    post:
+      summary: 计时控制（start|pause|resume|adjust|restart|stop）
+      tags: [activities]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [start, pause, resume, adjust, restart, stop]
+                durationSec:
+                  type: integer
+                  description: adjust/start 时的新时长（秒）
+      responses:
+        '200':
+          description: 计时状态更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activity'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sessions/{sessionId}/policy:
+    get:
+      summary: 查询锁定策略
+      tags: [policy]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: 当前策略
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+    post:
+      summary: 设置锁定策略（open 全课可用 / activity 非活动时间锁定）
+      tags: [policy]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [open, activity]
+      responses:
+        '200':
+          description: 设置成功，返回当前策略
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+# =============================================================================
+components:
+
+  securitySchemes:
+    TeacherToken:
+      type: apiKey
+      in: header
+      name: X-Teacher-Token
+      description: |
+        **默认部署（监听 127.0.0.1）下不启用**——看板与服务同机，无网络暴露面。
+
+        **绑定到局域网地址时必须启用**：否则任何学生只要知道教师机 IP 与端口，
+        就能直接 `POST /api/v1/commands/shutdown` 让全班关机——这比伪造 MQTT 报文更容易，
+        因为 HTTP 端点没有 HMAC 保护。令牌由教师端启动时生成并打印在控制台，
+        看板首次访问时填入并存 `localStorage`。
+
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: 会话 ID
+      schema:
+        type: string
+      example: S-20260830-01
+    Page:
+      name: page
+      in: query
+      description: 页码，从 1 开始
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      description: 每页条数
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+
+  responses:
+    ValidationError:
+      description: 请求参数校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 40001
+            message: seat 必须为两位数字字符串，如 "07"
+            errorCode: E-VAL-01
+            data: null
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 40400
+            message: 会话不存在
+            errorCode: E-NOTFOUND
+            data: null
+    Unauthorized:
+      description: 缺少或错误的 `X-Teacher-Token`（仅局域网部署形态会出现）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 40100
+            message: 无效的教师端令牌
+            errorCode: E-AUTH-01
+            data: null
+    MqttUnavailable:
+      description: |
+        MQTT 未连接，指令无法送达。**本地状态变更仍已持久化**，
+        看板应提示"指令未送达，请检查 SIoT2 连接后重试"。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 50301
+            message: SIoT2 连接不可用，指令未送达
+            errorCode: E-CONN-01
+            data: null
+
+  schemas:
+
+    # ---------- 通用 ----------
+    ApiEnvelope:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: 0 = 成功；非 0 = 业务错误码
+          example: 0
+        message:
+          type: string
+          description: 成功时为空串；失败时为可直接展示给教师的中文描述
+          example: ''
+        data:
+          nullable: true
+          description: 业务数据；失败时为 null
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: |
+            业务错误码。前两位对应 HTTP 语义，后三位为细分：
+            `40001` 参数校验 / `40100` 认证 / `40400` 不存在 /
+            `40901` 阶段非法 / `40902` 会话冲突 / `40903` 关机阶段闸门 /
+            `40904` 归还闸门 / `50000` 服务内部 / `50301` MQTT 不可用
+          example: 40001
+        message:
+          type: string
+          example: seat 必须为两位数字字符串
+        errorCode:
+          type: string
+          description: 对齐 04 文档错误码表，便于跨端一致处理
+          enum:
+            - E-CONN-01
+            - E-AUTH-01
+            - E-DUP-01
+            - E-VAL-01
+            - E-OFF-01
+            - E-SESSION-01
+            - E-SESSION-02
+            - E-PHASE-01
+            - E-RETURN-01
+            - E-NOTFOUND
+            - E-INTERNAL
+          example: E-VAL-01
+        data:
+          nullable: true
+          description: 通常为 null；闸门类错误会带辅助信息（如 `pendingSeats`）
+
+    Pagination:
+      type: object
+      required: [items, total, page, limit, hasMore]
+      properties:
+        items:
+          type: array
+          items: {}
+        total:
+          type: integer
+          example: 100
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        hasMore:
+          type: boolean
+          example: true
+
+    Seat:
+      type: string
+      pattern: '^[0-9]{2}$'
+      description: 座位号，两位数字字符串（`"01"`–`"50"`）。**不是整数**，禁止隐式转换。
+      example: '07'
+
+    Phase:
+      type: string
+      enum: [waiting, checkin, task, return, closed]
+      description: |
+        课堂阶段。单向流转不可回退：
+        `waiting → checkin → task → return → closed`（允许 checkin 跳过 task 直达 return）
+      example: task
+
+    TaskStatus:
+      type: string
+      enum: [doing, done, help]
+      example: help
+
+    BroadcastResult:
+      type: object
+      description: MQTT 广播结果。`delivered=false` 表示本地已处理但指令未送达。
+      required: [delivered]
+      properties:
+        delivered:
+          type: boolean
+          example: true
+        msgId:
+          type: string
+          nullable: true
+          description: 与 MQTT 信封 `msgId` 一致，便于在 SIoT Web 页对账
+          example: 550e8400-e29b-41d4-a716-446655440000
+        topic:
+          type: string
+          nullable: true
+          example: siot/ict_cmd
+        error:
+          type: string
+          nullable: true
+          description: delivered=false 时的原因
+          example: null
+
+    MqttState:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [online, reconnecting, offline]
+          example: online
+        brokerUrl:
+          type: string
+          example: mqtt://192.168.1.50:1883
+        topicPlan:
+          type: string
+          enum: [A, B]
+          description: 生效的主题方案（A=三级 `ICTClass/...`，B=两级 `siot/...`）
+          example: B
+        lastConnectedAt:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1693400000000
+        reconnectAttempts:
+          type: integer
+          example: 0
+        nextRetryInMs:
+          type: integer
+          nullable: true
+          description: 仅 reconnecting 时出现，供看板显示"重连中（N 秒后重试）"
+          example: 8000
+
+    # ---------- System ----------
+    HealthInfo:
+      type: object
+      required: [status, mqtt, db]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          description: MQTT 非 online 时为 degraded，但 HTTP 仍返回 200
+        uptimeMs:
+          type: integer
+          format: int64
+        version:
+          type: string
+        mqtt:
+          $ref: '#/components/schemas/MqttState'
+        db:
+          type: object
+          properties:
+            state:
+              type: string
+              enum: [ok, error]
+            path:
+              type: string
+
+    ClientConfig:
+      type: object
+      description: 看板渲染所需的运行参数。**不含 MQTT 凭据**（看板不直连 MQTT）。
+      properties:
+        totalSeats:
+          type: integer
+          example: 50
+        groupSize:
+          type: integer
+          example: 5
+        groups:
+          type: array
+          items:
+            type: string
+          example: [G1, G2, G3]
+        heartbeatIntervalMs:
+          type: integer
+          description: 学生机心跳间隔，看板据此计算离线判定
+          example: 15000
+        offlineThresholdMs:
+          type: integer
+          description: 超过此时长无心跳判为离线（= 3 × 心跳间隔）
+          example: 45000
+        helpBlinkMs:
+          type: integer
+          description: 求助高亮闪烁时长（AC-3）
+          example: 1000
+        shutdownDelaySec:
+          type: integer
+          example: 10
+        exportFormats:
+          type: array
+          items:
+            type: string
+          example: [xlsx, csv]
+
+    # ---------- Session ----------
+    StartSessionRequest:
+      type: object
+      required: [teacher]
+      properties:
+        teacher:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: 张老师
+        className:
+          type: string
+          maxLength: 50
+          example: 初二(3)班
+        totalSeats:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+
+    PresetId:
+      name: presetId
+      in: path
+      required: true
+      description: 预设 ID（CP-xxxxxxxx / AP-xxxxxxxx）
+      schema:
+        type: string
+        example: CP-0EB0CB5D
+
+    PresetPackage:
+      type: object
+      required: [pkg, schemaVersion, classes, activities]
+      description: 预设包（.kctpreset 文件内容，办公端 Studio ↔ 教室大屏 流转）
+      properties:
+        pkg:
+          type: string
+          enum: [kct-preset-package]
+          description: 包类型标记（双端校验，防止误选文件）
+        schemaVersion:
+          type: integer
+          example: 1
+        exportedAt:
+          type: integer
+          description: 导出时间戳（毫秒）
+        source:
+          type: string
+          nullable: true
+          example: preset-studio
+        classes:
+          type: array
+          description: 班级预设条目（presetId 跨机器稳定，是合并依据）
+          items:
+            type: object
+            properties:
+              presetId: { type: string }
+              name: { type: string }
+              totalSeats: { type: integer }
+              groupSize: { type: integer }
+              note: { type: string, nullable: true }
+              createdAt: { type: integer, nullable: true }
+              updatedAt: { type: integer }
+        activities:
+          type: array
+          description: 活动预设条目（器材清单 / 任务模板 / 计时默认配置）
+          items:
+            type: object
+            properties:
+              presetId: { type: string }
+              name: { type: string }
+              category: { type: string, nullable: true }
+              equipment:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    eqId: { type: string }
+                    eqName: { type: string }
+                    category: { type: string }
+                    preset: { type: integer, description: 登记页默认勾选数量 }
+              taskTemplates:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    title: { type: string }
+                    desc: { type: string }
+              timed: { type: boolean, description: 默认启用计时 }
+              durationSec: { type: integer, nullable: true, description: 默认时长（秒） }
+              note: { type: string, nullable: true }
+              createdAt: { type: integer, nullable: true }
+              updatedAt: { type: integer }
+
+    ClassPreset:
+      type: object
+      required: [presetId, name, totalSeats, groupSize]
+      properties:
+        presetId:
+          type: string
+          example: CP-0EB0CB5D
+        name:
+          type: string
+          example: 初二(1)班
+        totalSeats:
+          type: integer
+          minimum: 1
+          maximum: 99
+        groupSize:
+          type: integer
+          minimum: 1
+          maximum: 20
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+
+    ClassPresetInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: 初二(1)班
+        totalSeats:
+          type: integer
+          minimum: 1
+          maximum: 99
+          default: 50
+        groupSize:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+        note:
+          type: string
+          nullable: true
+
+    ActivityPreset:
+      type: object
+      required: [presetId, name, equipment, taskTemplates]
+      properties:
+        presetId:
+          type: string
+          example: AP-173C7168
+        name:
+          type: string
+          example: 焊接入门
+        category:
+          type: string
+          nullable: true
+        equipment:
+          type: array
+          description: 开始上课时经 MQTT 下发到学生机登记页
+          items:
+            type: object
+            properties:
+              eqId:
+                type: string
+                example: LED
+              eqName:
+                type: string
+                example: LED 发光二极管
+              category:
+                type: string
+              preset:
+                type: integer
+                description: 登记页默认勾选数量
+                default: 1
+        taskTemplates:
+          type: array
+          description: 上课时大屏/编辑器一键发布任务的模板
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              desc:
+                type: string
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+
+    ActivityPresetInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: 焊接入门
+        category:
+          type: string
+          nullable: true
+        equipment:
+          type: array
+          items:
+            type: object
+            properties:
+              eqId:
+                type: string
+              eqName:
+                type: string
+              category:
+                type: string
+              preset:
+                type: integer
+                default: 1
+        taskTemplates:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              desc:
+                type: string
+        note:
+          type: string
+          nullable: true
+
+    Activity:
+      type: object
+      description: 活动 = 任务 + 计时元数据（t_task 扩展）
+      properties:
+        taskId:
+          type: string
+        title:
+          type: string
+        desc:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [preset, custom]
+        activityPresetId:
+          type: string
+          nullable: true
+        timed:
+          type: boolean
+          description: 是否启用计时
+        durationSec:
+          type: integer
+          nullable: true
+        timerState:
+          type: string
+          enum: [idle, running, paused, expired, closed]
+        remainingMs:
+          type: integer
+          nullable: true
+          description: 剩余毫秒（running 动态计算）
+        stats:
+          type: object
+          description: doing/done/help 计数（列表接口返回）
+          properties:
+            doing: { type: integer }
+            done: { type: integer }
+            help: { type: integer }
+
+    ActivityInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        desc:
+          type: string
+        source:
+          type: string
+          enum: [preset, custom]
+          default: custom
+        activityPresetId:
+          type: string
+        timed:
+          type: boolean
+          default: false
+        durationSec:
+          type: integer
+          minimum: 1
+          maximum: 7200
+          description: timed=true 时必填（秒）
+
+    Policy:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [open, activity]
+        locked:
+          type: boolean
+        phase:
+          type: string
+        reason:
+          type: string
+
+    Session:
+      type: object
+      required: [sessionId, teacher, phase, totalSeats]
+      properties:
+        sessionId:
+          type: string
+          example: S-20260830-01
+        teacher:
+          type: string
+          example: 张老师
+        className:
+          type: string
+          nullable: true
+          example: 初二(3)班
+        startTime:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1693400000000
+        endTime:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        phase:
+          $ref: '#/components/schemas/Phase'
+        totalSeats:
+          type: integer
+          example: 50
+        exportFlag:
+          type: boolean
+          example: false
+
+    SessionWithBroadcast:
+      allOf:
+        - $ref: '#/components/schemas/Session'
+        - type: object
+          properties:
+            broadcast:
+              $ref: '#/components/schemas/BroadcastResult'
+
+    # ---------- Student ----------
+    Student:
+      type: object
+      required: [stuId, seat, checkinStatus]
+      properties:
+        stuId:
+          type: string
+          example: S-20260830-01-07
+        sessionId:
+          type: string
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+          example: G2
+        name:
+          type: string
+          nullable: true
+          description: 未登记时为 null
+          example: 张三
+        studentNo:
+          type: string
+          nullable: true
+          example: '20240007'
+        checkinTime:
+          type: integer
+          format: int64
+          nullable: true
+        checkinStatus:
+          type: string
+          enum: [pending, done]
+        machineId:
+          type: string
+          nullable: true
+          description: 机器短哈希，用于座位冲突检测（ARCH R-02）
+          example: a3f9
+        online:
+          type: boolean
+        lastSeenAt:
+          type: integer
+          format: int64
+          nullable: true
+
+    CheckinSummary:
+      type: object
+      properties:
+        checkedIn:
+          type: integer
+          example: 47
+        pending:
+          type: integer
+          example: 3
+        rate:
+          type: number
+          format: float
+          description: 0–1
+          example: 0.94
+
+    # ---------- Task ----------
+    PublishTaskRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: 点亮 LED
+        desc:
+          type: string
+          maxLength: 500
+          example: 用面包板连接 LED 与限流电阻
+
+    Task:
+      type: object
+      required: [taskId, title]
+      properties:
+        taskId:
+          type: string
+          example: T-001
+        sessionId:
+          type: string
+        title:
+          type: string
+        desc:
+          type: string
+          nullable: true
+        publishTime:
+          type: integer
+          format: int64
+        closeTime:
+          type: integer
+          format: int64
+          nullable: true
+
+    TaskWithStats:
+      allOf:
+        - $ref: '#/components/schemas/Task'
+        - type: object
+          properties:
+            stats:
+              type: object
+              properties:
+                doing:
+                  type: integer
+                done:
+                  type: integer
+                help:
+                  type: integer
+
+    TaskStatusRecord:
+      type: object
+      properties:
+        taskId:
+          type: string
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        ts:
+          type: integer
+          format: int64
+
+    # ---------- Equipment ----------
+    Equipment:
+      type: object
+      properties:
+        eqId:
+          type: string
+          example: DEV-BOARD
+        eqName:
+          type: string
+          example: 开发板
+        category:
+          type: string
+          nullable: true
+          example: 主控
+        total:
+          type: integer
+          example: 50
+
+    EquipmentBorrow:
+      type: object
+      properties:
+        borrowId:
+          type: string
+        sessionId:
+          type: string
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+        eqId:
+          type: string
+        eqName:
+          type: string
+          description: 联表带出，省去前端二次查询
+        qty:
+          type: integer
+        borrowTime:
+          type: integer
+          format: int64
+          nullable: true
+        returnTime:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          type: string
+          enum: [borrowed, returned]
+
+    EquipmentSummary:
+      type: object
+      properties:
+        eqId:
+          type: string
+        eqName:
+          type: string
+        total:
+          type: integer
+        borrowed:
+          type: integer
+        returned:
+          type: integer
+        outstanding:
+          type: integer
+          description: 已领未还 = borrowed - returned
+
+    # ---------- Command ----------
+    ShutdownResult:
+      type: object
+      properties:
+        broadcast:
+          $ref: '#/components/schemas/BroadcastResult'
+        shutdownDelaySec:
+          type: integer
+          example: 10
+        targetOnline:
+          type: integer
+          description: 广播时在线的学生机数
+          example: 48
+        offlineSeats:
+          type: array
+          description: 广播时已离线、收不到指令的座位。看板必须标注"尚未关机"（PRD R-7）。
+          items:
+            $ref: '#/components/schemas/Seat'
+        pendingSeats:
+          type: array
+          description: force=true 时被跳过的未归还座位，留档备查
+          items:
+            $ref: '#/components/schemas/Seat'
+
+    # ---------- Dashboard ----------
+    DashboardSnapshot:
+      type: object
+      required: [revision, serverTs]
+      properties:
+        revision:
+          type: integer
+          format: int64
+          description: 单调递增版本号，与 SSE 事件 `revision` 同源，用于对齐增量
+          example: 1043
+        serverTs:
+          type: integer
+          format: int64
+          description: 服务端当前时间，前端可用于校正本机时钟偏差
+        session:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Session'
+        stats:
+          $ref: '#/components/schemas/DashboardStats'
+        currentTask:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Task'
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupState'
+        seats:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatState'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatConflict'
+        mqtt:
+          $ref: '#/components/schemas/MqttState'
+
+    DashboardStats:
+      type: object
+      properties:
+        checkedIn:
+          type: integer
+        pending:
+          type: integer
+        checkinRate:
+          type: number
+          format: float
+        online:
+          type: integer
+        offline:
+          type: integer
+        taskDoing:
+          type: integer
+        taskDone:
+          type: integer
+        taskHelp:
+          type: integer
+        returned:
+          type: integer
+          description: 已确认归还的小组数
+        borrowRate:
+          type: number
+          format: float
+
+    GroupState:
+      type: object
+      properties:
+        groupId:
+          type: string
+          example: G2
+        seats:
+          type: array
+          items:
+            $ref: '#/components/schemas/Seat'
+        checkedIn:
+          type: integer
+        helpCount:
+          type: integer
+        doneCount:
+          type: integer
+        returned:
+          type: boolean
+          description: 全组 allReturned
+        hasHelp:
+          type: boolean
+          description: 组内存在求助 → 大屏该组闪烁置顶（AC-3）
+
+    SeatState:
+      type: object
+      description: 小组矩阵中单个座位格子的完整渲染状态
+      properties:
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        checkinStatus:
+          type: string
+          enum: [pending, done]
+        taskStatus:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TaskStatus'
+        returnStatus:
+          type: string
+          enum: [pending, done]
+        online:
+          type: boolean
+        lastSeenAt:
+          type: integer
+          format: int64
+          nullable: true
+        conflict:
+          type: boolean
+          description: true 时该格需显示冲突角标
+
+    SeatConflict:
+      type: object
+      properties:
+        seat:
+          $ref: '#/components/schemas/Seat'
+        machineIds:
+          type: array
+          items:
+            type: string
+          example: [a3f9, b71c]
+        firstSeenAt:
+          type: integer
+          format: int64
+        lastSeenAt:
+          type: integer
+          format: int64
+        messageCount:
+          type: integer
+
+    # ---------- SSE ----------
+    SseEvent:
+      type: object
+      description: |
+        SSE 帧中 `data:` 字段的统一结构。具体 `payload` 类型由 `event` 名决定，
+        映射见 `/dashboard/stream` 的 `x-sse-events`。
+      required: [revision, ts, payload]
+      properties:
+        revision:
+          type: integer
+          format: int64
+          description: 与快照 `revision` 同源；跳号说明有丢失，需重拉快照
+        ts:
+          type: integer
+          format: int64
+        payload:
+          description: 事件负载
+
+    SseStreamReady:
+      type: object
+      properties:
+        revision:
+          type: integer
+          format: int64
+
+    SseStreamReset:
+      type: object
+      description: 服务端无法从 `Last-Event-ID` 续接增量，前端必须重拉快照
+      properties:
+        reason:
+          type: string
+          example: revision 1002 已超出缓冲区，请重新拉取快照
+
+    SsePhaseChanged:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/Phase'
+        to:
+          $ref: '#/components/schemas/Phase'
+
+    SseStudentCheckin:
+      allOf:
+        - $ref: '#/components/schemas/SeatState'
+        - type: object
+          properties:
+            stats:
+              $ref: '#/components/schemas/CheckinSummary'
+
+    SsePresence:
+      type: object
+      properties:
+        seat:
+          $ref: '#/components/schemas/Seat'
+        online:
+          type: boolean
+        lastSeenAt:
+          type: integer
+          format: int64
+          nullable: true
+
+    SseTaskStatus:
+      type: object
+      description: '`status=help` 是 AC-3 的 ≤1s 高亮触发源'
+      properties:
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+        taskId:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+
+    SseEquipmentChanged:
+      type: object
+      properties:
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+        eqId:
+          type: string
+        eqName:
+          type: string
+        qty:
+          type: integer
+        action:
+          type: string
+          enum: [borrow, return]
+
+    SseStudentReturn:
+      type: object
+      properties:
+        seat:
+          $ref: '#/components/schemas/Seat'
+        groupId:
+          type: string
+          nullable: true
+        allReturned:
+          type: boolean
+        note:
+          type: string
+          nullable: true
+
+    SseCommandSent:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [start, end, task, shutdown, reset]
+        msgId:
+          type: string
+        delivered:
+          type: boolean
+        seat:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Seat'
+
+    # ---------- Event ----------
+    EventLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: string
+        ts:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum: [checkin, task, return, cmd, shutdown, error]
+        seat:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Seat'
+        msgId:
+          type: string
+          nullable: true
+          description: 幂等去重键（`t_event_log.msg_id UNIQUE`）
+        detail:
+          type: object
+          nullable: true
+          description: 结构化备注（DB 中以 JSON 文本存储，接口层已解析为对象）
+
+    # ---------- Export ----------
+    ExportResult:
+      type: object
+      properties:
+        exportId:
+          type: string
+          example: E-20260830-01
+        sessionId:
+          type: string
+        createdAt:
+          type: integer
+          format: int64
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportFile'
+
+    ExportFile:
+      type: object
+      properties:
+        fileName:
+          type: string
+          example: 登记表_S-20260830-01.xlsx
+        report:
+          type: string
+          enum: [students, tasks, equipment, events]
+        format:
+          type: string
+          enum: [xlsx, csv]
+        sizeBytes:
+          type: integer
+        downloadUrl:
+          type: string
+          description: 相对路径，前端直接 window.open

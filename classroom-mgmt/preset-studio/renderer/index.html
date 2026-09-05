@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>课堂管理系统 · 预设编辑器（Preset Studio）</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" id="brand-mark"></span>
+      <h1>预设编辑器 <span class="brand-sub">Preset Studio · 办公电脑</span></h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn" id="btn-import-pkg">导入预设包</button>
+      <button class="btn btn-primary" id="btn-export-pkg">导出预设包</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="功能页签">
+    <button class="tab active" data-tab="classes">班级预设</button>
+    <button class="tab" data-tab="activities">活动预设</button>
+    <button class="tab" data-tab="dict">器材字典</button>
+  </nav>
+
+  <!-- ===================== 班级预设 ===================== -->
+  <section class="tab-panel active" id="panel-classes">
+    <div class="card">
+      <h2>新建班级预设</h2>
+      <div class="form-grid">
+        <label>班级名称<input id="c-name" type="text" placeholder="例如：初二(1)班" maxlength="30" /></label>
+        <label>座位数<input id="c-seats" type="number" min="1" max="99" value="50" /></label>
+        <label>分组大小<input id="c-group" type="number" min="1" max="20" value="5" /></label>
+        <label>备注<input id="c-note" type="text" placeholder="例如：东机房（选填）" maxlength="60" /></label>
+      </div>
+
+      <h3>分组配置 <span class="hint">不填则按人数均分；填写后座位数以各组之和为准</span></h3>
+      <div class="group-editor" id="groups-editor"></div>
+      <div class="mini-actions">
+        <button class="btn btn-ghost" id="btn-group-auto">按分组大小均分生成</button>
+        <button class="btn btn-ghost" id="btn-group-add">+ 添加分组</button>
+      </div>
+
+      <h3>上课器材 <span class="hint">每节课都发放的器材（可选），与活动器材合并下发；编号可从字典联想</span></h3>
+      <div class="eq-editor" id="class-eq-editor"></div>
+      <button class="btn btn-ghost" id="btn-class-eq-add">+ 添加上课器材</button>
+
+      <div class="actions"><button class="btn btn-primary" id="btn-class-save">保存班级预设</button></div>
+    </div>
+    <div class="card">
+      <h2>已保存的班级</h2>
+      <div class="list" id="class-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== 活动预设 ===================== -->
+  <section class="tab-panel" id="panel-activities">
+    <div class="card">
+      <h2>新建活动预设</h2>
+      <div class="form-grid">
+        <label>活动名称<input id="a-name" type="text" placeholder="例如：焊接入门" maxlength="30" /></label>
+        <label>分类<input id="a-category" type="text" placeholder="例如：焊接 / 传感器 / 综合" maxlength="20" /></label>
+        <label>备注<input id="a-note" type="text" placeholder="选填" maxlength="60" /></label>
+        <label class="switch-row"><input type="checkbox" id="a-timed" /> 默认启用计时</label>
+        <label>默认时长（分钟）<input id="a-duration" type="number" min="1" max="120" value="10" disabled /></label>
+      </div>
+      <h3>器材清单 <span class="hint">登记页学生领用勾选；编号输入时自动联想器材字典</span></h3>
+      <div class="eq-editor" id="eq-editor"></div>
+      <button class="btn btn-ghost" id="btn-eq-add">+ 添加器材</button>
+      <h3>任务模板（上课时一键发布）</h3>
+      <div class="tpl-editor" id="tpl-editor"></div>
+      <button class="btn btn-ghost" id="btn-tpl-add">+ 添加任务模板</button>
+      <div class="actions"><button class="btn btn-primary" id="btn-activity-save">保存活动预设</button></div>
+    </div>
+    <div class="card">
+      <h2>已保存的活动</h2>
+      <div class="list" id="activity-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== 器材字典 ===================== -->
+  <section class="tab-panel" id="panel-dict">
+    <div class="card">
+      <h2>新增器材</h2>
+      <p class="hint">字典用于快速记忆常用器材（eqId 为设备唯一编码，需与硬件清单一致）。</p>
+      <div class="form-grid">
+        <label>设备编码 eqId<input id="d-eqid" type="text" placeholder="例如：LED" maxlength="30" /></label>
+        <label>器材名称<input id="d-eqname" type="text" placeholder="例如：LED 发光二极管" maxlength="30" /></label>
+        <label>分类<input id="d-category" type="text" placeholder="例如：元件 / 主控 / 焊接" maxlength="20" /></label>
+      </div>
+      <div class="actions"><button class="btn btn-primary" id="btn-dict-save">保存器材</button></div>
+    </div>
+    <div class="card">
+      <h2>常用器材</h2>
+      <div class="list" id="dict-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== 导入预演弹窗 ===================== -->
+  <div class="overlay" id="overlay-import" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
+      <h2 id="import-title">导入预设包</h2>
+      <p class="modal-hint" id="import-file-name"></p>
+      <div class="import-result" id="import-result"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="import-cancel">取消</button>
+        <button class="btn btn-primary" id="import-commit" hidden>确认导入</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <datalist id="dict-eq"></datalist>
+  <script src="icons.js"></script>
+  <script src="app.js"></script>
+  <script src="presets.js"></script>
+  <script src="preset-class-ui.js"></script>
+  <script>
+    document.getElementById('brand-mark').innerHTML = Icons.svg('clipboard-check', 22);
+  </script>
+</body>
+</html>

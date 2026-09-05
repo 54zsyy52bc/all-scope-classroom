@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>信息技术硬件实践课 · 学生机</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" id="brand-mark"></span>
+      <span class="brand-text">信息技术硬件实践课</span>
+    </div>
+    <div class="topbar-right">
+      <span class="chip" id="seat-chip"></span>
+      <span class="chip chip-quiet" id="machine-chip"></span>
+      <div class="conn" id="conn" data-state="offline" role="status" aria-live="polite">
+        <span class="conn-icon" id="conn-icon"></span>
+        <span class="conn-text" id="conn-text">未连接</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage" id="stage"></main>
+
+  <div class="toast" id="toast" role="alert" hidden></div>
+
+  <!-- 锁定遮罩：教师设置 activity 模式且非活动时间时全屏拦截输入（软锁） -->
+  <div class="lock-overlay" id="lock-overlay" hidden role="alertdialog" aria-live="assertive">
+    <div class="lock-card">
+      <span class="lock-icon" id="lock-icon"></span>
+      <p class="lock-title">当前为课堂讲解时间</p>
+      <p class="lock-sub">教师发布活动后将自动解锁，请稍候</p>
+    </div>
+  </div>
+
+  <div class="shutdown" id="shutdown" role="alertdialog" aria-live="assertive" hidden>
+    <span class="shutdown-icon" id="shutdown-icon"></span>
+    <p class="shutdown-text" id="shutdown-text"></p>
+  </div>
+
+  <script src="../vendor/mqtt.min.js"></script>
+  <script src="../shared/topics.js"></script>
+  <script src="../shared/icons.js"></script>
+  <script src="equipment.js"></script>
+  <script src="net.js"></script>
+  <script src="views.js"></script>
+  <script src="downlink.js"></script>
+  <script src="actions.js"></script>
+  <script src="control.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.getElementById('brand-mark').innerHTML = Icons.svg('monitor', 20);
+    document.getElementById('shutdown-icon').innerHTML = Icons.svg('power', 32);
+    document.getElementById('lock-icon').innerHTML = Icons.svg('lock', 40);
+  </script>
+</body>
+</html>

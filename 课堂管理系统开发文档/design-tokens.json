@@ -1,0 +1,165 @@
+{
+  "meta": {
+    "product": "初二信息技术硬件实践课课堂管理系统",
+    "version": "v1.0",
+    "generated": "2026-08-30",
+    "designRegister": "product",
+    "designVariance": 3,
+    "motionIntensity": 4,
+    "visualDensity": {
+      "student": 3,
+      "teacher": 8
+    },
+    "tokenLayers": "A1-identity / A2-default / B-slot / C-extension",
+    "note": "所有颜色均通过 Token 引用，禁止在组件代码中硬编码 hex。字号以 px 为准，pt 为需求规格说明（NFR-U2 / 05§4）的标注对照。"
+  },
+
+  "color": {
+    "accent": {
+      "value": "#4F46E5",
+      "type": "color",
+      "layer": "A1-identity",
+      "usage": "主操作按钮（确认登记/确认归还/开始上课等 actionable 主按钮）。每屏可见强调色 ≤ 2 处。"
+    },
+    "accentHover": { "value": "#4338CA", "type": "color", "layer": "A2" },
+    "accentActive": { "value": "#3730A3", "type": "color", "layer": "A2" },
+    "accentOn": { "value": "#FFFFFF", "type": "color", "layer": "A2", "usage": "accent 背景上的前景文字/图标" },
+
+    "state": {
+      "waiting":  { "value": "#9CA3AF", "type": "color", "layer": "A1", "meaning": "未开始/等待（未登记、未领取、未归还）" },
+      "doing":    { "value": "#2563EB", "type": "color", "layer": "A1", "meaning": "进行中（任务进行中）" },
+      "done":     { "value": "#16A34A", "type": "color", "layer": "A1", "meaning": "已完成/已登记/已归还" },
+      "help":     { "value": "#EA580C", "type": "color", "layer": "A1", "meaning": "求助（需教师指导，带闪烁提示）" },
+      "offline":  { "value": "#DC2626", "type": "color", "layer": "A1", "meaning": "离线/掉线（该机失联）" }
+    },
+
+    "semantic": {
+      "success": { "value": "#16A34A", "type": "color", "layer": "A2", "alias": "state.done" },
+      "warn":    { "value": "#D97706", "type": "color", "layer": "A2" },
+      "danger":  { "value": "#DC2626", "type": "color", "layer": "A2", "alias": "state.offline" }
+    },
+
+    "connection": {
+      "online":       { "value": "#16A34A", "type": "color", "layer": "A2", "meaning": "已连接（绿点）" },
+      "reconnecting": { "value": "#D97706", "type": "color", "layer": "A2", "meaning": "重连中（黄点，伴随 loader 旋转）" },
+      "offline":      { "value": "#DC2626", "type": "color", "layer": "A2", "meaning": "离线（红点）" }
+    },
+
+    "theme": {
+      "student": {
+        "bg":       { "value": "#F8FAFC", "type": "color", "layer": "A1-identity", "meaning": "学生机页面背景（浅色，明亮清晰）" },
+        "surface":  { "value": "#FFFFFF", "type": "color", "layer": "A1-identity", "meaning": "卡片/面板背景" },
+        "surface2": { "value": "#F1F5F9", "type": "color", "layer": "B-slot", "meaning": "次级表面（输入框、底色块）" },
+        "fg":       { "value": "#0F172A", "type": "color", "layer": "A1-identity", "meaning": "主文本" },
+        "muted":    { "value": "#475569", "type": "color", "layer": "A1-identity", "meaning": "次级文本" },
+        "border":   { "value": "#E2E8F0", "type": "color", "layer": "A1-identity", "meaning": "默认边框" }
+      },
+      "teacher": {
+        "bg":       { "value": "#0C1018", "type": "color", "layer": "A1-identity", "meaning": "教师端大屏背景（深色，投影清晰）" },
+        "surface":  { "value": "#161B26", "type": "color", "layer": "A1-identity", "meaning": "面板/卡片背景" },
+        "surface2": { "value": "#1E2531", "type": "color", "layer": "B-slot", "meaning": "次级表面（矩阵格、行背景）" },
+        "fg":       { "value": "#F1F5F9", "type": "color", "layer": "A1-identity", "meaning": "主文本" },
+        "muted":    { "value": "#94A3B8", "type": "color", "layer": "A1-identity", "meaning": "次级文本" },
+        "border":   { "value": "#2A3342", "type": "color", "layer": "A1-identity", "meaning": "默认边框" }
+      }
+    }
+  },
+
+  "typography": {
+    "family": {
+      "display": { "value": "Inter, \"Noto Sans SC\", -apple-system, sans-serif", "type": "fontFamily", "layer": "A1-identity", "usage": "标题/界面字体" },
+      "body":    { "value": "Inter, \"Noto Sans SC\", -apple-system, sans-serif", "type": "fontFamily", "layer": "A1-identity", "usage": "正文" },
+      "mono":    { "value": "JetBrains Mono, \"Fira Code\", monospace", "type": "fontFamily", "layer": "A2", "usage": "学号、座位号、时间戳、器材数量等机器可读信息" }
+    },
+    "size": {
+      "meta":     { "value": "16px", "pt": 12, "type": "dimension", "usage": "仅用于密集数据中的微信息：时间戳、座位码、×数量后缀（teacher 端例外，需明确标注）" },
+      "body":     { "value": "24px", "pt": 18, "type": "dimension", "usage": "正文最小值，满足 NFR-U2 ≥18pt" },
+      "button":   { "value": "28px", "pt": 21, "type": "dimension", "usage": "按钮文字，满足 ≥20pt" },
+      "subtitle": { "value": "30px", "pt": 22.5, "type": "dimension", "usage": "区块标题、矩阵组头" },
+      "title":    { "value": "40px", "pt": 30, "type": "dimension", "usage": "屏幕标题、顶栏班级名" },
+      "hero":     { "value": "56px", "pt": 42, "type": "dimension", "usage": "大屏关键数字（到课 48/50、领取率 96%）" }
+    },
+    "weight": {
+      "read":      { "value": 400, "type": "fontWeight", "usage": "正文、描述" },
+      "emphasis":  { "value": 510, "type": "fontWeight", "usage": "小标题、强调" },
+      "announce":  { "value": 590, "type": "fontWeight", "usage": "大标题、主按钮" }
+    },
+    "leading": {
+      "body":     { "value": 1.5, "type": "number" },
+      "tight":    { "value": 1.2, "type": "number", "usage": "标题" }
+    },
+    "tracking": {
+      "body":      { "value": "0", "type": "dimension" },
+      "caps":      { "value": "0.06em", "type": "dimension", "usage": "ALL CAPS 英文标签（如 STATUS / ONLINE）" },
+      "display":   { "value": "-0.01em", "type": "dimension", "usage": "≥40px 标题负字距" }
+    }
+  },
+
+  "spacing": {
+    "1":  { "value": "4px",  "type": "dimension" },
+    "2":  { "value": "8px",  "type": "dimension" },
+    "3":  { "value": "12px", "type": "dimension" },
+    "4":  { "value": "16px", "type": "dimension" },
+    "5":  { "value": "20px", "type": "dimension" },
+    "6":  { "value": "24px", "type": "dimension" },
+    "8":  { "value": "32px", "type": "dimension" },
+    "10": { "value": "40px", "type": "dimension" },
+    "12": { "value": "48px", "type": "dimension" },
+    "16": { "value": "64px", "type": "dimension" },
+    "20": { "value": "80px", "type": "dimension" }
+  },
+
+  "radius": {
+    "sm":   { "value": "8px",    "type": "dimension", "usage": "输入框、小组件" },
+    "md":   { "value": "12px",   "type": "dimension", "usage": "卡片、主按钮（≤12-16px，禁止 ≥24px 过度圆角）" },
+    "lg":   { "value": "16px",   "type": "dimension", "usage": "大面板、矩阵容器" },
+    "pill": { "value": "9999px", "type": "dimension", "usage": "状态点、单选圆点、胶囊标签" }
+  },
+
+  "elevation": {
+    "flat":   { "value": "none", "type": "boxShadow", "layer": "A2" },
+    "ring":   { "value": "0 0 0 1px var(--border)", "type": "boxShadow", "layer": "B-slot", "usage": "卡片默认用 1px 边框环，不用重阴影" },
+    "raised": { "value": "0 2px 8px rgba(15,23,42,0.08)", "type": "boxShadow", "layer": "A2", "usage": "悬浮/弹层，克制" },
+    "press":  { "value": "inset 0 2px 5px rgba(15,23,42,0.16)", "type": "boxShadow", "layer": "C-extension", "usage": "按钮按下态" },
+    "glowHelp": { "value": "0 0 0 2px rgba(234,88,12,0.45)", "type": "boxShadow", "layer": "C-extension", "usage": "求助格闪烁时的发光环（配合 blink 动画）" }
+  },
+
+  "motion": {
+    "fast":   { "value": "120ms", "type": "duration", "usage": "即时反馈（按下、开关）" },
+    "base":   { "value": "200ms", "type": "duration", "usage": "状态确认（hover、选中、连接态切换）" },
+    "slow":   { "value": "300ms", "type": "duration", "usage": "进入/过渡" },
+    "ease":   { "value": "cubic-bezier(0.2,0,0,1)", "type": "cubicBezier" },
+    "blinkPeriod": { "value": "1000ms", "type": "duration", "usage": "求助格/离线指示闪烁周期（prefers-reduced-motion 下停止，改为静态实色+图标）" },
+    "reducedMotion": { "value": "disable all non-essential animation", "type": "policy", "usage": "必须 @media (prefers-reduced-motion: reduce) 关闭闪烁与过渡" }
+  },
+
+  "icon": {
+    "library": "lucide",
+    "strokeWidth": 2,
+    "strokeLinecap": "round",
+    "strokeLinejoin": "round",
+    "sizes": { "sm": 16, "md": 20, "lg": 24, "unit": "px" },
+    "rule": "全项目统一使用 Lucide 描边 SVG 图标，禁止 emoji 及 Unicode 字形（✓ ● * 等）作为功能图标。",
+    "usage": {
+      "student_topbar": ["wifi", "wifi-off", "loader-circle", "monitor"],
+      "student_checkin": ["user", "hash", "users", "package", "square", "check", "check-square", "clipboard-check"],
+      "student_task": ["play", "circle-check", "circle-help", "circle-dashed", "circle"],
+      "student_return": ["package-check", "square", "check", "power"],
+      "teacher_topbar": ["presentation", "clock", "users", "wifi", "wifi-off", "loader-circle"],
+      "teacher_matrix": ["circle-dashed", "circle", "circle-check", "triangle-alert", "wifi-off"],
+      "teacher_eventlog": ["log-in", "circle-check", "hand-helping", "package", "activity"],
+      "teacher_controlbar": ["play", "megaphone", "power", "file-down", "bell-ring", "power-off"]
+    }
+  },
+
+  "touch": {
+    "minTarget": { "value": "80px", "type": "dimension", "usage": "主操作按钮最小尺寸，满足 NFR-U2 ≥80×80px" },
+    "minGap":    { "value": "12px", "type": "dimension", "usage": "触控目标间距" }
+  },
+
+  "breakpoint": {
+    "student_min": "1366px",
+    "teacher_min": "1920px",
+    "note": "学生机适配 1366×768 / 1920×1080；教师端 ≥1920×1080 横向三区。"
+  }
+}

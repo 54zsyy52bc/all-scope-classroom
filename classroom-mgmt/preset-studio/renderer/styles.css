@@ -1,0 +1,195 @@
+/* ===========================================================================
+   教室编辑器 · 设计 Token 与布局（深色，与教师大屏同一套 Token）
+   =========================================================================== */
+:root {
+  --bg: #0C1018;
+  --panel: #161C28;
+  --panel-2: #1E2635;
+  --text: #E5E7EB;
+  --muted: #9CA3AF;
+  --line: #232B3A;
+  --indigo: #4F46E5;
+  --indigo-hover: #4338CA;
+  --doing: #2563EB;
+  --done: #16A34A;
+  --help: #EA580C;
+  --offline: #DC2626;
+  --radius: 12px;
+  --font: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  padding: 18px 22px;
+  min-height: 100vh;
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--indigo); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.brand h1 { font-size: 20px; margin: 0; }
+.topbar-right { display: flex; gap: 10px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 999px;
+  background: var(--panel); font-size: 14px; font-weight: 600; color: var(--muted);
+}
+.phase-pill { background: var(--indigo); color: #fff; }
+.conn-pill[data-state="online"] { color: var(--done); }
+.conn-pill[data-state="reconnecting"] { color: var(--help); }
+.conn-pill[data-state="offline"] { color: var(--offline); }
+
+/* ---------- 页签 ---------- */
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab {
+  min-height: 48px; padding: 0 22px;
+  background: var(--panel); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 10px;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  font-family: var(--font);
+}
+.tab.active { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ---------- 卡片与表单 ---------- */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.card h2 { margin: 0 0 14px; font-size: 18px; }
+.card h3 { margin: 18px 0 10px; font-size: 15px; color: var(--muted); }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+label { display: block; font-size: 14px; color: var(--muted); }
+input, select {
+  display: block; width: 100%;
+  margin-top: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 16px;
+  font-family: var(--font);
+  padding: 10px 12px;
+}
+input:focus, select:focus { outline: none; border-color: var(--indigo); }
+.hint { font-size: 12px; color: var(--muted); display: block; margin-top: 6px; font-weight: 400; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.reset-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.reset-row label { width: 150px; }
+
+.btn {
+  min-height: 56px; padding: 0 22px;
+  border: 0; border-radius: 10px;
+  background: var(--panel-2); color: var(--text);
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  font-family: var(--font);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn:hover { background: #273349; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--indigo); color: #fff; }
+.btn-primary:hover { background: var(--indigo-hover); }
+.btn-warn { background: var(--help); color: #fff; }
+.btn-danger { background: var(--offline); color: #fff; }
+.btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); min-height: 44px; font-size: 14px; }
+
+/* ---------- 会话卡 ---------- */
+.session-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--indigo);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 14px;
+}
+.session-line { margin: 2px 0; font-size: 16px; }
+.session-line b { font-size: 20px; }
+.session-line.muted { color: var(--muted); font-size: 14px; }
+.session-stats { display: flex; gap: 10px; }
+.stat { background: var(--panel-2); border-radius: 10px; padding: 8px 14px; text-align: center; min-width: 72px; }
+.stat b { font-size: 22px; display: block; }
+.stat span { font-size: 12px; color: var(--muted); }
+
+/* ---------- 任务模板快捷按钮 ---------- */
+.tpl-list { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.tpl-chip {
+  min-height: 44px; padding: 0 16px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text); font-size: 14px; cursor: pointer; font-family: var(--font);
+}
+.tpl-chip:hover { border-color: var(--indigo); color: #fff; }
+
+/* ---------- 预设列表 ---------- */
+.list-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+.list-item .li-main { min-width: 0; }
+.list-item .li-title { font-size: 16px; font-weight: 600; }
+.list-item .li-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.list-item .li-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.mini-btn {
+  min-height: 40px; padding: 0 14px;
+  background: var(--panel); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 8px;
+  font-size: 13px; cursor: pointer; font-family: var(--font);
+}
+.mini-btn.danger { color: var(--offline); }
+
+
+/* ---------- 班级分组配置区 ---------- */
+.mini-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.mini-actions .btn { min-height: 40px; padding: 0 14px; font-size: 14px; }
+/* ---------- 器材/模板编辑器行 ---------- */
+.eq-row, .tpl-row, .group-row {
+  display: grid; gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.eq-row { grid-template-columns: 1fr 2fr 1fr 90px 44px; }
+.tpl-row { grid-template-columns: 1.4fr 2fr 44px; }
+.group-row { grid-template-columns: 2fr 110px 44px; }
+.eq-row input, .tpl-row input, .group-row input { margin-top: 0; }
+.row-del {
+  min-height: 40px;
+  background: var(--panel); color: var(--offline);
+  border: 1px solid var(--line); border-radius: 8px;
+  font-size: 16px; cursor: pointer;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 30px;
+  transform: translateX(-50%);
+  background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--text);
+  padding: 12px 24px; border-radius: 10px;
+  font-size: 15px; z-index: 60;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.toast[hidden] { display: none; }
+.toast.err { border-color: var(--offline); color: #FCA5A5; }

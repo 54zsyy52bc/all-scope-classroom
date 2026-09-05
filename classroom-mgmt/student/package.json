@@ -1,0 +1,42 @@
+{
+  "name": "classroom-mgmt-student",
+  "version": "1.0.0",
+  "description": "初二信息技术硬件实践课课堂管理系统 - 学生机 Electron 客户端",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node scripts/copy-mqtt.js && node scripts/copy-shared.js",
+    "test": "node test/protocol.test.js && node test/renderer.dom.test.js",
+    "pack": "electron-builder --win dir"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "mqtt": "^5.15.2"
+  },
+  "devDependencies": {
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.kct.student",
+    "productName": "课堂学生端",
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "app-config.json",
+      "renderer/**/*",
+      "shared/**/*",
+      "vendor/**/*",
+      "scripts/**/*"
+    ],
+    "win": {
+      "target": [
+        "dir"
+      ],
+      "signAndEditExecutable": false
+    }
+  }
+}

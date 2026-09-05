@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>课堂管理系统 · 教师大屏</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-phase="waiting">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" id="brand-mark"></span>
+      <div class="brand-text">
+        <h1>硬件实践课 · 课堂看板</h1>
+        <p class="class-meta" id="class-meta">尚未开课</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="pill phase-pill" id="phase-pill">待课</span>
+      <span class="pill conn-pill" id="conn-pill" data-state="offline">连接中</span>
+    </div>
+  </header>
+
+  <section class="stats" aria-label="课堂统计">
+    <div class="stat">
+      <b id="st-checkin">0</b><span>已登记</span>
+      <i id="st-checkin-rate" class="mini">0%</i>
+    </div>
+    <div class="stat"><b id="st-pending">0</b><span>未登记</span></div>
+    <div class="stat">
+      <b id="st-online">0</b><span>在线</span>
+      <i id="st-online-rate" class="mini">0%</i>
+    </div>
+    <div class="stat"><b id="st-help" class="hl-help">0</b><span>求助</span></div>
+    <div class="stat"><b id="st-task-done">0</b><span>任务完成</span></div>
+    <div class="stat"><b id="st-returned">0</b><span>已归还</span></div>
+  </section>
+
+  <section class="controls" aria-label="教师操作">
+    <button id="btn-start" class="btn btn-primary" data-phase-vis="waiting">开始上课</button>
+    <button id="btn-task" class="btn" data-phase-vis="checkin task">发布任务</button>
+    <button id="btn-end" class="btn btn-warn" data-phase-vis="checkin task">下课</button>
+    <button id="btn-finish" class="btn btn-danger" data-phase-vis="return">结束课堂</button>
+    <button id="btn-shutdown" class="btn btn-danger" data-phase-vis="task return">强制关机</button>
+    <button id="btn-export-xlsx" class="btn" data-phase-vis="checkin task return closed">导出 Excel</button>
+    <button id="btn-export-csv" class="btn" data-phase-vis="checkin task return closed">导出 CSV</button>
+    <button id="btn-manage" class="btn" data-phase-vis="waiting checkin">预设管理</button>
+    <button id="btn-policy" class="btn" data-phase-vis="checkin task">锁定策略：全课可用</button>
+  </section>
+
+  <section class="task-banner" id="task-banner" hidden>
+    <div class="task-icon" id="task-icon"></div>
+    <div class="task-info">
+      <h2 id="task-title">—</h2>
+      <p id="task-desc">—</p>
+    </div>
+    <div class="task-stats">
+      <span class="ts ts-doing"><i id="ts-doing">0</i>进行中</span>
+      <span class="ts ts-done"><i id="ts-done">0</i>已完成</span>
+      <span class="ts ts-help"><i id="ts-help">0</i>求助</span>
+    </div>
+  </section>
+
+  <main class="groups" id="groups" aria-label="小组状态墙"></main>
+
+  <section class="side" aria-label="事件与提示">
+    <div class="alerts" id="alerts" hidden></div>
+    <div class="events" id="events">
+      <h3>课堂事件</h3>
+      <div class="events-body" id="events-body"></div>
+    </div>
+  </section>
+
+  <!-- 开始上课弹窗 -->
+  <div class="overlay" id="overlay-start" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="start-title">
+      <h2 id="start-title">开始上课</h2>
+      <label>教师姓名<input id="f-teacher" type="text" placeholder="例如：王老师" maxlength="20" /></label>
+      <label>班级预设
+        <select id="f-class-preset"><option value="">（不使用预设，手动填写）</option></select>
+      </label>
+      <label>班级名称<input id="f-class" type="text" placeholder="选预设后自动填充" maxlength="30" /></label>
+      <label>座位数<input id="f-seats" type="number" min="1" max="99" value="50" /></label>
+      <label>活动预设
+        <select id="f-activity-preset"><option value="">（不使用预设）</option></select>
+      </label>
+      <p class="modal-hint" id="f-activity-hint">选活动预设后，器材清单与任务模板将随上课下发</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close="overlay-start">取消</button>
+        <button class="btn btn-primary" id="confirm-start">开始上课</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发布活动弹窗（预设活动 / 现场自定义 + 可选计时） -->
+  <div class="overlay" id="overlay-task" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-title-label">
+      <h2 id="task-title-label">发布活动</h2>
+      <div class="tpl-chips" id="tpl-chips" hidden></div>
+      <label>活动预设
+        <select id="f-task-preset"><option value="">（现场自定义）</option></select>
+      </label>
+      <label>活动标题<input id="f-task-title" type="text" placeholder="例如：焊接练习" maxlength="40" /></label>
+      <label>活动说明<input id="f-task-desc" type="text" placeholder="例如：第一关 · 点亮 LED（选填）" maxlength="80" /></label>
+      <div class="timer-row">
+        <label class="switch-label"><input type="checkbox" id="f-task-timed" /> 启用计时</label>
+        <label>时长（分钟）<input id="f-task-duration" type="number" min="1" max="120" value="10" disabled /></label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close="overlay-task">取消</button>
+        <button class="btn btn-primary" id="confirm-task">发布活动</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 活动计时控制条（进行中活动） -->
+  <section class="activity-bar" id="activity-bar" hidden>
+    <div class="ab-info">
+      <span class="ab-icon" id="ab-icon"></span>
+      <div>
+        <b id="ab-title">—</b>
+        <p id="ab-desc">—</p>
+      </div>
+    </div>
+    <div class="ab-timer">
+      <span class="ab-time" id="ab-time">00:00</span>
+      <span class="ab-state" id="ab-state">进行中</span>
+    </div>
+    <div class="ab-actions">
+      <button class="btn btn-ghost" id="ab-pause">暂停</button>
+      <button class="btn btn-ghost" id="ab-resume" hidden>继续</button>
+      <button class="btn btn-ghost" id="ab-adjust">调时长</button>
+      <button class="btn btn-ghost" id="ab-restart">重计时</button>
+      <button class="btn btn-danger" id="ab-stop">结束</button>
+    </div>
+  </section>
+
+  <!-- 预设管理面板（v4：本机只接收与使用——导入预设包 / 导出备份 / 查看 / 删除卫生） -->
+  <section class="manage" id="manage" hidden>
+    <div class="manage-head">
+      <div class="manage-title">
+        <h2>预设管理</h2>
+        <p class="manage-hint">预设由办公电脑「预设编辑器」维护；本机仅导入使用，可导入预设包或导出本机备份</p>
+      </div>
+      <div class="manage-tools">
+        <input type="file" id="m-import-file" accept=".kctpreset,application/json,.json" hidden />
+        <button class="btn btn-primary" id="m-import-btn">导入预设包</button>
+        <button class="btn" id="m-export-btn">导出备份</button>
+        <button class="btn btn-ghost" id="btn-manage-close">收起</button>
+      </div>
+    </div>
+    <div class="m-import-result" id="m-import-result" hidden></div>
+    <div class="manage-grid">
+      <div class="card">
+        <h3>班级预设</h3>
+        <div class="list" id="m-class-list"></div>
+      </div>
+      <div class="card">
+        <h3>活动预设</h3>
+        <div class="list" id="m-activity-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="icons.js"></script>
+  <script src="app.js"></script>
+  <script src="presets.js"></script>
+  <script src="activity.js"></script>
+  <script src="manage.js"></script>
+  <script src="stream.js"></script>
+</body>
+</html>

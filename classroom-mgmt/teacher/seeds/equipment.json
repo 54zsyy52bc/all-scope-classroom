@@ -1,0 +1,8 @@
+[
+  { "eq_id": "DEV-BOARD", "eq_name": "开发板", "category": "主控", "total": 50 },
+  { "eq_id": "SENSOR-T", "eq_name": "温度传感器", "category": "传感器", "total": 100 },
+  { "eq_id": "DUPONT", "eq_name": "杜邦线", "category": "连接", "total": 200 },
+  { "eq_id": "BAT-BOX", "eq_name": "电池盒", "category": "电源", "total": 50 },
+  { "eq_id": "LED", "eq_name": "LED 发光二极管", "category": "元件", "total": 150 },
+  { "eq_id": "RESISTOR", "eq_name": "电阻包", "category": "元件", "total": 100 }
+]

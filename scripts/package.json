@@ -1,0 +1,9 @@
+{
+  "name": "siot-spike",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "mqtt": "^5.15.2"
+  }
+}

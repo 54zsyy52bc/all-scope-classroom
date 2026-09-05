@@ -1,0 +1,202 @@
+[
+  {
+    "seat": "01",
+    "group": "G1"
+  },
+  {
+    "seat": "02",
+    "group": "G1"
+  },
+  {
+    "seat": "03",
+    "group": "G1"
+  },
+  {
+    "seat": "04",
+    "group": "G1"
+  },
+  {
+    "seat": "05",
+    "group": "G1"
+  },
+  {
+    "seat": "06",
+    "group": "G2"
+  },
+  {
+    "seat": "07",
+    "group": "G2"
+  },
+  {
+    "seat": "08",
+    "group": "G2"
+  },
+  {
+    "seat": "09",
+    "group": "G2"
+  },
+  {
+    "seat": "10",
+    "group": "G2"
+  },
+  {
+    "seat": "11",
+    "group": "G3"
+  },
+  {
+    "seat": "12",
+    "group": "G3"
+  },
+  {
+    "seat": "13",
+    "group": "G3"
+  },
+  {
+    "seat": "14",
+    "group": "G3"
+  },
+  {
+    "seat": "15",
+    "group": "G3"
+  },
+  {
+    "seat": "16",
+    "group": "G4"
+  },
+  {
+    "seat": "17",
+    "group": "G4"
+  },
+  {
+    "seat": "18",
+    "group": "G4"
+  },
+  {
+    "seat": "19",
+    "group": "G4"
+  },
+  {
+    "seat": "20",
+    "group": "G4"
+  },
+  {
+    "seat": "21",
+    "group": "G5"
+  },
+  {
+    "seat": "22",
+    "group": "G5"
+  },
+  {
+    "seat": "23",
+    "group": "G5"
+  },
+  {
+    "seat": "24",
+    "group": "G5"
+  },
+  {
+    "seat": "25",
+    "group": "G5"
+  },
+  {
+    "seat": "26",
+    "group": "G6"
+  },
+  {
+    "seat": "27",
+    "group": "G6"
+  },
+  {
+    "seat": "28",
+    "group": "G6"
+  },
+  {
+    "seat": "29",
+    "group": "G6"
+  },
+  {
+    "seat": "30",
+    "group": "G6"
+  },
+  {
+    "seat": "31",
+    "group": "G7"
+  },
+  {
+    "seat": "32",
+    "group": "G7"
+  },
+  {
+    "seat": "33",
+    "group": "G7"
+  },
+  {
+    "seat": "34",
+    "group": "G7"
+  },
+  {
+    "seat": "35",
+    "group": "G7"
+  },
+  {
+    "seat": "36",
+    "group": "G8"
+  },
+  {
+    "seat": "37",
+    "group": "G8"
+  },
+  {
+    "seat": "38",
+    "group": "G8"
+  },
+  {
+    "seat": "39",
+    "group": "G8"
+  },
+  {
+    "seat": "40",
+    "group": "G8"
+  },
+  {
+    "seat": "41",
+    "group": "G9"
+  },
+  {
+    "seat": "42",
+    "group": "G9"
+  },
+  {
+    "seat": "43",
+    "group": "G9"
+  },
+  {
+    "seat": "44",
+    "group": "G9"
+  },
+  {
+    "seat": "45",
+    "group": "G9"
+  },
+  {
+    "seat": "46",
+    "group": "G10"
+  },
+  {
+    "seat": "47",
+    "group": "G10"
+  },
+  {
+    "seat": "48",
+    "group": "G10"
+  },
+  {
+    "seat": "49",
+    "group": "G10"
+  },
+  {
+    "seat": "50",
+    "group": "G10"
+  }
+]

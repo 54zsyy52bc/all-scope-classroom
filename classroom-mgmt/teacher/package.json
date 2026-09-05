@@ -1,0 +1,26 @@
+{
+  "name": "classroom-mgmt-teacher",
+  "version": "1.0.0",
+  "description": "初二信息技术硬件实践课课堂管理系统 - 教师端 Node 聚合服务",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "selfcheck": "node test/selfcheck.js",
+    "routes": "node test/routes.js",
+    "smoke": "node test/smoke.js",
+    "test": "node test/selfcheck.js && node test/routes.js && node test/preset-pkg.test.js && node test/dashboard.dom.test.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "express": "4.22.2",
+    "mqtt": "5.15.2",
+    "xlsx": "0.18.5",
+    "papaparse": "5.7.0",
+    "cors": "2.8.5"
+  },
+  "devDependencies": {}
+}

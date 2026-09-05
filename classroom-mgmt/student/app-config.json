@@ -1,0 +1,13 @@
+{
+  "siotIp": "127.0.0.1",
+  "siotWsPort": 1888,
+  "username": "siot",
+  "password": "dfrobot",
+  "secret": "change-me-before-deploy",
+  "machineId": "",
+  "seat": "",
+  "name": "",
+  "studentNo": "",
+  "shutdownDelaySec": 60,
+  "dryRun": true
+}
