@@ -162,7 +162,8 @@
         if (state.shutdownIn <= 0) {
           clearInterval(cdTimer);
           cdTimer = null;
-          state.shutdownIn = 0;
+          // 归零后置 null → renderShutdown 自动隐藏关机遮罩（dryRun 演练不真关机，必须恢复操作界面）
+          state.shutdownIn = null;
         }
         renderShutdown();
       }, 1000);
