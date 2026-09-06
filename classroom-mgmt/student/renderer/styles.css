@@ -629,3 +629,7 @@ body {
 }
 .lock-title { font-size: 28px; font-weight: 700; margin: 0 0 8px; }
 .lock-sub { font-size: 18px; color: var(--muted); margin: 0; }
+
+/* ---------- 全局兜底（2026-09-06 修复）：任何 [hidden] 一律隐藏 ----------
+   .shutdown 曾只配 display:flex 无 [hidden] 覆盖 → 深色全屏层启动即常驻拦截点击 */
+[hidden] { display: none !important; }
