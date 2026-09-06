@@ -37,3 +37,6 @@ Thumbs.db
 
 # --- 本地编辑器/知识库（Obsidian 等）---
 /.obsidian/
+
+# --- Obsidian：保留配置，排除本地工作区 UI 态 ---
+全域md文档/.obsidian/workspace.json
