@@ -20,6 +20,7 @@
     const bridge = c.bridge;
     const log = c.log;
     const pad2 = c.pad2;
+    const audit = c.audit;
     const resetEquipQty = c.resetEquipQty;
     const getRuntime = c.getRuntime;
     const onEquipment = c.onEquipment;
@@ -29,6 +30,7 @@
 
     function onCommand(env) {
       const p = env.payload || {};
+      if (typeof audit === 'function') audit('cmd:' + String(p.action), 'seat=' + String(env.seat) + ' ts=' + (env.ts || ''));
       if (p.action === 'start') return applyStart();
       if (p.action === 'task') return applyTask(p.task);
       if (p.action === 'end') return setPhase('return');
@@ -83,6 +85,7 @@
     function onSync(env) {
       const p = env.payload || {};
       if (String(env.seat) !== state.seat) return; // 单主题广播，只认自己的
+      if (typeof audit === 'function') audit('sync', 'phase=' + String(p.phase) + ' checkin=' + !!p.checkinDone + ' ret=' + !!p.returnDone + ' task=' + (p.currentTask ? p.currentTask.taskId : '-'));
       // 器材清单随 sync 下发：迟到/重连学生据此恢复登记页器材列表
       if (p.equipment && typeof onEquipment === 'function') onEquipment({ equipment: p.equipment });
       // 锁定策略随 sync 下发：迟到/重连学生恢复锁定状态

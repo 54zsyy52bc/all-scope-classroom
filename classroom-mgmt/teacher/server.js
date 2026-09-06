@@ -61,10 +61,34 @@ function initStorage() {
   return initResult;
 }
 
+// 审计中间件：写请求记终端 + 节流异步落盘 logs/audit.log（请求路径零同步 IO，避免拖慢响应）
+const auditBuf = [];
+let auditFlushTimer = null;
+function flushAudit() {
+  if (!auditBuf.length) return;
+  const chunk = auditBuf.splice(0).join('');
+  try {
+    const fsa = require('fs');
+    const pa = require('path');
+    fsa.mkdirSync(pa.join(__dirname, 'logs'), { recursive: true });
+    fsa.appendFileSync(pa.join(__dirname, 'logs', 'audit.log'), chunk, { flag: 'a' });
+  } catch (_e) { /* 审计落盘失败不阻断 */ }
+}
 function createApp() {
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
+  // 测试期操作审计：所有写请求（POST/PUT/DELETE）记一条 audit 日志到终端与文件，便于回传定位
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const line = '[audit] ' + new Date().toISOString().slice(0, 19) + ' ' + req.method + ' ' + req.originalUrl
+        + ' body=' + JSON.stringify(req.body || {}).slice(0, 200);
+      console.log(line);
+      auditBuf.push(line.replace('[audit] ', '') + '\n');
+      if (!auditFlushTimer) auditFlushTimer = setTimeout(() => { auditFlushTimer = null; flushAudit(); }, 500);
+    }
+    next();
+  });
   app.use('/api/v1', requireAuth);
   // 挂载点：各资源路由内部路径已自带资源前缀（如 /sessions、/dashboard、/exports），
   // 故统一挂在 /api/v1 之下。systemRouter 内部无 /system 前缀，单独挂载。

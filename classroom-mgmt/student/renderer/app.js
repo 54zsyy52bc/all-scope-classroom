@@ -39,6 +39,15 @@
   let downlink = null;
   let actions = null;
 
+  // 审计：关键操作打 [audit]（stdout + userData/audit.log 落盘）
+  function audit(type, detail) {
+    try {
+      const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail));
+      console.log(line);
+      if (global.classroom && global.classroom.log) global.classroom.log(line);
+    } catch (_e) { /* 审计不阻断 */ }
+  }
+
   function bridge() {
     return window.classroom || null;
   }
@@ -130,6 +139,7 @@
   // 上行
   // ---------------------------------------------------------------------------
   function sendUp(type, payload) {
+    audit('up:' + type, 'seat=' + (state.seat || '') + ' ' + JSON.stringify(payload || {}).slice(0, 200));
     const env = T.makeEnvelope({
       type,
       seat: state.seat || '*',
@@ -229,7 +239,7 @@
     const control = window.StudentControl.create({ state, els, toast, renderStage });
     // 下行指令 → Downlink（cmd/sync 语义）
     downlink = window.Downlink.create({
-      state, toast, renderStage, renderShutdown, bridge, log, pad2,
+      state, toast, renderStage, renderShutdown, bridge, log, pad2, audit,
       resetEquipQty: () => actions.resetEquipQty(),
       getRuntime: () => runtime,
       onEquipment: (p) => {
@@ -251,7 +261,6 @@
     });
     control.startTicker();
   }
-
   function connect() {
     net = window.Net.create({
       url: 'ws://' + runtime.siotIp + ':' + runtime.siotWsPort + '/ws',
@@ -266,7 +275,6 @@
     });
     net.start();
   }
-
   async function boot() {
     bindDom();
     const local = loadLocal();
@@ -276,6 +284,7 @@
       runtime = { machineId: 'M-WEBPREVIEW', siotIp: '127.0.0.1', siotWsPort: 1888, username: 'siot', password: 'dfrobot', shutdownDelaySec: 60 };
       log('未检测到 preload 桥接，以浏览器预览模式运行（不执行真实关机）');
     }
+    audit('boot', 'machineId=' + runtime.machineId + ' app=' + (local ? local.name || local.seat : '') + ' 桥接=' + (bridge() ? 'yes' : 'no'));
     wire();
     hydrate(local, runtime);
     if (!window.mqtt || !window.mqtt.connect) {
@@ -284,7 +293,6 @@
     }
     connect();
   }
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
   } else {

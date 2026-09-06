@@ -2,7 +2,7 @@
   <img src="assets/all-scope-mark.png" alt="ALL SCOPE" width="80" />
 </div>
 
-# ALL SCOPE 课堂管理系统（v4.2）
+# 全域 ALL SCOPE 课堂管理系统（v4.2）
 
 > 初二信息技术硬件·课堂管理系统：开课 → 登记 → 活动计时 → 学生机锁定 → 归还 → 关机 → 报表 全链路。
 

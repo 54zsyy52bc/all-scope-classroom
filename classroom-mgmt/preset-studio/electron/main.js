@@ -115,7 +115,7 @@ if (!gotLock) {
       height: 820,
       minWidth: 1000,
       minHeight: 680,
-      title: '课堂管理系统 · 预设编辑器（Preset Studio）',
+      title: '全域 · 预设编辑器',
       backgroundColor: '#0C1018',
       autoHideMenuBar: true,
       webPreferences: {

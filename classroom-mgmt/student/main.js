@@ -224,8 +224,14 @@ function registerIpc(getMachineId) {
     });
   });
   ipcMain.handle('app:log', (_e, line) => {
+    const s = String(line == null ? '' : line).slice(0, 500);
     // eslint-disable-next-line no-console
-    console.log('[renderer]', String(line == null ? '' : line).slice(0, 500));
+    console.log('[renderer]', s);
+    // 测试期审计：同一份日志落盘到 userData/audit.log，便于事后回传定位
+    try {
+      const f = path.join(app.getPath('userData'), 'audit.log');
+      fs.appendFileSync(f, new Date().toISOString().replace('T', ' ').slice(0, 19) + ' ' + s + '\n');
+    } catch (_err) { /* 审计落盘失败不影响主流程 */ }
     return true;
   });
 }
@@ -241,7 +247,7 @@ function createWindow() {
     height: 860,
     minWidth: 1024,
     minHeight: 700,
-    title: '课堂管理系统 · 学生机',
+    title: '全域 · 学生机',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
     show: false,
@@ -289,7 +295,6 @@ if (!gotLock) {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
   });
-
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });
