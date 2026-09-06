@@ -34,3 +34,6 @@ classroom.db.json
 .DS_Store
 Thumbs.db
 *.tmp
+
+# --- 本地编辑器/知识库（Obsidian 等）---
+/.obsidian/
