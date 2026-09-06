@@ -1,12 +1,6 @@
 'use strict';
-// MQTT 消息处理：按 envelope.type 分发到业务处理，写 DB（msg_id 幂等），并发 SSE 事件。
-// 仅解析与分发，不含复杂业务判断；具体写库/状态均在 services / db 层。
-//
-// 可靠性约定：
-//   1) 事件标记（msg_id 幂等）与业务写入放进同一个事务。业务写入失败时整段回滚，
-//      否则 msg_id 被"毒丸"占用，MQTT 重投后消息会被幂等逻辑永久丢弃。
-//   2) SSE 广播一律在事务提交之后，避免回滚了还通知大屏。
-//   3) 任何单条坏消息都不得打断整条消息流（dispatch 统一兜底，同步/异步都覆盖）。
+// MQTT 消息处理：按 envelope.type 分发，写 DB（msg_id 幂等同事务）+ 事务后广播 SSE；
+// 单条坏消息不打断消息流。可靠性细则见 db/refguard 与 services。
 const db = require('../db');
 const sse = require('../sse');
 const bridge = require('../mqtt/bridge');
@@ -81,7 +75,25 @@ function handleCheckin(env, rawTopic) {
   const session = db.getCurrentSession();
   if (!session) { log.warn('checkin 忽略：无进行中会话 (E-OFF-01)'); return; }
   const sessionId = session.session_id;
-  if (!guardSeat(session, env, 'checkin')) return;
+  // 座位不在本课堂范围：不再静默丢弃——教师端收 seat.outofrange 告警（可一键激活扩容），
+  // 同时给该生定向 notice 说明原因与下一步，形成"学生登记失败 → 教师激活 → 学生重提"闭环。
+  if (!seatInRange(env.seat, session.total_seats)) {
+    const raw = String(env.seat == null ? '' : env.seat);
+    if (/^\d{1,2}$/.test(raw)) {
+      const ns = seatNum(raw);
+      const p = env.payload || {};
+      sse.publish('seat.outofrange', {
+        seat: ns, name: p.name || '', ts: env.ts || Date.now(),
+        totalSeats: session.total_seats,
+      });
+      bridge.publishCommand('notice', {
+        seat: ns,
+        message: `座位 ${ns} 不在本课堂座位范围（1-${session.total_seats}）内，登记未能保存。请举手告知老师，由老师激活该座位后再重新提交。`,
+      });
+    }
+    log.warn(`checkin 忽略：座位 ${String(env.seat)} 超出本会话范围 1-${session.total_seats} (E-VAL-01)`);
+    return;
+  }
   const seat = seatNum(env.seat);
   const groupId = env.group || deriveGroup(seat);
   const p = env.payload || {};

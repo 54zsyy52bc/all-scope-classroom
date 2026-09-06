@@ -1,13 +1,5 @@
 'use strict';
-// =============================================================================
 // 教师大屏控制器：快照渲染 + SSE 实时刷新 + 教师操作（开始/任务/下课/关机/导出/复位）。
-//
-// 数据源：
-//   GET  /api/v1/dashboard/snapshot   全量快照（revision 与 SSE 同源）
-//   GET  /api/v1/dashboard/stream     SSE：stream.ready(全量) / student.checkin /
-//                                     task.status / student.return / conflict.detected
-// 写操作走扁平别名（legacy 路由）或 canonical 嵌套路由，见下方 API 常量。
-// =============================================================================
 (function () {
   const API = {
     start: '/api/v1/sessions',
@@ -19,7 +11,6 @@
   };
   const PHASE_LABEL = { waiting: '待课', checkin: '登记中', task: '课中', return: '归还中', closed: '已结束' };
   const SEAT_LABEL = { doing: '进行中', done: '已完成', help: '求助' };
-
   const $ = (id) => document.getElementById(id);
   let snapTimer = null;
   const presets = { classes: [], activities: [] };
@@ -257,12 +248,19 @@
     toast('已生成 ' + files.length + ' 个 ' + format.toUpperCase() + ' 文件');
   }
 
+  async function onCancelShutdown() {
+    if (!window.confirm('撤销已下发的关机指令？学生机将中止关机倒计时，可继续使用。')) return;
+    const j = await api('POST', '/api/v1/commands/shutdown-cancel');
+    if (j && j.code === 0) { logEvent('已撤销关机指令，学生机可继续使用'); refreshSoon(); }
+  }
+
   // ---------- 事件绑定 ----------
   function bind() {
     $('btn-start').onclick = () => openModal('start');
     $('btn-end').onclick = withGuard('end', onEnd);
     $('btn-finish').onclick = withGuard('finish', onFinish);
     $('btn-shutdown').onclick = withGuard('shutdown', onShutdown);
+    $('btn-cancel-shutdown').onclick = withGuard('cancel-shutdown', onCancelShutdown);
     $('btn-export-xlsx').onclick = withGuard('export-xlsx', () => onExport('xlsx'));
     $('btn-export-csv').onclick = withGuard('export-csv', () => onExport('csv'));
     $('confirm-start').onclick = withGuard('start', onStart);
@@ -273,6 +271,10 @@
       const tile = e.target.closest ? e.target.closest('[data-seat]') : null;
       if (tile) withGuard('reset:' + tile.dataset.seat, () => onResetSeat(tile.dataset.seat))();
     });
+    // 待激活座位（v4.2.1 闭环）：抽到 public/admit.js，依赖在此注入
+    if (window.DashboardAdmit) {
+      window.DashboardAdmit.init({ $, esc, api, logEvent, refreshSoon, withGuard });
+    }
     $('brand-mark').innerHTML = icon('package-check', 26);
     if (window.DashboardPreset) window.DashboardPreset.bind();
     $('overlay-start').querySelectorAll('input').forEach((i) => {

@@ -148,6 +148,7 @@ globalThis.confirm = () => true;
 (0, eval)(fs.readFileSync(path.join(ROOT, 'icons.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'presets.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'admit.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'activity.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'manage.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'stream.js'), 'utf8'));

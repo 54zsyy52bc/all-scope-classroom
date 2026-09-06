@@ -1,13 +1,6 @@
 'use strict';
-// =============================================================================
-// 学生机 Electron 主进程。
-// 职责边界（严格）：
-//   1) 窗口生命周期 + 单实例锁
-//   2) app-config.json 读写、machineId 生成与持久化
-//   3) 关机指令的 HMAC 校验与实际执行
-// 不做的事：不碰 MQTT、不碰业务状态机——那些在渲染层（renderer/）。
-// 安全前提：渲染层不可信，HMAC secret 只存在于主进程，关机与否由主进程终裁。
-// =============================================================================
+// 学生机 Electron 主进程：窗口生命周期+单实例锁；app-config/machineId；
+// 关机指令 HMAC 校验与实际执行（HMAC secret 只存在于主进程，渲染层不可信）。
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -208,6 +201,28 @@ function registerIpc(getMachineId) {
 
   ipcMain.handle('shutdown:verify', (_e, ticket) => verifyShutdownToken(ticket));
   ipcMain.handle('shutdown:execute', (_e, opts) => executeShutdown(opts));
+  // 撤销关机：教师端"撤销关机"指令 → shutdown /a 中止倒计时（学生归还后仍需继续使用）
+  ipcMain.handle('shutdown:cancel', async () => {
+    const cfg = readConfig();
+    if (isDryRun(cfg)) {
+      // eslint-disable-next-line no-console
+      console.log('[shutdown][dry-run] shutdown /a（撤销关机，演练不执行）');
+      return { canceled: false, dryRun: true };
+    }
+    return new Promise((resolve) => {
+      execFile('shutdown', ['/a'], { windowsHide: true, timeout: 5000 }, (err) => {
+        if (err) {
+          // eslint-disable-next-line no-console
+          console.error('[shutdown] 撤销失败:', err.message);
+          resolve({ canceled: false, error: err.message });
+          return;
+        }
+        // eslint-disable-next-line no-console
+        console.log('[shutdown] 已撤销关机（shutdown /a）');
+        resolve({ canceled: true });
+      });
+    });
+  });
   ipcMain.handle('app:log', (_e, line) => {
     // eslint-disable-next-line no-console
     console.log('[renderer]', String(line == null ? '' : line).slice(0, 500));

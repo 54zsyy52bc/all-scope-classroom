@@ -41,12 +41,16 @@
     <button id="btn-task" class="btn" data-phase-vis="checkin task">发布任务</button>
     <button id="btn-end" class="btn btn-warn" data-phase-vis="checkin task">下课</button>
     <button id="btn-finish" class="btn btn-danger" data-phase-vis="return">结束课堂</button>
-    <button id="btn-shutdown" class="btn btn-danger" data-phase-vis="task return">强制关机</button>
+    <button id="btn-shutdown" class="btn btn-danger" data-phase-vis="return">强制关机</button>
+    <button id="btn-cancel-shutdown" class="btn btn-ghost" data-phase-vis="return">撤销关机</button>
     <button id="btn-export-xlsx" class="btn" data-phase-vis="checkin task return closed">导出 Excel</button>
     <button id="btn-export-csv" class="btn" data-phase-vis="checkin task return closed">导出 CSV</button>
     <button id="btn-manage" class="btn" data-phase-vis="waiting checkin">预设管理</button>
     <button id="btn-policy" class="btn" data-phase-vis="checkin task">锁定策略：全课可用</button>
   </section>
+
+  <!-- 待激活座位（登记超出课堂范围的学生请求；教师一键激活扩容后即消失） -->
+  <section class="pending-seats" id="pending-seats" aria-label="待激活座位" hidden></section>
 
   <section class="task-banner" id="task-banner" hidden>
     <div class="task-icon" id="task-icon"></div>
@@ -167,6 +171,7 @@
   <script src="icons.js"></script>
   <script src="app.js"></script>
   <script src="presets.js"></script>
+  <script src="admit.js"></script>
   <script src="activity.js"></script>
   <script src="manage.js"></script>
   <script src="stream.js"></script>

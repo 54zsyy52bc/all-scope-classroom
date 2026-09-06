@@ -1,0 +1,202 @@
+{
+  "main": {
+    "id": "9088ae3618b236f8",
+    "type": "split",
+    "children": [
+      {
+        "id": "57617be1abbb5b31",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "12cbe030e9bdce05",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "02-开发与设计文档/SPEC_v1.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "SPEC_v1"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "2b1b35b2a3c10d4e",
+    "type": "split",
+    "children": [
+      {
+        "id": "73b15bf5ecd8aed2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b92777c8ebfc249c",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "51707182e50c0483",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "7a672789e2037a3e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "7b76fd3f7db5cc79",
+    "type": "split",
+    "children": [
+      {
+        "id": "973ae00a7860cd7c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "563d1b313b1317b1",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "01-代码审查机制/CR-05_交互断链修复报告_v4.2.1.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "5eb9ca2a3186bcdb",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "01-代码审查机制/CR-05_交互断链修复报告_v4.2.1.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "0f1384afad8f455a",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "7b5af41b0787e3cb",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "49f331106cfc0389",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "01-代码审查机制/CR-05_交互断链修复报告_v4.2.1.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "12cbe030e9bdce05",
+  "lastOpenFiles": [
+    "01-代码审查机制/CR-05_交互断链修复报告_v4.2.1.md",
+    "01-代码审查机制/CR-04_师生端交互成对校验规范_v1.0.md",
+    "01-代码审查机制/CR-03_落地工具包_自检与PR模板.md",
+    "01-代码审查机制/CR-02_实际审查报告_v4.2_2026-09-06.md",
+    "01-代码审查机制/CR-01_代码审查标准与流程_v1.0.md",
+    "01-代码审查机制/审查标准总纲_v2.0.md",
+    "01-代码审查机制/_区域说明.md",
+    "00-首页.md"
+  ]
+}

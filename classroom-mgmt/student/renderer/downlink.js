@@ -2,7 +2,7 @@
 // =============================================================================
 // 学生端 · 下行指令处理（cmd / sync 语义 + 阶段机 + 关机倒计时）
 //
-// 下行（siot/ict_cmd）：cmd{start|task|end|shutdown|reset}
+// 下行（siot/ict_cmd）：cmd{start|task|end|shutdown|shutdown_cancel|reset|notice|equipment|task_timer|policy}
 // 同步（siot/ict_sync）：sync{phase,currentTask,checkinDone,returnDone} —— 只认 seat 匹配自己的
 //
 // 依赖注入：create(ctx) 接收控制器闭包内的共享值，避免本文件持有全局可变状态。
@@ -34,6 +34,8 @@
       if (p.action === 'end') return setPhase('return');
       if (p.action === 'reset') return applyReset(p.seat);
       if (p.action === 'shutdown') return handleShutdown(p);
+      if (p.action === 'shutdown_cancel') return applyShutdownCancel(p);
+      if (p.action === 'notice') return applyNotice(p);
       if (p.action === 'equipment') {
         if (typeof onEquipment === 'function') onEquipment(p);
         return undefined;
@@ -47,6 +49,34 @@
         return undefined;
       }
       log('忽略未知指令 action=' + String(p.action));
+      return undefined;
+    }
+
+    // 教师端定向提示（如"座位超出课堂范围，请举手请老师激活"）：只提示对应座位
+    function applyNotice(p) {
+      if (!p || !p.message) return undefined;
+      if (p.seat != null && pad2(p.seat) !== state.seat) return undefined;
+      toast(String(p.message), 'warn');
+      return undefined;
+    }
+
+    // 教师端撤销关机：本地立即收拢倒计时，并让主进程执行 shutdown /a（真实/演练均恢复操作界面）
+    function applyShutdownCancel() {
+      if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
+      if (state.shutdownIn != null) {
+        state.shutdownIn = null;
+        state.shutdownDryRun = false;
+        renderShutdown();
+      }
+      const b = bridge();
+      if (b && b.cancelShutdown) {
+        b.cancelShutdown().then((r) => {
+          toast(r && r.dryRun ? '老师已撤销关机（演练模式，不会执行）' : '老师已撤销关机，可继续使用电脑', 'info');
+        }).catch((e) => log('撤销关机失败: ' + (e && e.message)));
+      } else {
+        log('无主进程桥接，撤销关机仅模拟（演练模式）');
+        toast('老师已撤销关机（演练模式，不会执行）', 'info');
+      }
       return undefined;
     }
 
@@ -66,7 +96,7 @@
       // 服务端真值校正：教师端没写进去的提交要回滚，避免学生以为成功了
       if (state.checkinDone && !p.checkinDone) {
         state.checkinDone = false;
-        toast('登记未被教师端确认，请检查座位号是否与他人重复', 'error');
+        toast('登记未被教师端接受：座位可能不在本课堂范围或已被占用，请向老师求助后重新提交', 'error');
       }
       if (state.returnDone && !p.returnDone) {
         state.returnDone = false;

@@ -77,23 +77,8 @@ function updateSession(sessionId, patch) {
 }
 
 // ---------------- Student / Seat ----------------
-function seedOne(sessionId, seat, groupId) {
-  upsertStudent({ sessionId, seat, groupId, patch: { checkin_status: 'pending', return_status: 'pending', name: null, student_no: null } });
-}
-function seedSeats(sessionId, totalSeats, groupSize) {
-  const gs = groupSize || cfg.GROUP_SIZE;
-  for (let i = 1; i <= totalSeats; i += 1) seedOne(sessionId, seatNum(i), 'G' + Math.floor((i - 1) / gs) + 1);
-}
-// v4.2：按自定义分组生成座位（班级预设分组配置：组名自定义生效，座位连续归属各组）
-function seedSeatsByGroups(sessionId, groups) {
-  let n = 0;
-  for (const g of groups || []) {
-    const size = Math.max(1, Math.floor(Number(g && g.size) || cfg.GROUP_SIZE));
-    const gid = (g && g.groupId && String(g.groupId).trim()) || ('G' + Math.floor(n / size + 1));
-    for (let k = 0; k < size; k += 1) { n += 1; seedOne(sessionId, seatNum(n), gid); }
-  }
-  return n; // 实际生成座位数 = Σ groups.size
-}
+// 座位播种（均分 / 自定义分组 / 扩容补种）抽到 ./seats.js，本文件只保留仓储主逻辑
+const { seedSeats, seedSeatsByGroups, admitSeatsTo } = require('./seats')({ S, cfg, seatNum, upsertStudent });
 function upsertStudent({ sessionId, seat, groupId, patch = {} }) {
   ensureSession(S(), sessionId);
   const sid = stuId(sessionId, seat);
@@ -297,7 +282,7 @@ function close() {
 module.exports = {
   init, S, getMode, stuId, computeOnline, transaction,
   // session
-  createSession, getSession, getCurrentSession, listSessions, updateSession, seedSeats, seedSeatsByGroups,
+  createSession, getSession, getCurrentSession, listSessions, updateSession, seedSeats, seedSeatsByGroups, admitSeatsTo,
   // student
   upsertStudent, getStudent, recordCheckin, touchSeat, queryStudents,
   // task

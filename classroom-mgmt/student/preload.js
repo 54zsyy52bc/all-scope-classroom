@@ -16,6 +16,7 @@ const CH = {
   profile: 'app:saveProfile',
   verify: 'shutdown:verify',
   execute: 'shutdown:execute',
+  cancel: 'shutdown:cancel',
   log: 'app:log',
 };
 
@@ -62,6 +63,9 @@ contextBridge.exposeInMainWorld('classroom', {
     delaySec: num(opts && opts.delaySec, undefined),
     reason: str(opts && opts.reason, 200),
   }),
+
+  // 撤销关机：中止本机已排定的关机倒计时（shutdown /a）；dry-run 时只打日志
+  cancelShutdown: () => ipcRenderer.invoke(CH.cancel),
 
   // 渲染层日志回传主进程 stdout（排障用，截断 500 字符）
   log: (line) => ipcRenderer.invoke(CH.log, str(line, 500)),

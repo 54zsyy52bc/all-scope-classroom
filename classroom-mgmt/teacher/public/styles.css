@@ -430,3 +430,13 @@ body[data-phase="closed"] [data-phase-vis]:not([data-phase-vis*="closed"]) { dis
 /* ---------- 全局兜底（2026-09-06 遮罩彻查）：任何 [hidden] 一律隐藏 ----------
    防 .overlay/.shutdown 等 display:flex 全屏层因漏配 [hidden] 规则而启动即常驻 */
 [hidden] { display: none !important; }
+
+/* ---------- 待激活座位（登记超出课堂范围 → 教师一键激活，2026-09-06）---------- */
+.pending-seats {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 6px 0 0; padding: 8px 12px;
+  background: rgba(234, 88, 12, 0.12); border-left: 4px solid var(--help); border-radius: 4px;
+}
+.pending-seat { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pending-text { font-size: 16px; color: var(--text); }
+.pending-seat .btn { min-height: 52px; padding: 0 14px; font-size: 15px; }

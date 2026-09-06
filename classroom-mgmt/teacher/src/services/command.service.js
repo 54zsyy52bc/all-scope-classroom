@@ -106,7 +106,46 @@ async function autoShutdown() {
   }
 }
 
+// 激活座位：学生登记的座位号超出本课堂座位范围时，教师一键扩容接纳。
+// 这是学生端"登记未被教师端接受"提示的教师端闭环操作（配对：座位超范围提示 → 激活座位）。
+async function sendAdmit({ seat }) {
+  if (!/^\d{1,2}$/.test(String(seat))) {
+    fail('E-VAL-01', 'seat 必须为两位数字字符串，如 "35"');
+  }
+  const normSeat = seatNum(seat);
+  const session = currentOrFail();
+  const sessionId = session.session_id || session.sessionId;
+  const result = db.admitSeatsTo(sessionId, parseInt(normSeat, 10), cfg_groupSize());
+  if (!result) fail('E-NOTFOUND', '会话不存在');
+  if (result.reason === 'over-limit') fail('E-VAL-01', '座位号不能超过 99');
+  if (result.reason === 'no-shrink') fail('E-VAL-01', '座位号须大于当前座位上限，不能缩小课堂规模');
+  const note = result.expanded
+    ? `座位 ${normSeat} 已激活（课堂座位上限 ${result.from} → ${result.totalSeats}）`
+    : `座位 ${normSeat} 本就在课堂范围内，无需激活`;
+  log.info(note);
+  return { seat: normSeat, admitted: result.expanded, totalSeats: result.totalSeats || session.total_seats };
+}
+
+// 撤销关机：学生归还后仍需继续使用（对应提示"如果还要继续用电脑，请举手告知老师"）时，
+// 教师端的一键操作入口。广播 cmd shutdown_cancel，学生端主进程执行 shutdown /a 中止倒计时。
+async function cancelShutdown() {
+  const session = currentOrFail();
+  const sessionId = session.session_id || session.sessionId;
+  const broadcast = await bridge.publishCommand('shutdown_cancel', {});
+  if (broadcast.delivered === false) {
+    fail('E-CONN-01', 'SIoT2 连接不可用，撤销指令未送达（学生端若已进入关机倒计时请稍后重试）');
+  }
+  db.insertEvent({
+    session_id: sessionId, ts: Date.now(), type: 'shutdown_cancel',
+    seat: null, detail: JSON.stringify({}), msg_id: `cancel-${sessionId}-${Date.now()}`,
+  });
+  sse.publish('command.sent', { action: 'shutdown_cancel', msgId: broadcast.msgId, delivered: true, seat: null });
+  log.info('已广播撤销关机指令');
+  return { broadcast };
+}
+
 function cfg_secret() { return require('../config').HMAC_SECRET; }
 function cfg_shutdownDelay() { return require('../config').SHUTDOWN_DELAY_SEC; }
+function cfg_groupSize() { return require('../config').GROUP_SIZE || 5; }
 
-module.exports = { sendShutdown, sendReset, autoShutdown };
+module.exports = { sendShutdown, sendReset, autoShutdown, sendAdmit, cancelShutdown };

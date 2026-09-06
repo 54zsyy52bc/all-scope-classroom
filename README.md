@@ -1,55 +1,42 @@
+<div align="center">
+  <img src="assets/all-scope-mark.png" alt="ALL SCOPE" width="80" />
+</div>
+
 # ALL SCOPE 课堂管理系统（v4.2）
 
-> 初二信息技术硬件·课堂管理系统：开课→登记→活动计时→学生机锁定→归还→报表 全链路。
+> 初二信息技术硬件·课堂管理系统：开课 → 登记 → 活动计时 → 学生机锁定 → 归还 → 关机 → 报表 全链路。
 
-<p align="center">
-  <img src="assets/all-scope-mark.png" alt="ALL SCOPE mark" width="96" />
-  <br />
-  <img src="assets/all-scope-text-logo.png" alt="ALL SCOPE 全域课堂" width="240" />
-</p>
+**📚 完整文档已集中到 [`全域md文档/`](./全域md文档/00-首页.md)**（Obsidian 仓库，用 Obsidian「打开文件夹作为仓库」选择该目录即可）。
 
-## 一、项目简介
-
-面向「初二信息技术·硬件实践课」（焊接 / 传感器 / 开源硬件）的课堂管理系统。
-教师机大屏控制班级状态，学生机登记与任务上报，办公电脑通过 Preset Studio 维护预设。
-
-v4.2 已完成"分组配置 / 上课器材 / 器材字典互通 / 单活动预设包"等备课增强，并补齐 50 台并发压测。
-
-## 二、三端架构
-
-| 应用 | 路径 | 职责 |
+| 区域 | 内容 | 入口 |
 |------|------|------|
-| **教室教师端**（教师机） | `classroom-mgmt/teacher/` | 纯 Node 服务 + 大屏（HTTP/SSE）+ MQTT 桥接学生机 + 活动计时/锁定策略/报表导出 |
-| **学生机端** | `classroom-mgmt/student/` | Electron + mqtt.js，登记页 / 任务页 / 归还页 / HMAC 关机 |
-| **Preset Studio**（办公电脑） | `classroom-mgmt/preset-studio/` | 班级/活动预设编辑器 + 器材字典 + 预设包导出/导入 |
+| 00 | 首页（Map of Content） | [00-首页.md](./全域md文档/00-首页.md) |
+| 01 | 代码审查机制（总纲 v2.0 + 审查报告） | [审查标准总纲_v2.0.md](./全域md文档/01-代码审查机制/审查标准总纲_v2.0.md) |
+| 02 | 开发与设计文档（需求/架构/DB/接口/UI/交付） | [00_文档总目录.md](./全域md文档/02-开发与设计文档/00_文档总目录.md) |
+| 03 | 测试与质量记录 | [真机测试前自检清单](./全域md文档/03-测试与质量记录/课堂管理系统_真机测试前自检结果清单.md) |
+| 04 | 问题与待办 | [已知问题与遗留项](./全域md文档/04-问题与待办/已知问题与遗留项.md) |
+| 05 | 交付与发布 | [README（完整版）](./全域md文档/05-交付与发布/README.md) |
+| 99 | 模板（PR 描述 / 分级判定速查） | [99-模板](./全域md文档/99-模板/_区域说明.md) |
 
-共享契约：`classroom-mgmt/shared/`（topics.js / icons.js / preset-package.js）。
-SIoT2 broker 配套（第三方，仓库不存二进制，发布时由 `2_教师机/siot/` 携带）。
+## 代码结构
 
-## 三、文档
+```
+classroom-mgmt/
+  teacher/         教室教师端（纯 Node 服务 + 大屏） + 一键测试
+  student/         学生机端（Electron + mqtt.js）
+  preset-studio/   办公端预设编辑器（Electron）
+  shared/          三端共享契约（topics / icons / preset-package）
+```
 
-- 开发文档见 `课堂管理系统开发文档/01..08_*.md`
-- API 规范：`课堂管理系统开发文档/openapi.yaml`
-- 设计令牌：`课堂管理系统开发文档/design-tokens.json`
-- 交付包（可发布的免安装包）：独立 `交付包_v4课堂管理系统/` 目录（不入版本库），见仓库外文档
-
-## 四、一键测试
+## 一键测试（较大更新后必须先全绿再推送）
 
 ```bash
 cd classroom-mgmt
-bash run-tests.sh           # 快速 10 项
-bash run-tests.sh --full    # 全量 14 项（含真实 broker smoke 77/77 与 net.broker 11/11）
+bash run-tests.sh            # 快速 10 项
+bash run-tests.sh --full     # 全量 14 项（含真实 broker 冒烟 77/77）
+bash check-and-push.sh "说明" # 全量审查通过才 commit + push
 ```
 
-质量门禁：单文件 ≤300 行（db 仓储/存储 ≤320）/ 无 emoji / 无硬编码色 / 按钮 ≥80px。
+## 许可
 
-## 五、版本管理
-
-- `v4.2-deliverable` —— 教师节交付基线（tag，可随时回退到这版）
-- 真名提交（author: 张生雨阳 `<zsyy114514@hotmail.com>`）
-
-## 六、许可
-
-[MIT License](./LICENSE)
-
-Copyright (c) 2026 张生雨阳 (zsyy) / ALL SCOPE —— 自由使用/修改/分发，保留署名即可。
+[MIT License](./LICENSE) · Copyright (c) 2026 张生雨阳 (zsyy) / ALL SCOPE

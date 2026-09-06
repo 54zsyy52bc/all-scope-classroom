@@ -181,7 +181,7 @@
       + '<span class="state-icon" data-state="done">' + icon('package-check', 64) + '</span>'
       + '<h1 class="hero-title">已确认归还</h1>'
       + '<p class="hero-sub">全班都归还后，老师会下发关机指令，这台电脑会自动关机。</p>'
-      + '<p class="hint">如果还要继续用电脑，请举手告知老师。</p></section>';
+      + '<p class="hint">如果还要继续用电脑，请举手告知老师，老师会为你撤销关机。</p></section>';
   }
 
   function viewReturn(state) {

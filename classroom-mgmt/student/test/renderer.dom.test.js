@@ -136,7 +136,7 @@ async function main() {
   injectSync(T.makeSync({ seat: '07', phase: 'checkin', checkinDone: false, returnDone: false }));
   await sleep(10);
   const toast = documentStub.getElementById('toast');
-  check('sync 校正：登记被回滚并提示', toast.textContent.includes('未被教师端确认'), toast.textContent);
+  check('sync 校正：登记被回滚并提示', toast.textContent.includes('未被教师端'), toast.textContent);
 
   // 3.5) 教师下发器材清单（活动预设）：原地替换 + 登记页重渲染
   injectCmd('equipment', { equipment: [{ eqId: 'EQ-A', eqName: '特制模块', category: '主控', preset: 2 }], activityName: '焊接入门' });
@@ -181,7 +181,7 @@ async function main() {
   injectSync(T.makeSync({ seat: '07', phase: 'return', checkinDone: false, returnDone: false }));
   await sleep(10);
   const toast2 = documentStub.getElementById('toast');
-  check('sync 校正：登记被回滚并提示', toast2.textContent.includes('未被教师端确认'), toast2.textContent);
+  check('sync 校正：登记被回滚并提示', toast2.textContent.includes('未被教师端'), toast2.textContent);
 
   // 8) 计时活动发布：任务卡显示计时器
   injectCmd('task', { task: { taskId: 'T-T1', title: '焊接计时', desc: '', timed: true, durationSec: 120, timerState: 'running', remainingMs: 120000 } });

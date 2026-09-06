@@ -67,6 +67,15 @@
       logEvent('冲突：' + esc(d.payload.seat) + ' 号多机器上报');
       if (refreshSoonFn) refreshSoonFn();
     });
+    // 座位登记超出课堂范围 → 大屏"待激活座位"（教师一键激活扩容，闭环修复）
+    es.addEventListener('seat.outofrange', (e) => {
+      const d = JSON.parse(e.data);
+      if (global.Dashboard && global.Dashboard.addPendingSeat) {
+        global.Dashboard.addPendingSeat({
+          seat: d.payload.seat, name: d.payload.name, totalSeats: d.payload.totalSeats,
+        });
+      }
+    });
     // 活动计时 / 锁定策略（转发给 activity.js 渲染计时条与策略开关）
     es.addEventListener('activity.timer', (e) => {
       if (global.DashboardActivity) global.DashboardActivity.onSse({ event: 'activity.timer', data: e.data });
