@@ -426,3 +426,7 @@ body[data-phase="closed"] [data-phase-vis]:not([data-phase-vis*="closed"]) { dis
 .ab-state { font-size: 13px; color: var(--muted); }
 .ab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ab-actions .btn { min-height: 52px; padding: 0 16px; font-size: 15px; }
+
+/* ---------- 全局兜底（2026-09-06 遮罩彻查）：任何 [hidden] 一律隐藏 ----------
+   防 .overlay/.shutdown 等 display:flex 全屏层因漏配 [hidden] 规则而启动即常驻 */
+[hidden] { display: none !important; }

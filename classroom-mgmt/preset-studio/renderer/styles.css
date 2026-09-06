@@ -193,3 +193,7 @@ input:focus, select:focus { outline: none; border-color: var(--indigo); }
 }
 .toast[hidden] { display: none; }
 .toast.err { border-color: var(--offline); color: #FCA5A5; }
+
+/* ---------- 全局兜底（2026-09-06 遮罩彻查）：任何 [hidden] 一律隐藏 ----------
+   防 .overlay/.shutdown 等 display:flex 全屏层因漏配 [hidden] 规则而启动即常驻 */
+[hidden] { display: none !important; }
