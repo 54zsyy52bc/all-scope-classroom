@@ -50,4 +50,6 @@ bash run-tests.sh --full    # 全量 14 项（含真实 broker smoke 77/77 与 n
 
 ## 六、许可
 
-未声明；如需对外公开请补充 `LICENSE`。
+[MIT License](./LICENSE)
+
+Copyright (c) 2026 张生雨阳 (zsyy) / ALL SCOPE —— 自由使用/修改/分发，保留署名即可。
