@@ -37,6 +37,13 @@ function setPolicy(sessionId, mode) {
   if (!s) fail('E-NOTFOUND', '会话不存在');
   db.updateSession(sessionId, { policy_mode: mode });
   const policy = applyPolicy(sessionId, true);
+  // 双保险：cmd policy 单条广播偶有丢包 → 逐生广播 sync(policy) 强制解锁（student onSync 已处理 p.policy）
+  try {
+    const students = (db.queryStudents(sessionId) || {}).items || [];
+    for (const st of students) {
+      if (st.seat) bridge.publishSync(st.seat, { policy });
+    }
+  } catch (_e) { /* 不阻断策略下发 */ }
   return { mode: policy.mode, locked: policy.locked, phase: policy.phase, reason: policy.reason };
 }
 
