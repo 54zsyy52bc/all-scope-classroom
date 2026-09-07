@@ -631,3 +631,21 @@ body {
 /* ---------- 全局兜底（2026-09-06 修复）：任何 [hidden] 一律隐藏 ----------
    .shutdown 曾只配 display:flex 无 [hidden] 覆盖 → 深色全屏层启动即常驻拦截点击 */
 [hidden] { display: none !important; }
+
+/* ===== WinUI3 / Fluent 微调（2026-09-07）：系统 accent + Segoe 字体族 ===== */
+:root {
+  --accent: #0067C0;
+  --accent-hover: #005FB8;
+  --accent-active: #00497F;
+  --accent-soft: #E6F1FB;
+  --doing: #0067C0;
+  --done: #107C10;
+  --help: #D35D0A;
+  --offline: #C42B1C;
+  --warn: #9D5D00;
+  --conn-online: #107C10;
+  --conn-reconnecting: #9D5D00;
+  --conn-offline: #C42B1C;
+  --font-display: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", Inter, system-ui, sans-serif;
+  --radius: 6px;
+}

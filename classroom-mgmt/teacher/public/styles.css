@@ -440,3 +440,28 @@ body[data-phase="closed"] [data-phase-vis]:not([data-phase-vis*="closed"]) { dis
 .pending-seat { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pending-text { font-size: 16px; color: var(--text); }
 .pending-seat .btn { min-height: 52px; padding: 0 14px; font-size: 15px; }
+
+/* ===== WinUI3 / Fluent 浅色主题（2026-09-07 换肤，变量层覆盖；Mica 浅底 + 系统 accent） ===== */
+:root {
+  --bg: #F3F3F3;
+  --panel: #FFFFFF;
+  --panel-2: #F9F9F9;
+  --text: #1B1B1B;
+  --muted: #6F6F6F;
+  --line: #E2E2E2;
+  --indigo: #0067C0;
+  --indigo-hover: #005FB8;
+  --waiting: #9A9A9A;
+  --doing: #0067C0;
+  --done: #107C10;
+  --help: #D35D0A;
+  --offline: #C42B1C;
+  --radius: 6px;
+  --font: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+}
+body { background: var(--bg); color: var(--text); }
+/* 卡片/面板在浅底上的阴影与描边（Fluent reveal 轻感） */
+.card, .panel, .sheet, .overlay-card, section { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+/* 教师大屏品牌区：logo 图为深底品牌卡，随主题保留并加浅描边 */
+.brand-mark { background: transparent; }
+.brand-text .logo-text { filter: drop-shadow(0 1px 0 rgba(255,255,255,.4)); }

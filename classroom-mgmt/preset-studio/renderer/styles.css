@@ -196,3 +196,23 @@ input:focus, select:focus { outline: none; border-color: var(--indigo); }
 /* ---------- 全局兜底（2026-09-06 遮罩彻查）：任何 [hidden] 一律隐藏 ----------
    防 .overlay/.shutdown 等 display:flex 全屏层因漏配 [hidden] 规则而启动即常驻 */
 [hidden] { display: none !important; }
+
+/* ===== WinUI3 / Fluent 浅色主题（2026-09-07 换肤） ===== */
+:root {
+  --bg: #F3F3F3;
+  --panel: #FFFFFF;
+  --panel-2: #F9F9F9;
+  --text: #1B1B1B;
+  --muted: #6F6F6F;
+  --line: #E2E2E2;
+  --indigo: #0067C0;
+  --indigo-hover: #005FB8;
+  --doing: #0067C0;
+  --done: #107C10;
+  --help: #D35D0A;
+  --offline: #C42B1C;
+  --radius: 6px;
+  --font: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+}
+body { background: var(--bg); color: var(--text); }
+.card, .panel, .sheet, .overlay-card, section { box-shadow: 0 1px 3px rgba(0,0,0,.08); }
