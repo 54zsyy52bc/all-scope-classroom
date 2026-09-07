@@ -465,3 +465,24 @@ body { background: var(--bg); color: var(--text); }
 /* 教师大屏品牌区：logo 图为深底品牌卡，随主题保留并加浅描边 */
 .brand-mark { background: transparent; }
 .brand-text .logo-text { filter: drop-shadow(0 1px 0 rgba(255,255,255,.4)); }
+
+/* ===== Metro UI 风格（2026-09-07）：纯平面/直角/无阴影，Windows8 磁贴质感 ===== */
+:root {
+  --radius: 0px;
+  --bg: #FFFFFF;
+  --panel: #FFFFFF;
+  --panel-2: #F5F5F5;
+  --line: #E5E5E5;
+  --accent: #0078D7;
+  --indigo: #0078D7;
+  --indigo-hover: #006CC1;
+  --doing: #0078D7;
+  --done: #107C10;
+  --offline: #C42B1C;
+  --help: #D35D0A;
+}
+/* 平面化：所有卡片/弹层去掉阴影圆角 */
+.card, .panel, .sheet, .overlay-card, section, .eq-card, .group-card,
+.modal-card, .editor-card, .row-card { box-shadow: none !important; border-radius: 0 !important; }
+.btn, input, select, textarea, .chip, .tile, .seat-tile, .stat-tile { border-radius: 0 !important; }
+button, .btn { box-shadow: none; }
