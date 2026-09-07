@@ -1,4 +1,4 @@
-# ALL SCOPE 课堂管理系统（v4.2）
+# 全域 ALL SCOPE 课堂管理系统（v4.5）
 
 > 初二信息技术硬件·课堂管理系统：开课→登记→活动计时→学生机锁定→归还→报表 全链路。
 
@@ -53,3 +53,7 @@ bash run-tests.sh --full    # 全量 14 项（含真实 broker smoke 77/77 与 n
 [MIT License](./LICENSE)
 
 Copyright (c) 2026 张生雨阳 (zsyy) / ALL SCOPE —— 自由使用/修改/分发，保留署名即可。
+## 版本说明（v4.5）
+- 更名「全域」+ 全域品牌图（mark/text logo 落三端 + favicon）
+- Metro UI（直角平面 / #0078D7 / 统计磁贴）
+- 测试期日志：学生端 %APPDATA%\课堂学生端udit.log；教师端 teacher/logs/audit.log（含写请求 + GUI 事件）
