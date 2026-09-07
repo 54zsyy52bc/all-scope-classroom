@@ -47,12 +47,12 @@ body {
 }
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark {
-  width: 52px; height: 52px;
+  width: 64px; height: 64px;
   border-radius: 12px;
   display: block;
   object-fit: contain;
 }
-.brand-text .logo-text { height: 36px; display: block; }
+.brand-text .logo-text { height: 52px; display: block; }
 .brand-text h1 { font-size: 24px; margin: 0; font-weight: 700; }
 .class-meta { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
 .topbar-right { display: flex; gap: 10px; align-items: center; }
@@ -408,7 +408,7 @@ body[data-phase="closed"] [data-phase-vis]:not([data-phase-vis*="closed"]) { dis
 .activity-bar[hidden] { display: none; }
 .ab-info { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
 .ab-icon {
-  width: 52px; height: 52px; border-radius: 12px;
+  width: 64px; height: 64px; border-radius: 12px;
   background: var(--indigo); color: #fff;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }

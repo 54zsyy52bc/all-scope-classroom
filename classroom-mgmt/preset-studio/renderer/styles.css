@@ -33,7 +33,7 @@ body {
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark {
-  width: 44px; height: 44px; border-radius: 10px;
+  width: 52px; height: 52px; border-radius: 10px;
   display: block; object-fit: contain;
 }
 .brand h1 { font-size: 20px; margin: 0; }
