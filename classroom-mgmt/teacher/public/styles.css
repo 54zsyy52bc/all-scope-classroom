@@ -49,10 +49,10 @@ body {
 .brand-mark {
   width: 52px; height: 52px;
   border-radius: 12px;
-  background: var(--indigo);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
+  display: block;
+  object-fit: contain;
 }
+.brand-text .logo-text { height: 36px; display: block; }
 .brand-text h1 { font-size: 24px; margin: 0; font-weight: 700; }
 .class-meta { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
 .topbar-right { display: flex; gap: 10px; align-items: center; }

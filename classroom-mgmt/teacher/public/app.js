@@ -6,8 +6,7 @@
     end: '/api/v1/session/end',
     finish: '/api/v1/session/finish',
     shutdown: '/api/v1/commands/shutdown',
-    reset: '/api/v1/commands/reset',
-    snapshot: '/api/v1/dashboard/snapshot',
+    reset: '/api/v1/commands/reset', audit: '/api/v1/system/audit', snapshot: '/api/v1/dashboard/snapshot',
   };
   const PHASE_LABEL = { waiting: '待课', checkin: '登记中', task: '课中', return: '归还中', closed: '已结束' };
   const SEAT_LABEL = { doing: '进行中', done: '已完成', help: '求助' };
@@ -153,8 +152,10 @@
     box.innerHTML = '<b>座位冲突：</b>' + real.map((c) => esc(c.seat) + ' 号被 ' + esc(c.machineIds.join(' / ')) + ' 上报').join('；');
   }
 
+  // logEvent：面板日志 + 同步写 server 审计（POST /api/v1/system/audit → logs/audit.log）
   function logEvent(text) {
     if (window.DashboardStream && window.DashboardStream.logEvent) window.DashboardStream.logEvent(text);
+    try { fetch(API.audit, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ui', detail: text }) }); } catch (_e) { /* 审计上传不阻断 UI */ }
   }
 
   // ---------- SSE 实时刷新（事件合并 + 快照重取，避免增量补丁复杂度）----------
@@ -275,7 +276,7 @@
     if (window.DashboardAdmit) {
       window.DashboardAdmit.init({ $, esc, api, logEvent, refreshSoon, withGuard });
     }
-    $('brand-mark').innerHTML = icon('package-check', 26);
+    // 品牌标识改用 PNG 图（topbar 已静态写 <img class="brand-mark" src="logo-mark.png">），不再写入 innerHTML
     if (window.DashboardPreset) window.DashboardPreset.bind();
     $('overlay-start').querySelectorAll('input').forEach((i) => {
       i.addEventListener('keydown', (e) => { if (e.key === 'Enter') withGuard('start', onStart)(); });

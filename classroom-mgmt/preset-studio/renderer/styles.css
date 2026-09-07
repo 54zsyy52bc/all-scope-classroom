@@ -34,8 +34,7 @@ body {
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark {
   width: 44px; height: 44px; border-radius: 10px;
-  background: var(--indigo); color: #fff;
-  display: flex; align-items: center; justify-content: center;
+  display: block; object-fit: contain;
 }
 .brand h1 { font-size: 20px; margin: 0; }
 .topbar-right { display: flex; gap: 10px; }

@@ -1,5 +1,7 @@
 'use strict';
 const express = require('express');
+const fs = require('node:fs');
+const path = require('node:path');
 const bridge = require('../mqtt/bridge');
 const cfg = require('../config');
 const db = require('../db');
@@ -35,5 +37,19 @@ router.get('/config', (req, res) => {
     exportFormats: ['xlsx', 'csv'],
   });
 });
+
+// 教师端 GUI 主动审计：写操作已由 server 中间件覆盖；大屏 logEvent（开始/下课/复位/导出/策略切换等）
+// 也通过此端点落 logs/audit.log，方便测试期与大屏前端事件一一对应。
+router.post('/audit', asyncHandler(async (req, res) => {
+  const { type, detail } = req.body || {};
+  const line = '[' + (type || 'ui') + '] ' + new Date().toISOString().slice(0, 19) + ' ' + String(detail || '').slice(0, 500);
+  // eslint-disable-next-line no-console
+  console.log('[audit-ui]', line);
+  try {
+    fs.mkdirSync(path.join(__dirname, '..', '..', 'logs'), { recursive: true });
+    fs.appendFileSync(path.join(__dirname, '..', '..', 'logs', 'audit.log'), line + '\n', { flag: 'a' });
+  } catch (_e) { /* 落盘失败不阻断 */ }
+  ok(res, { logged: true });
+}));
 
 module.exports = router;

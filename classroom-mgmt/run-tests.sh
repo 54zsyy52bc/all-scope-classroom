@@ -109,7 +109,7 @@ if [ "$over" -eq 0 ]; then ok "行数门禁（常规 300 / db 320）"; else bad 
 # 4. 质量门禁：P0 emoji 扫描（UI 代码不得出现 emoji 作图标）
 # ---------------------------------------------------------------------------
 EMOJI_RE='[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]'
-if grep -rPn "$EMOJI_RE" "$TEACHER/public" "$STUDENT/renderer" "$STUDIO/renderer" "$TEACHER/src/routes" >"$LOG" 2>&1; then
+if grep -rIPn "$EMOJI_RE" "$TEACHER/public" "$STUDENT/renderer" "$STUDIO/renderer" "$TEACHER/src/routes" >"$LOG" 2>&1; then
   bad "P0 emoji 扫描"; head -5 "$LOG" | sed 's/^/        /'
 else
   ok "P0 emoji 扫描（UI 代码干净）"
