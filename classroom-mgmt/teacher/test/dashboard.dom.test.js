@@ -146,6 +146,7 @@ globalThis.EventSource = EventSourceStub;
 globalThis.confirm = () => true;
 // 预载 Icons（真实 icons.js），然后按页面顺序加载 app.js → presets.js → activity.js → manage.js → stream.js
 (0, eval)(fs.readFileSync(path.join(ROOT, 'icons.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'term-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'presets.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'admit.js'), 'utf8'));
@@ -166,7 +167,7 @@ async function main() {
   check('求助统计', Number(elsMap['st-help'].textContent) === 2, elsMap['st-help'].textContent);
   check('任务横幅可见且标题正确', elsMap['task-banner'].hidden === false && elsMap['task-title'].textContent === '焊接练习');
   check('任务统计：已完成 40', Number(elsMap['ts-done'].textContent) === 40, elsMap['ts-done'].textContent);
-  check('小组墙渲染 G1 与 G2', elsMap['groups'].innerHTML.includes('G1') && elsMap['groups'].innerHTML.includes('G2'));
+  check('小组墙渲染终端卡 01/02', elsMap['groups'].innerHTML.includes('终端 01') && elsMap['groups'].innerHTML.includes('终端 02'));
   check('小组墙带求助徽标', elsMap['groups'].innerHTML.includes('求助 1'));
   check('座位 06 冲突标记', elsMap['groups'].innerHTML.includes('s-conflict'));
   check('冲突提示可见', elsMap['alerts'].hidden === false && elsMap['alerts'].innerHTML.includes('06'));
@@ -214,11 +215,11 @@ async function main() {
   check('点击开始上课打开弹窗', elsMap['overlay-start'].hidden === false);
   elsMap['f-teacher'].value = '李老师';
   elsMap['f-class'].value = '初二(2)班';
-  elsMap['f-seats'].value = '48';
+  elsMap['f-term'].value = '8'; elsMap['f-members'].value = '6';
   elsMap['confirm-start'].onclick();
   await new Promise((r) => setTimeout(r, 10));
   const startCall = fetchLog.find((f) => f.method === 'POST' && f.url === '/api/v1/sessions');
-  check('开始上课 POST 参数正确', !!startCall && startCall.body.teacher === '李老师' && startCall.body.totalSeats === 48);
+  check('开始上课 POST 参数正确', !!startCall && startCall.body.teacher === '李老师' && startCall.body.totalSeats === 48 && startCall.body.terminalCount === 8 && startCall.body.groupMembers === 6);
   check('开始上课后弹窗关闭', elsMap['overlay-start'].hidden === true);
   check('事件流记录开始上课', elsMap['events-body'].children.some((c) => c.textContent && c.textContent.includes('开始上课')));
 

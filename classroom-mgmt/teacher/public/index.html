@@ -85,7 +85,9 @@
         <select id="f-class-preset"><option value="">（不使用预设，手动填写）</option></select>
       </label>
       <label>班级名称<input id="f-class" type="text" placeholder="选预设后自动填充" maxlength="30" /></label>
-      <label>座位数<input id="f-seats" type="number" min="1" max="99" value="50" /></label>
+      <label>机房终端台数（每组一台）<input id="f-term" type="number" min="1" max="50" value="14" /></label>
+      <label>每组人数上限<input id="f-members" type="number" min="1" max="20" value="6" /></label>
+      <label>总座位数 <strong id="f-seats-note">84</strong>（=台数×每组人数，自动）<input id="f-seats" type="hidden" /></label>
       <label>活动预设
         <select id="f-activity-preset"><option value="">（不使用预设）</option></select>
       </label>
@@ -170,6 +172,7 @@
   <div class="toast" id="toast" hidden></div>
 
   <script src="icons.js"></script>
+  <script src="term-ui.js"></script>
   <script src="app.js"></script>
   <script src="presets.js"></script>
   <script src="admit.js"></script>

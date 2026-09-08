@@ -25,7 +25,7 @@
   const state = {
     machineId: '', seat: '', name: '', studentNo: '',
     phase: 'idle', currentTask: null, taskStatus: null,
-    checkinDone: false, returnDone: false,
+    checkinDone: false, returnDone: false, role: 'member',
     equipQty: {}, borrowed: [], returnChecked: {}, note: '',
     conn: 'offline',
     shutdownIn: null, shutdownDryRun: false,

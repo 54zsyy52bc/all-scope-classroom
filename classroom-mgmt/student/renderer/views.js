@@ -108,7 +108,7 @@
       + '<header class="panel-head">'
       + '<span class="step-badge">第 1 步 / 共 3 步</span>'
       + '<h1 class="panel-title">' + icon('clipboard-check', 24) + '上课登记</h1>'
-      + '<p class="panel-sub">填写姓名与座位号，核对领到的器材，然后确认登记。</p></header>'
+      + '<p class="panel-sub">每组共用一台电脑：组长先登记（座位号 01），其他同学按 02、03…依次登记。</p></header>'
       + '<div class="form-grid">'
       + '<label class="field"><span class="field-label">姓名</span>'
       + '<input id="f-name" class="input" type="text" maxlength="20" autocomplete="off"'

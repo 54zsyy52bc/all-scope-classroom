@@ -111,7 +111,7 @@ function equipmentForStudents(activityPreset, classEquip) {
   }));
 }
 
-function startSession({ teacher, className, totalSeats, groupSize, classPresetId, activityPresetId }) {
+function startSession({ teacher, className, totalSeats, groupSize, classPresetId, activityPresetId, terminalCount, groupMembers }) {
   if (!teacher || !String(teacher).trim()) {
     fail('E-VAL-01', 'teacher 为必填项');
   }
@@ -156,6 +156,16 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
   }
   let seats = seatsRaw;
   let groupSeed = null;
+  // v5 组机（全域学生桌面）：无班级预设但给了终端台数×每组人数 → 每台=一组（终端），座位=组内序号
+  const termRaw = terminalCount != null ? Number(terminalCount) : null;
+  const memRaw = groupMembers != null ? Number(groupMembers) : null;
+  const termMode = termRaw != null && memRaw != null && !groups.length;
+  if (termMode) {
+    if (!Number.isInteger(termRaw) || termRaw < 1 || termRaw > 50) fail('E-VAL-01', '终端台数须为 1-50');
+    if (!Number.isInteger(memRaw) || memRaw < 1 || memRaw > 20) fail('E-VAL-01', '每组人数须为 1-20');
+    seats = termRaw * memRaw;
+    groupSeed = Array.from({ length: termRaw }, (_, i) => ({ groupId: 'G' + (i + 1), size: memRaw }));
+  }
   if (groups.length) {
     const sum = groups.reduce((acc, g) => acc + Math.max(1, Math.floor(Number(g.size) || 1)), 0);
     if (sum < 1 || sum > 99) fail('E-VAL-01', '自定义分组座位合计须在 1-99 之间');
@@ -179,6 +189,8 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
     activity_preset_id: activityPreset ? activityPreset.preset_id : null,
     activity_name: activityName,
     equipment_json: JSON.stringify(equipment),
+    terminal_count: termMode ? termRaw : null,
+    group_members: termMode ? memRaw : null,
   });
   if (groupSeed) db.seedSeatsByGroups(sessionId, groupSeed);
   else db.seedSeats(sessionId, seats, groupSize || cfg.GROUP_SIZE);

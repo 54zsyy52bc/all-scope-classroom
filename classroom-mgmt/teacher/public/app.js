@@ -123,10 +123,12 @@
         if (!st.online) cls.push('s-offline');
         if (st.checkinStatus === 'pending') cls.push('s-pending');
         if (st.taskStatus) cls.push('s-' + st.taskStatus);
+        if (st.role === 'leader') cls.push('s-leader');
         return '<div class="seat ' + cls.join(' ') + '" data-seat="' + esc(seatNo)
-          + '" title="' + esc(seatNo) + '号 · ' + esc(st.name || '未登记')
+          + '" title="' + esc(seatNo) + '号 · ' + esc(st.name || '未登记') + (st.role === 'leader' ? ' · 组长' : '')
           + (st.taskStatus ? ' · ' + SEAT_LABEL[st.taskStatus] : '') + '">'
           + '<span class="no">' + esc(seatNo) + '</span>'
+          + (st.role === 'leader' ? '<i class="ld">组长</i>' : '')
           + '<span class="nm">' + esc(st.name || (st.checkinStatus === 'pending' ? '未登记' : '')) + '</span>'
           + '</div>';
       }).join('');
@@ -138,12 +140,11 @@
           : '<span class="group-badge">' + g.checkedIn + '/' + g.seats.length + ' 登记</span>');
 
       return '<section class="group' + (g.hasHelp ? ' has-help' : '') + (g.returned ? ' all-returned' : '') + '">'
-        + '<div class="group-head"><span class="group-name">' + esc(g.groupId) + '</span>' + badge + '</div>'
+        + '<div class="group-head"><span class="group-name">' + termLabel(g.groupId) + '</span>' + badge + '</div>'
         + '<div class="group-seats">' + tiles + '</div>'
         + '</section>';
     }).join('');
   }
-
   function renderAlerts(conflicts) {
     const box = $('alerts');
     const real = (conflicts || []).filter((c) => (c.machineIds || []).length > 1);
@@ -151,13 +152,11 @@
     box.hidden = false;
     box.innerHTML = '<b>座位冲突：</b>' + real.map((c) => esc(c.seat) + ' 号被 ' + esc(c.machineIds.join(' / ')) + ' 上报').join('；');
   }
-
   // logEvent：面板日志 + 同步写 server 审计（POST /api/v1/system/audit → logs/audit.log）
   function logEvent(text) {
     if (window.DashboardStream && window.DashboardStream.logEvent) window.DashboardStream.logEvent(text);
     try { fetch(API.audit, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ui', detail: text }) }); } catch (_e) { /* 审计上传不阻断 UI */ }
   }
-
   // ---------- SSE 实时刷新（事件合并 + 快照重取，避免增量补丁复杂度）----------
   function refreshSoon() {
     if (snapTimer) return;
@@ -167,19 +166,16 @@
       if (j && j.code === 0) applySnapshot(j.data);
     }, 250);
   }
-
   function openStream() {
     if (!window.DashboardStream) return;
     window.DashboardStream.bind({ applySnapshot, refreshSoon, setConn });
     window.DashboardStream.openStream();
   }
-
   // ---------- 教师操作 ----------
   // 关键写操作防抖：请求未返回时忽略重复点击（防"双击下课/关机/开始/复位"重复提交）
   const busy = {};
   const guard = (k) => (busy[k] ? (toast('操作处理中，请稍候…', true), false) : ((busy[k] = true), true));
   const withGuard = (k, fn) => async (...a) => { if (!guard(k)) return; try { await fn(...a); } finally { busy[k] = false; } };
-
   function openModal(name) {
     $('overlay-' + name).hidden = false;
     const first = $('overlay-' + name).querySelector('input');
@@ -188,48 +184,45 @@
   function closeModal(name) {
     $('overlay-' + name).hidden = true;
   }
-
   async function onStart() {
     const teacher = $('f-teacher').value.trim();
     const className = $('f-class').value.trim();
+    syncTermSeats(); // 保证 f-seats 为当前台数×人数
     const totalSeats = Math.max(1, Math.min(99, Number($('f-seats').value) || 50));
     if (!teacher) { toast('请填写教师姓名', true); return; }
     const body = { teacher, className, totalSeats };
-    if ($('f-class-preset').value) body.classPresetId = $('f-class-preset').value;
+    const presetMode = !!$('f-class-preset').value;
+    if (presetMode) body.classPresetId = $('f-class-preset').value;
+    else { body.terminalCount = Number($('f-term').value) || 14; body.groupMembers = Number($('f-members').value) || 6; } // v5 组机
     if ($('f-activity-preset').value) body.activityPresetId = $('f-activity-preset').value;
     const j = await api('POST', API.start, body);
     if (j && j.code === 0) {
       closeModal('start');
       const act = j.data && j.data.activityName ? ' · 活动：' + j.data.activityName : '';
-      logEvent('开始上课：' + teacher + ' · ' + (className || '未命名班级') + ' · ' + totalSeats + ' 座' + act);
+      logEvent('开始上课：' + teacher + ' · ' + (className || '未命名班级') + ' · ' + (presetMode ? totalSeats + ' 座' : ($('f-term').value + ' 台终端×' + $('f-members').value + ' 人')) + act);
       refreshSoon();
     }
   }
-
   async function onEnd() {
     if (!window.confirm('确认下课？将进入归还阶段，学生归还全部器材后自动关机。')) return;
     const j = await api('POST', API.end);
     if (j && j.code === 0) { logEvent('已下课，进入归还阶段'); refreshSoon(); }
   }
-
   async function onFinish() {
     if (!window.confirm('确认结束课堂？本堂课将关闭归档，之后可重新开始上课。')) return;
     const j = await api('POST', API.finish);
     if (j && j.code === 0) { logEvent('课堂已结束归档'); refreshSoon(); }
   }
-
   async function onShutdown() {
     if (!window.confirm('确认向全部学生机下发关机指令？')) return;
     const j = await api('POST', API.shutdown, { force: true });
     if (j && j.code === 0) { logEvent('已下发强制关机指令'); refreshSoon(); }
   }
-
   async function onResetSeat(seat) {
     if (!window.confirm('确认重置 ' + seat + ' 号座位的登记？')) return;
     const j = await api('POST', API.reset, { seat });
     if (j && j.code === 0) { logEvent('已重置 ' + seat + ' 号登记'); refreshSoon(); }
   }
-
   async function onExport(format) {
     const j = await api('GET', API.snapshot);
     const sid = j && j.code === 0 && j.data && j.data.session && j.data.session.sessionId;
@@ -248,16 +241,16 @@
     logEvent('导出 ' + format.toUpperCase() + '：' + files.map((f) => f.fileName).join('、'));
     toast('已生成 ' + files.length + ' 个 ' + format.toUpperCase() + ' 文件');
   }
-
   async function onCancelShutdown() {
     if (!window.confirm('撤销已下发的关机指令？学生机将中止关机倒计时，可继续使用。')) return;
     const j = await api('POST', '/api/v1/commands/shutdown-cancel');
     if (j && j.code === 0) { logEvent('已撤销关机指令，学生机可继续使用'); refreshSoon(); }
   }
-
   // ---------- 事件绑定 ----------
   function bind() {
-    $('btn-start').onclick = () => openModal('start');
+    $('btn-start').onclick = () => { openModal('start'); syncTermSeats(); };
+    ['f-term', 'f-members'].forEach((id) => { $(id).oninput = syncTermSeats; });
+    $('f-class-preset').onchange = syncTermSeats;
     $('btn-end').onclick = withGuard('end', onEnd);
     $('btn-finish').onclick = withGuard('finish', onFinish);
     $('btn-shutdown').onclick = withGuard('shutdown', onShutdown);
@@ -284,7 +277,6 @@
     if (window.DashboardActivity) window.DashboardActivity.init();
     if (window.DashboardManage) window.DashboardManage.init();
   }
-
   async function init() {
     bind();
     if (window.DashboardPreset) await window.DashboardPreset.refresh();
@@ -292,7 +284,6 @@
     if (j && j.code === 0) applySnapshot(j.data);
     openStream();
   }
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

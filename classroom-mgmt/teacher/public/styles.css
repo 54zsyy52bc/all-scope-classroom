@@ -504,3 +504,8 @@ button, .btn { box-shadow: none; }
 .stat:nth-child(5) { background: #7719AA; }   /* 任务完成 */
 .stat:nth-child(6) { background: #107C10; }   /* 已归还 */
 .stat:nth-child(6) b { font-size: 32px; }
+
+/* 组长角标（v5 组机） */
+.seat { position: relative; }
+.seat .ld { position: absolute; top: 2px; left: 2px; font-style: normal; font-size: 10px;
+  line-height: 15px; padding: 0 5px; background: #0067C0; color: #fff; }

@@ -55,7 +55,9 @@
         .filter((e) => (state.equipQty[e.eqId] || 0) > 0)
         .map((e) => ({ eqId: e.eqId, qty: state.equipQty[e.eqId] }));
 
-      if (!sendUp('checkin', { name: state.name, studentNo: state.studentNo, equipments })) return;
+      const leaderEl = document.getElementById('f-leader');
+      state.role = leaderEl && leaderEl.checked ? 'leader' : 'member';
+      if (!sendUp('checkin', { name: state.name, studentNo: state.studentNo, equipments, role: state.role })) return;
 
       state.borrowed = equipments.map((x) => ({ eqId: x.eqId, qty: x.qty }));
       state.checkinDone = true;
