@@ -28,6 +28,9 @@ const defaults = {
   EQUIP_FILE: path.join(PROJECT_ROOT, 'seeds', 'equipment.json'),
   DB_PATH: path.join(PROJECT_ROOT, 'classroom.db'),
   SEAT_COUNT: 50,
+  // v5 组机（全域学生桌面）默认：机房台数 × 每组人数（大屏开始上课可自定义，totalSeats = T×K）
+  TERMINAL_COUNT: 14,
+  GROUP_MEMBERS: 6,
   HTTP_PORT: 3000,
   HTTP_HOST: '0.0.0.0',
   TOPIC_PLAN: 'B',
@@ -45,6 +48,7 @@ const NUM_KEYS = [
   'SIOT_WS_PORT', 'SIOT_TCP_PORT', 'SIOT_WEB_PORT', 'SEAT_COUNT',
   'HTTP_PORT', 'GROUP_SIZE', 'HEARTBEAT_INTERVAL_MS',
   'OFFLINE_THRESHOLD_MS', 'SHUTDOWN_DELAY_SEC', 'HMAC_WINDOW_MS',
+  'TERMINAL_COUNT', 'GROUP_MEMBERS',
 ];
 const BOOL_KEYS = ['ENABLE_AUTH'];
 

@@ -198,6 +198,9 @@ class SqlStorage {
         ['timer_paused_at', 'INTEGER'], ['timer_remaining_ms', 'INTEGER']]],
       ['t_activity_preset', [['timed', 'INTEGER DEFAULT 0'], ['duration_sec', 'INTEGER']]],
       ['t_class_preset', [['groups_json', 'TEXT'], ['equipment_json', 'TEXT']]],
+      // v5 组机（全域学生桌面）：组终端参数 + 登记角色（组长 leader / 成员 member）
+      ['t_session', [['terminal_count', 'INTEGER'], ['group_members', 'INTEGER']]],
+      ['t_student', [["role", "TEXT DEFAULT 'member'"]]],
     ];
     for (const [table, cols] of RUNS) {
       for (const [name, type] of cols) {

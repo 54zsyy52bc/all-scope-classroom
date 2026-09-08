@@ -91,12 +91,13 @@ function getStudent(sessionId, seat) {
 function touchSeat(sessionId, seat, ts) {
   return S().update('t_student', { session_id: sessionId, seat }, { last_seen_at: ts });
 }
-function recordCheckin({ sessionId, seat, groupId, name, studentNo, machineId, checkinTime, equipments }) {
+function recordCheckin({ sessionId, seat, groupId, name, studentNo, machineId, checkinTime, equipments, role }) {
   const student = upsertStudent({
     sessionId, seat, groupId,
     patch: {
       name: name || null, student_no: studentNo || null, machine_id: machineId || null,
       checkin_status: 'done', checkin_time: checkinTime, return_status: 'pending',
+      role: role === 'leader' ? 'leader' : 'member',
     },
   });
   if (Array.isArray(equipments)) {

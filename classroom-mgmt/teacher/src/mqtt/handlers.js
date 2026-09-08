@@ -58,7 +58,7 @@ function seatStateOf(sessionId, seat) {
   }
   const online = s.last_seen_at != null && (Date.now() - s.last_seen_at) <= require('../config').OFFLINE_THRESHOLD_MS;
   return {
-    seat: s.seat, groupId: s.group_id, name: s.name || null,
+    seat: s.seat, groupId: s.group_id, name: s.name || null, role: s.role || null,
     checkinStatus: s.checkin_status, taskStatus, returnStatus: s.return_status,
     online, lastSeenAt: s.last_seen_at || null, conflict,
   };
@@ -109,7 +109,7 @@ function handleCheckin(env, rawTopic) {
     if (!ev.inserted) { dup = true; return; }
     db.recordCheckin({
       sessionId, seat, groupId, name: p.name, studentNo: p.studentNo,
-      machineId, checkinTime: env.ts, equipments: p.equipments,
+      machineId, checkinTime: env.ts, equipments: p.equipments, role: p.role,
     });
     if (machineId) conflict = db.upsertConflict({ seat, machineId, ts: env.ts });
   });

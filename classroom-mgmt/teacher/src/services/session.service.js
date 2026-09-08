@@ -36,6 +36,9 @@ function toSession(row) {
     activityName: row.activity_name || null,
     equipment: equipment || [],
     policyMode: row.policy_mode || 'open',
+    // v5 组机：terminalCount=机房台数 / groupMembers=每组人数（totalSeats = T×K）
+    terminalCount: row.terminal_count || null,
+    groupMembers: row.group_members || null,
   };
 }
 

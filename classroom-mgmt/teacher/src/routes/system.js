@@ -35,6 +35,9 @@ router.get('/config', (req, res) => {
     helpBlinkMs: 1000,
     shutdownDelaySec: cfg.SHUTDOWN_DELAY_SEC,
     exportFormats: ['xlsx', 'csv'],
+    // v5 组机默认（大屏开始上课表单预填）：机房台数/每组人数
+    terminalCount: cfg.TERMINAL_COUNT,
+    groupMembers: cfg.GROUP_MEMBERS,
   });
 });
 
