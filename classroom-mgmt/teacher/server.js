@@ -28,6 +28,7 @@ const commandRouter = require('./src/routes/command');
 const dashboardRouter = require('./src/routes/dashboard');
 const exportRouter = require('./src/routes/export');
 const presetRouter = require('./src/routes/preset');
+const shellRouter = require('./src/routes/shell'); // v5 全域学生桌面：课程/口令
 const activityRouter = require('./src/routes/activity');
 const legacyRouter = require('./src/routes/legacy');
 const { requireAuth } = require('./src/response');
@@ -93,6 +94,7 @@ function createApp() {
   // 挂载点：各资源路由内部路径已自带资源前缀（如 /sessions、/dashboard、/exports），
   // 故统一挂在 /api/v1 之下。systemRouter 内部无 /system 前缀，单独挂载。
   app.use('/api/v1/system', systemRouter);
+  app.use('/api/v1/shell', shellRouter);
   app.use('/api/v1', sessionRouter);
   app.use('/api/v1', taskRouter);
   app.use('/api/v1', equipmentRouter);

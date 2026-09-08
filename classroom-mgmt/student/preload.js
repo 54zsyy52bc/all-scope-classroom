@@ -18,6 +18,11 @@ const CH = {
   execute: 'shutdown:execute',
   cancel: 'shutdown:cancel',
   log: 'app:log',
+  // v5 全域桌面 shell
+  enterClassroom: 'shell:enter-classroom',
+  unlockExit: 'shell:unlock-exit',
+  getShellState: 'shell:get-state',
+  setAutoStart: 'shell:set-autostart',
 };
 
 function str(v, max) {
@@ -54,6 +59,13 @@ contextBridge.exposeInMainWorld('classroom', {
 
   // 持久化座位号 / 姓名 / 学号，返回主进程净化后的结果
   saveProfile: (profile) => ipcRenderer.invoke(CH.profile, cleanProfile(profile)),
+  // v5 全域桌面 shell
+  enterClassroom: () => ipcRenderer.invoke(CH.enterClassroom),
+  unlockExit: () => ipcRenderer.invoke(CH.unlockExit),
+  getShellState: () => ipcRenderer.invoke(CH.getShellState),
+  setAutoStart: (on) => ipcRenderer.invoke(CH.setAutoStart, !!on),
+  // 主进程守卫拦截通知（如 Alt+F4 / 非授权关闭）
+  onGuard: (cb) => ipcRenderer.on('shell:guard-blocked', () => { try { cb(); } catch (_e) { /* noop */ } }),
 
   // 关机票据校验：主进程用本地 secret 做 HMAC + 60s 时间窗比对
   verifyShutdown: (ticket) => ipcRenderer.invoke(CH.verify, cleanTicket(ticket)),

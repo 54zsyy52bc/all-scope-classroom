@@ -30,9 +30,7 @@ const DEFAULTS = {
   dryRun: true,
 };
 
-// ---------------------------------------------------------------------------
 // 配置读写
-// ---------------------------------------------------------------------------
 function readConfig() {
   let file = {};
   try {
@@ -52,10 +50,8 @@ function writeConfig(patch) {
   return next;
 }
 
-// ---------------------------------------------------------------------------
 // machineId：克隆镜像环境下也要尽量唯一（seat 冲突检测依赖它）
 // 取「主机名 + 首选物理网卡 MAC」做 sha256 前 8 位，碰撞概率可忽略。
-// ---------------------------------------------------------------------------
 function pickMac() {
   const ifaces = os.networkInterfaces();
   const names = Object.keys(ifaces).sort();
@@ -68,13 +64,11 @@ function pickMac() {
   }
   return '';
 }
-
 function deriveMachineId() {
   const raw = [os.hostname(), pickMac(), os.cpus()[0] && os.cpus()[0].model, os.arch()]
     .filter(Boolean).join('|');
   return 'M-' + crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8);
 }
-
 function ensureMachineId() {
   const cfg = readConfig();
   if (cfg.machineId && /^M-[0-9a-f]{8}$/i.test(String(cfg.machineId))) {
@@ -84,14 +78,10 @@ function ensureMachineId() {
   writeConfig({ machineId: id });
   return id;
 }
-
-// ---------------------------------------------------------------------------
 // 关机：三重校验中的后两重（签名 + 时间窗）在主进程；dry-run 兜底防误伤。
-// ---------------------------------------------------------------------------
 function hmac(secret, sessionId, ts) {
   return crypto.createHmac('sha256', secret).update(`${sessionId}:${ts}`).digest('hex');
 }
-
 function verifyShutdownToken(ticket) {
   const t = ticket || {};
   const cfg = readConfig();
@@ -115,12 +105,10 @@ function verifyShutdownToken(ticket) {
   }
   return { verified: true, reason: '', sessionId, ts };
 }
-
 function isDryRun(cfg) {
   // secret 仍是占位值 = 未授权部署，强制 dry-run（交付前必须改 secret 并置 dryRun=false）
   return cfg.dryRun === true || cfg.secret === PLACEHOLDER_SECRET;
 }
-
 function executeShutdown(opts) {
   const cfg = readConfig();
   const o = opts || {};
@@ -128,13 +116,11 @@ function executeShutdown(opts) {
   const delay = Math.min(MAX_SHUTDOWN_DELAY, Math.max(MIN_SHUTDOWN_DELAY,
     Number.isFinite(requested) ? Math.round(requested) : 60));
   const comment = `课堂结束，计算机将在 ${delay} 秒后关机。请及时保存作品。`;
-
   if (isDryRun(cfg)) {
     // eslint-disable-next-line no-console
     console.log(`[shutdown][dry-run] shutdown /s /t ${delay} /c "${comment}"`);
     return Promise.resolve({ executed: false, dryRun: true, delaySec: delay, comment });
   }
-
   return new Promise((resolve) => {
     execFile('shutdown', ['/s', '/t', String(delay), '/c', comment],
       { windowsHide: true, timeout: 5000 },
@@ -151,10 +137,7 @@ function executeShutdown(opts) {
       });
   });
 }
-
-// ---------------------------------------------------------------------------
 // 输入净化（渲染层任何输入都不可信）
-// ---------------------------------------------------------------------------
 function normSeat(v) {
   const m = String(v == null ? '' : v).trim().match(/^\d{1,2}$/);
   if (!m) return '';
@@ -162,14 +145,10 @@ function normSeat(v) {
   if (n < 1 || n > 99) return '';
   return String(n).padStart(2, '0');
 }
-
 function normText(v, max) {
   return String(v == null ? '' : v).trim().slice(0, max);
 }
-
-// ---------------------------------------------------------------------------
 // IPC：白名单通道，参数在主进程侧二次净化
-// ---------------------------------------------------------------------------
 function registerIpc(getMachineId) {
   ipcMain.handle('app:getRuntime', () => {
     const cfg = readConfig();
@@ -187,7 +166,6 @@ function registerIpc(getMachineId) {
       secretConfigured: cfg.secret !== PLACEHOLDER_SECRET,
     };
   });
-
   ipcMain.handle('app:saveProfile', (_e, profile) => {
     const p = profile || {};
     const patch = {};
@@ -198,7 +176,6 @@ function registerIpc(getMachineId) {
     const cfg = writeConfig(patch);
     return { seat: normSeat(cfg.seat), name: cfg.name, studentNo: cfg.studentNo };
   });
-
   ipcMain.handle('shutdown:verify', (_e, ticket) => verifyShutdownToken(ticket));
   ipcMain.handle('shutdown:execute', (_e, opts) => executeShutdown(opts));
   // 撤销关机：教师端"撤销关机"指令 → shutdown /a 中止倒计时（学生归还后仍需继续使用）
@@ -235,12 +212,10 @@ function registerIpc(getMachineId) {
     return true;
   });
 }
-
-// ---------------------------------------------------------------------------
 // 窗口
-// ---------------------------------------------------------------------------
 let mainWindow = null;
-
+let exitOk = false; // v5 全域桌面：自由创作/退出需先经口令验证置 true，否则 close 一律拦截
+const isKiosk = !process.argv.includes('--no-kiosk') && !process.argv.includes('--dev');
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -250,6 +225,7 @@ function createWindow() {
     title: '全域 · 学生机',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
+    kiosk: isKiosk, // v5：上课桌面常驻全屏 kiosk，防最小化/关闭/切走
     show: false,
     webPreferences: {
       preload: path.join(APP_ROOT, 'preload.js'),
@@ -260,19 +236,43 @@ function createWindow() {
       spellcheck: false,
     },
   });
-
+  // v5 守卫：未经 unlock（口令验证）一律不放行关闭（拦 Alt+F4 / 系统关机前窗口事件）
+  mainWindow.on('close', (e) => {
+    if (!exitOk && isKiosk) { e.preventDefault(); mainWindow.webContents.send('shell:guard-blocked'); }
+  });
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.loadFile(path.join(APP_ROOT, 'renderer', 'index.html'));
-
+  mainWindow.loadFile(path.join(APP_ROOT, 'renderer', 'shell.html'));
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
   return mainWindow;
 }
-
-// ---------------------------------------------------------------------------
+// 开机自启（上课模式重启回到全域桌面；管理员可在齿轮里关闭）
+function applyAutoStart(on) {
+  try {
+    if (on) saveConfig({ autoStart: true });
+    app.setLoginItemSettings({ openAtLogin: !!on });
+  } catch (_e) { /* 无权限忽略 */ }
+}
+// v5 shell IPC：模式切换 / 退出放行 / 桌面状态
+function registerShellIpc() {
+  ipcMain.handle('shell:enter-classroom', () => {
+    exitOk = false;
+    if (mainWindow) mainWindow.loadFile(path.join(APP_ROOT, 'renderer', 'index.html'));
+    return true;
+  });
+  ipcMain.handle('shell:unlock-exit', () => { // 口令验证通过后放行关闭（自由创作=退出到 Windows 桌面）
+    exitOk = true;
+    setImmediate(() => { if (mainWindow) mainWindow.close(); });
+    return true;
+  });
+  ipcMain.handle('shell:get-state', () => {
+    const cfg = readConfig();
+    return { machineId: cfg.machineId || '', kiosk: isKiosk, autoStart: !!cfg.autoStart };
+  });
+  ipcMain.handle('shell:set-autostart', (_e, on) => { applyAutoStart(!!on); return true; });
+}
 // 启动
-// ---------------------------------------------------------------------------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -283,14 +283,14 @@ if (!gotLock) {
       mainWindow.focus();
     }
   });
-
   app.whenReady().then(() => {
     const machineId = ensureMachineId();
     registerIpc(() => machineId);
+    registerShellIpc();
+    applyAutoStart(readConfig().autoStart !== false); // v5：默认开机自启回全域桌面
     // eslint-disable-next-line no-console
     console.log(`[boot] machineId=${machineId} config=${CONFIG_PATH}`);
     createWindow();
-
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
