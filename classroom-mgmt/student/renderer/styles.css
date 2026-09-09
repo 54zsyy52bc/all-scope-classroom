@@ -679,3 +679,6 @@ button, .btn { box-shadow: none; }
 .dock-app:hover { background: #d7e9f9; }
 .btn-link { font-family: inherit; font-size: 13px; color: #005a9e; background: none; border: 0; cursor: pointer; padding: 4px 8px; }
 .btn-link:hover { text-decoration: underline; }
+/* v5 组机换人续登记 */
+.btn-next { margin-top: 14px; }
+.hint-soft { margin-top: 8px; color: var(--muted); font-size: 13px; }

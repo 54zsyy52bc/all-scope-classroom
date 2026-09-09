@@ -67,6 +67,33 @@
       reverify();
     }
 
+    // 组机共用：上一位登记完成后把本机交给下一位组员（seat 自动+1，重发 hello）
+    function nextMember() {
+      if (!state.checkinDone) return;
+      const used = state.usedSeats || [];
+      if (state.seat) used.push(String(state.seat));
+      state.usedSeats = used;
+      const maxNo = used.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0 && n < 100)
+        .reduce((a, b) => Math.max(a, b), 0);
+      if (maxNo >= 99) { toast('本组登记序号已到上限', true); return; }
+      const next = maxNo + 1;
+      state.checkinDone = false;
+      state.returnDone = false;
+      state.name = '';
+      state.studentNo = '';
+      state.seat = pad2(String(next));
+      state.role = 'member';
+      state.borrowed = [];
+      state.returnChecked = {};
+      state.taskStatus = null;
+      resetEquipQty();
+      try { if (bridge && bridge.saveProfile) bridge.saveProfile({ seat: state.seat, name: '' }); } catch (_e) { /* noop */ }
+      sendHello();
+      renderMeta();
+      renderStage();
+      toast('请下一位同学登记 · 座位 ' + state.seat);
+    }
+
     function submitTaskStatus(status) {
       if (!state.currentTask || !state.currentTask.taskId) return;
       if (!sendUp('task', { taskId: state.currentTask.taskId, status })) return;
@@ -136,6 +163,8 @@
         redrawEquipList('equip-list');
       } else if (act === 'checkin-submit') {
         submitCheckin();
+      } else if (act === 'next-reg') {
+        nextMember();
       } else if (act === 'task-status') {
         submitTaskStatus(el.dataset.status);
       } else if (act === 'return-toggle') {

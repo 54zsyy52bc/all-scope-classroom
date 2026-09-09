@@ -29,6 +29,22 @@
     const el = $('sb-clock');
     if (el) el.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   }
+  // 教室互联状态：轮询教师机健康接口（学生桌面可直观察到大屏/服务在线）
+  let roomHost = 'http://127.0.0.1:3000';
+  function pollRoom() {
+    const chip = $('sb-room');
+    fetch(roomHost + '/api/v1/system/health').then((r) => r.json()).then((j) => {
+      const on = j && j.code === 0 && j.data && j.data.status === 'ok';
+      if (chip) { chip.textContent = on ? '教室在线' : '教室离线'; chip.style.color = on ? '#107c10' : '#c42b1c'; }
+    }).catch(() => { if (chip) { chip.textContent = '教室离线'; chip.style.color = '#c42b1c'; } });
+  }
+  async function roomInit() {
+    const bb = b();
+    if (bb && bb.getRuntime) {
+      try { const rt = await bb.getRuntime(); if (rt && rt.siotIp) roomHost = 'http://' + rt.siotIp + ':3000'; } catch (_e) { /* noop */ }
+    }
+    pollRoom(); setInterval(pollRoom, 4000);
+  }
   async function loadState() {
     const bb = b();
     if (bb) {
@@ -203,6 +219,7 @@
     $('btn-import').onclick = doImport;
     $('btn-back-shell').onclick = backShell;
     setInterval(clock, 10000); clock();
+    roomInit();
     const bb = b();
     if (bb && bb.guardStart) bb.guardStart(); // 守卫（deny 由桌面配置）
     if (bb && bb.onKill) bb.onKill((name) => floatToast('已阻止应用：' + name, true));

@@ -98,9 +98,13 @@
     return '<section class="panel panel-center">'
       + '<span class="state-icon" data-state="done">' + icon('circle-check', 64) + '</span>'
       + '<h1 class="hero-title">登记成功</h1>'
-      + '<p class="hero-sub">' + esc(state.name || '') + ' · 座位 ' + esc(state.seat || '') + '</p>'
+      + '<p class="hero-sub">' + esc(state.name || '') + ' · 座位 ' + esc(state.seat || '')
+      + (state.role === 'leader' ? ' · 本组组长' : ' · 组员') + '</p>'
       + (items ? '<ul class="summary-list">' + items + '</ul>' : '')
-      + '<p class="hint">等待老师发布任务，页面会自动切换。</p></section>';
+      + '<p class="hint">等待老师发布任务，页面会自动切换。</p>'
+      + '<button type="button" class="btn btn-primary btn-xl btn-next" data-act="next-reg">'
+      + icon('user-plus', 22) + '本组下一位同学登记</button>'
+      + '<p class="hint hint-soft">本组共用一台电脑：上一位登完后点此，把机器交给下一位组员继续登记。</p></section>';
   }
 
   function viewCheckin(state) {
