@@ -58,8 +58,12 @@ function getSnapshot() {
   if (currentTaskRow) {
     currentTask = taskSvc.toTask(currentTaskRow);
     const statuses = db.listTaskStatuses({ sessionId, taskId: currentTaskRow.task_id });
-    for (const s of statuses) seatTaskStatus[s.seat] = s.status; // 每座最新（ts 降序，首条即最新）
-    for (const st of Object.values(seatTaskStatus)) { // 按最新状态计数，避免旧状态行重复累加
+    // 每座只取最新状态：listTaskStatuses 为 ts 降序（索引 0=最新）。
+    // 正序遍历且仅首次出现写入 → 每座取到的是最新状态，旧状态不再覆盖。
+    for (const s of statuses) {
+      if (seatTaskStatus[s.seat] == null) seatTaskStatus[s.seat] = s.status;
+    }
+    for (const st of Object.values(seatTaskStatus)) { // 按每座最新状态计数
       if (st === 'doing') taskDoing += 1;
       else if (st === 'done') taskDone += 1;
       else if (st === 'help') taskHelp += 1;

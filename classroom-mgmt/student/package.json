@@ -25,6 +25,7 @@
     "asar": false,
     "files": [
       "main.js",
+      "main-guard.js",
       "preload.js",
       "app-config.json",
       "renderer/**/*",
@@ -34,6 +35,7 @@
     ],
     "win": {
       "target": [
+        "nsis",
         "dir"
       ],
       "signAndEditExecutable": false
