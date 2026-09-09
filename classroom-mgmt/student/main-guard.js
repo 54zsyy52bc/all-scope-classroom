@@ -82,12 +82,29 @@ module.exports = function registerGuard(deps) {
   function shellStart(p) { // 兜底：cmd start 可解析 .lnk / UWP / 注册表关联
     try { spawn('cmd', ['/c', 'start', '""', '"' + p + '"'], { detached: true, stdio: 'ignore', windowsHide: true }).unref(); } catch (_e) { /* noop */ }
   }
+  // 第 3 级兜底：模拟人手在开始菜单搜索启动（Ctrl+Esc → 输入应用名 → 回车），
+  // 专治"检测是否被手动启动/需开始菜单项"的软件。应用名取 exe 文件名（无扩展名）。
+  function searchStart(name) {
+    try {
+      const base = String(name || '').replace(/\\/g, '/').split('/').pop().replace(/\.[^.]+$/, '') || '应用';
+      const safe = base.replace(/[{}()\[\]+^%~]/g, (m) => '{' + m + '}');
+      const ps = "$w=New-Object -ComObject WScript.Shell;Start-Sleep -Milliseconds 250;"
+        + "$w.SendKeys('^{ESC}');Start-Sleep -Milliseconds 900;"
+        + "$w.SendKeys('" + safe + "');Start-Sleep -Milliseconds 700;$w.SendKeys('{ENTER}');";
+      const { execFile } = require('node:child_process');
+      execFile('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', ps],
+        { windowsHide: true, timeout: 12000 }, () => { /* best-effort */ });
+    } catch (_e) { /* noop */ }
+  }
   function launch(appId) {
     const a = allowMap[appId];
     if (!a || !a.path) return false;
     if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return true; } // 快捷方式必须走 shell
     const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });
-    child.on('error', () => shellStart(a.path)); // exe 直接启动失败（UWP 等）→ shell 兜底
+    child.on('error', () => { // 直接启动失败 → shell 兜底 → 仍失败则模拟开始菜单搜索启动
+      shellStart(a.path);
+      setTimeout(() => searchStart(a.path), 1800);
+    });
     child.unref();
     return true;
   }
