@@ -96,14 +96,32 @@ module.exports = function registerGuard(deps) {
         { windowsHide: true, timeout: 12000 }, () => { /* best-effort */ });
     } catch (_e) { /* noop */ }
   }
+  // 进程是否已提权（学生端以管理员身份运行时，子进程自动继承高权限）
+  let elevatedCache = null;
+  function detectElevated() {
+    return new Promise((resolve) => {
+      if (elevatedCache != null) { resolve(elevatedCache); return; }
+      execFile('net', ['session'], { windowsHide: true }, (err) => { elevatedCache = !err; resolve(elevatedCache); });
+    });
+  }
+  function runAsAdmin(p) { // 应用需要管理员权限 → 提权启动（学生端已提权时不弹 UAC）
+    try {
+      const cmd = 'Start-Process -FilePath \'' + String(p).replace(/'/g, "''") + '\' -Verb RunAs';
+      execFile('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd],
+        { windowsHide: true }, () => { /* best-effort */ });
+    } catch (_e) { /* noop */ }
+  }
   function launch(appId) {
     const a = allowMap[appId];
     if (!a || !a.path) return false;
     if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return true; } // 快捷方式必须走 shell
     const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });
-    child.on('error', () => { // 直接启动失败 → shell 兜底 → 仍失败则模拟开始菜单搜索启动
-      shellStart(a.path);
-      setTimeout(() => searchStart(a.path), 1800);
+    child.on('error', () => { // 直接启动失败 → 提权尝试(权限应用) + shell/开始菜单兜底
+      detectElevated().then((elev) => {
+        if (!elev) runAsAdmin(a.path);
+        shellStart(a.path);
+        setTimeout(() => searchStart(a.path), 2200);
+      });
     });
     child.unref();
     return true;
@@ -122,9 +140,10 @@ module.exports = function registerGuard(deps) {
   ipcMain.handle('guard:start', () => { start(dRead()); return true; });
   ipcMain.handle('guard:stop', () => { stop(); return true; });
   ipcMain.handle('guard:launch', (_e, appId) => launch(String(appId || '')));
-  ipcMain.handle('shell:get-state', () => {
+  ipcMain.handle('shell:get-state', async () => {
     const cfg = readConfig();
-    return { machineId: cfg.machineId || '', kiosk: isKiosk, autoStart: !!cfg.autoStart };
+    return { machineId: cfg.machineId || '', kiosk: isKiosk, autoStart: !!cfg.autoStart,
+      elevated: await detectElevated() }; // 学生端是否管理员运行（决定权限应用能否直开）
   });
   ipcMain.handle('shell:set-autostart', (_e, on) => {
     try { saveConfig({ autoStart: !!on }); app.setLoginItemSettings({ openAtLogin: !!on }); } catch (_err) { /* noop */ }

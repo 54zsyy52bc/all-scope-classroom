@@ -48,7 +48,12 @@
   async function loadState() {
     const bb = b();
     if (bb) {
-      try { const st = await bb.getShellState(); $('sb-machine').textContent = '机器 ' + (st.machineId || '-'); } catch (_e) { /* noop */ }
+      try {
+        const st = await bb.getShellState();
+        $('sb-machine').textContent = '机器 ' + (st.machineId || '-');
+        const el = $('sb-elev');
+        if (el) { el.hidden = !(st && st.elevated === false); el.textContent = '未用管理员运行'; el.style.color = '#d35d0a'; el.title = '右键以管理员身份运行学生端，需要权限的应用才能打开'; }
+      } catch (_e) { /* noop */ }
       try { dcfg = await bb.getDesktopConfig(); } catch (_e) { /* noop */ }
     }
     $('course-name').textContent = (dcfg.course && dcfg.course.name) || '全域课堂';
