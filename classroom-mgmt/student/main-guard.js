@@ -103,6 +103,8 @@ module.exports = function registerGuard(deps) {
         if (pw.length < 4 || pw.length > 32) { err.push('口令须 4-32 位'); }
         else if (other.hash && other.hash === hashOf(patch.scope === 'admin' ? 'mode-exit' : 'admin', pw)) { err.push('管理员口令与自由创作口令不可相同'); }
         else { slot.hash = hashOf(patch.scope, pw); slot.enabled = true; }
+      } else if (slot.enabled && !slot.hash) {
+        err.push(patch.scope === 'admin' ? '启用管理员口令需先输入新口令' : '启用自由创作口令需先输入新口令');
       }
     }
     if (patch && patch.course) {

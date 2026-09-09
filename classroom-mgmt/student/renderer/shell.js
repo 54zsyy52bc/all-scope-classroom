@@ -119,13 +119,15 @@
       const r = await b().setShellConfig({ scope: 'mode-exit', pwd: $('c-exit-pwd').value, enabled: $('c-exit-en').checked });
       if (r && r.ok) msg('自由创作口令已保存'); else if (r) msg('口令保存失败：' + (r.err || '未知'), true);
     } else {
-      await b().setShellConfig({ scope: 'mode-exit', enabled: $('c-exit-en').checked });
+      const r = await b().setShellConfig({ scope: 'mode-exit', enabled: $('c-exit-en').checked });
+      if (r && !r.ok) { msg('自由创作：' + (r.err || '保存失败'), true); return; }
     }
     if ($('c-admin-pwd').value) {
       const r = await b().setShellConfig({ scope: 'admin', pwd: $('c-admin-pwd').value, enabled: $('c-admin-en').checked });
       if (r && r.ok) msg('管理员口令已保存（两口令不可相同）'); else if (r) msg('口令保存失败：' + (r.err || '未知'), true);
     } else {
-      await b().setShellConfig({ scope: 'admin', enabled: $('c-admin-en').checked });
+      const r = await b().setShellConfig({ scope: 'admin', enabled: $('c-admin-en').checked });
+      if (r && !r.ok) { msg('管理员：' + (r.err || '保存失败'), true); return; }
     }
     // 课程 + 白名单 + 禁用进程
     const apps = ($('c-apps').value || '').split('\n').map((ln) => ln.trim()).filter(Boolean)
@@ -157,7 +159,17 @@
       } catch (_e) { /* noop */ }
     };
     $('a-free').onclick = async () => { $('admin-overlay').hidden = true; await goFree(); };
-    $('c-save').onclick = saveAll;
+    // 保存按钮：任何异步异常都要在面板内可见，不再静默
+    $('c-save').onclick = () => {
+      audit('save-click', '');
+      saveAll().catch((e) => {
+        try {
+          audit('save-error', (e && e.message) || String(e));
+          const el = $('admin-err');
+          if (el) { el.textContent = '保存出错：' + ((e && e.message) || e); el.style.color = '#c42b1c'; }
+        } catch (_e2) { /* noop */ }
+      });
+    };
     if (b() && b().onGuard) b().onGuard(() => {
       const e = document.createElement('div');
       e.textContent = '课堂桌面已锁定，无法直接退出（需老师口令）';
