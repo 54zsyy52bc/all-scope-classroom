@@ -277,10 +277,10 @@ if (!gotLock) {
       const machineId = ensureMachineId();
       registerIpc(() => machineId);
       registerShellIpc();
-      const guard = registerGuard({ app, ipcMain, readConfig, saveConfig });
+      const guard = registerGuard({ app, ipcMain, readConfig, saveConfig: writeConfig });
       try { // v5：默认开机自启回全域桌面
         const _ac = readConfig();
-        if (_ac.autoStart !== false) { saveConfig({ autoStart: true }); app.setLoginItemSettings({ openAtLogin: true }); }
+        if (_ac.autoStart !== false) { writeConfig({ autoStart: true }); app.setLoginItemSettings({ openAtLogin: true }); }
       } catch (_e) { /* 自启失败忽略 */ }
       console.log(`[boot] machineId=${machineId} config=${CONFIG_PATH}`);
       createWindow();
