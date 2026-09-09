@@ -88,21 +88,23 @@ module.exports = function registerGuard(deps) {
   });
   ipcMain.handle('shell:get-config', () => cfgPublic(cfgRead()));
   ipcMain.handle('shell:verify-local', (_e, scope, pwd) => {
-    const slot = (cfgRead() || {})[scope] || {};
+    const key = scope === 'admin' ? 'admin' : 'modeExit'; // 外部 scope: admin | mode-exit
+    const slot = (cfgRead() || {})[key] || {};
     if (!slot.enabled || !slot.hash) return { ok: true };
-    return { ok: hashOf(String(scope), String(pwd || '')) === slot.hash };
+    return { ok: hashOf(key, String(pwd || '')) === slot.hash };
   });
   ipcMain.handle('shell:set-config', (_e, patch) => {
     const sc = cfgRead(); const err = [];
     const pw = patch && patch.pwd ? String(patch.pwd) : '';
     if (patch && patch.scope && ['admin', 'mode-exit'].includes(patch.scope)) {
-      const slot = sc[patch.scope];
-      const other = patch.scope === 'admin' ? sc.modeExit : sc.admin;
+      const key = patch.scope === 'admin' ? 'admin' : 'modeExit'; // 外部 scope 映射内部键
+      const slot = sc[key];
+      const other = key === 'admin' ? sc.modeExit : sc.admin;
       if (patch.enabled != null) slot.enabled = !!patch.enabled;
       if (pw) {
         if (pw.length < 4 || pw.length > 32) { err.push('口令须 4-32 位'); }
-        else if (other.hash && other.hash === hashOf(patch.scope === 'admin' ? 'mode-exit' : 'admin', pw)) { err.push('管理员口令与自由创作口令不可相同'); }
-        else { slot.hash = hashOf(patch.scope, pw); slot.enabled = true; }
+        else if (other.hash && other.hash === hashOf(other === sc.admin ? 'admin' : 'modeExit', pw)) { err.push('管理员口令与自由创作口令不可相同'); }
+        else { slot.hash = hashOf(key, pw); slot.enabled = true; }
       } else if (slot.enabled && !slot.hash) {
         err.push(patch.scope === 'admin' ? '启用管理员口令需先输入新口令' : '启用自由创作口令需先输入新口令');
       }
