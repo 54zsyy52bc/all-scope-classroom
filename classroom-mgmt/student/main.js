@@ -247,13 +247,8 @@ function createWindow() {
   }
   return mainWindow;
 }
-// v5 shell IPC：模式切换 / 退出放行 / 桌面状态
+// v5 shell IPC：退出放行（桌面/课堂切换由守卫模块提供 shell:open-desktop/class/back）
 function registerShellIpc() {
-  ipcMain.handle('shell:enter-classroom', () => {
-    exitOk = false;
-    if (mainWindow) mainWindow.loadFile(path.join(APP_ROOT, 'renderer', 'index.html'));
-    return true;
-  });
   ipcMain.handle('shell:unlock-exit', () => { // 口令验证通过后放行关闭（自由创作=退出到 Windows 桌面）
     exitOk = true;
     setImmediate(() => { if (mainWindow) mainWindow.close(); });

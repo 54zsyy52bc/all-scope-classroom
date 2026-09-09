@@ -18,18 +18,24 @@ const CH = {
   execute: 'shutdown:execute',
   cancel: 'shutdown:cancel',
   log: 'app:log',
-  // v5 全域桌面 shell
-  enterClassroom: 'shell:enter-classroom',
+  // v5 全域桌面 shell / 桌面
   unlockExit: 'shell:unlock-exit',
   getShellState: 'shell:get-state',
   setAutoStart: 'shell:set-autostart',
   guardStart: 'guard:start',
   guardStop: 'guard:stop',
   launchApp: 'guard:launch',
-  backToShell: 'shell:back',
+  openDesktop: 'shell:open-desktop',
+  openClass: 'shell:open-class',
+  backToDesktop: 'shell:back',
+  goShell: 'shell:go-shell',
   getShellConfig: 'shell:get-config',
   setShellConfig: 'shell:set-config',
   verifyLocal: 'shell:verify-local',
+  getDesktopConfig: 'desktop:get',
+  setDesktopConfig: 'desktop:set',
+  pickApp: 'desktop:pick-app',
+  importConfig: 'desktop:import-config',
 };
 
 function str(v, max) {
@@ -66,8 +72,11 @@ contextBridge.exposeInMainWorld('classroom', {
 
   // 持久化座位号 / 姓名 / 学号，返回主进程净化后的结果
   saveProfile: (profile) => ipcRenderer.invoke(CH.profile, cleanProfile(profile)),
-  // v5 全域桌面 shell
-  enterClassroom: () => ipcRenderer.invoke(CH.enterClassroom),
+  // v5 全域桌面 shell / 桌面
+  openDesktop: () => ipcRenderer.invoke(CH.openDesktop),
+  openClass: () => ipcRenderer.invoke(CH.openClass),
+  backToDesktop: () => ipcRenderer.invoke(CH.backToDesktop),
+  goShell: () => ipcRenderer.invoke(CH.goShell),
   unlockExit: () => ipcRenderer.invoke(CH.unlockExit),
   getShellState: () => ipcRenderer.invoke(CH.getShellState),
   setAutoStart: (on) => ipcRenderer.invoke(CH.setAutoStart, !!on),
@@ -77,12 +86,16 @@ contextBridge.exposeInMainWorld('classroom', {
   guardStart: (cfg) => ipcRenderer.invoke(CH.guardStart, cfg),
   guardStop: () => ipcRenderer.invoke(CH.guardStop),
   launchApp: (appId) => ipcRenderer.invoke(CH.launchApp, appId),
-  backToShell: () => ipcRenderer.invoke(CH.backToShell),
   onKill: (cb) => ipcRenderer.on('guard:kill', (_e, name) => { try { cb(name); } catch (_err) { /* noop */ } }),
-  // v5 本地桌面配置（口令哈希在主进程校验与存储）
+  // v5 口令（哈希在主进程校验与存储）
   getShellConfig: () => ipcRenderer.invoke(CH.getShellConfig),
   setShellConfig: (patch) => ipcRenderer.invoke(CH.setShellConfig, patch),
   verifyLocal: (scope, pwd) => ipcRenderer.invoke(CH.verifyLocal, scope, pwd),
+  // v5.1 桌面配置（独立 desktop-config.json）
+  getDesktopConfig: () => ipcRenderer.invoke(CH.getDesktopConfig),
+  setDesktopConfig: (patch) => ipcRenderer.invoke(CH.setDesktopConfig, patch),
+  pickApp: () => ipcRenderer.invoke(CH.pickApp),
+  importConfig: () => ipcRenderer.invoke(CH.importConfig),
 
   // 关机票据校验：主进程用本地 secret 做 HMAC + 60s 时间窗比对
   verifyShutdown: (ticket) => ipcRenderer.invoke(CH.verify, cleanTicket(ticket)),

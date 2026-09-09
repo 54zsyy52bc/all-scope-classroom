@@ -16,10 +16,14 @@
   }
 
   async function loadLocal() {
-    if (!b() || !b().getShellConfig) return;
+    if (!b()) return;
     try {
       const cfg = await b().getShellConfig();
       if (cfg) sc = cfg;
+    } catch (_e) { /* noop */ }
+    try { // 课程来自桌面配置（独立 json）
+      const dc = await b().getDesktopConfig();
+      if (dc && dc.course) sc = Object.assign(sc || {}, { course: dc.course });
     } catch (_e) { /* noop */ }
   }
 
@@ -74,8 +78,7 @@
 
   async function enterClassroom() {
     audit('mode:class', 'course=' + ((sc && sc.course && sc.course.name) || '-'));
-    if (b() && b().guardStart) { try { await b().guardStart(); } catch (_e) { /* 守卫由主进程本地配置启动 */ } }
-    if (b() && b().enterClassroom) { try { await b().enterClassroom(); } catch (_e) { /* noop */ } }
+    if (b() && b().openDesktop) { try { await b().openDesktop(); } catch (_e) { /* noop */ } }
   }
 
   async function goFree() {
@@ -90,12 +93,8 @@
 
   function fillAdmin() {
     if (!sc) return;
-    $('c-exit-en').checked = !!sc.modeExit.enabled;
-    $('c-admin-en').checked = !!sc.admin.enabled;
-    $('c-course-name').value = sc.course.name || '';
-    $('c-apps').value = (sc.course.apps || []).map((a) => (a.label || a.exe) + '|' + a.exe).join('\n');
-    $('c-deny').value = (sc.guard.denyExe || []).join(',');
-    $('c-guard-en').checked = !!sc.guard.enabled;
+    $('c-exit-en').checked = !!(sc.modeExit && sc.modeExit.enabled);
+    $('c-admin-en').checked = !!(sc.admin && sc.admin.enabled);
     $('c-exit-pwd').value = '';
     $('c-admin-pwd').value = '';
     $('admin-err').textContent = '';
@@ -114,7 +113,6 @@
     const errEl = $('admin-err');
     const msg = (t, err) => { errEl.textContent = t; errEl.style.color = err ? '#c42b1c' : '#107c10'; };
     if (!b() || !b().setShellConfig) { msg('当前运行环境不支持保存', true); return; }
-    // 口令（各自独立按钮逻辑：勾选状态 + 新口令）
     if ($('c-exit-pwd').value) {
       const r = await b().setShellConfig({ scope: 'mode-exit', pwd: $('c-exit-pwd').value, enabled: $('c-exit-en').checked });
       if (r && r.ok) msg('自由创作口令已保存'); else if (r) msg('口令保存失败：' + (r.err || '未知'), true);
@@ -129,21 +127,7 @@
       const r = await b().setShellConfig({ scope: 'admin', enabled: $('c-admin-en').checked });
       if (r && !r.ok) { msg('管理员：' + (r.err || '保存失败'), true); return; }
     }
-    // 课程 + 白名单 + 禁用进程
-    const apps = ($('c-apps').value || '').split('\n').map((ln) => ln.trim()).filter(Boolean)
-      .map((ln) => {
-        const i = ln.indexOf('|');
-        const label = (i >= 0 ? ln.slice(0, i) : ln).trim();
-        const exe = (i >= 0 ? ln.slice(i + 1) : ln).trim();
-        return { label: label || exe, exe };
-      }).filter((a) => a.exe);
-    const deny = ($('c-deny').value || '').split(',').map((x) => x.trim()).filter(Boolean);
-    const r2 = await b().setShellConfig({
-      course: { name: $('c-course-name').value.trim() || '信息技术·硬件实践课', apps },
-      guard: { enabled: $('c-guard-en').checked, denyExe: deny },
-    });
-    if (r2 && r2.ok) { msg('本机桌面配置已保存（重启/进课堂生效）'); await loadLocal(); renderCourse(); }
-    else if (r2) msg('保存失败：' + (r2.err || '未知'), true);
+    msg('口令已保存。课程/应用白名单请在【桌面模式 → 设置】中添加（选 exe 路径）。');
   }
 
   function bind() {

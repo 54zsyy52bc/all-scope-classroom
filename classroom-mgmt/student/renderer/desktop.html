@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>全域 · 桌面</title>
+  <link rel="icon" type="image/png" href="logo-mark.png" />
+  <style>
+    :root { --bg:#ffffff; --panel:#f5f5f5; --text:#1b1b1b; --muted:#6f6f6f; --line:#e0e0e0;
+      --accent:#0078d7; --accent-dark:#006cc1; --ok:#107c10; --warn:#c42b1c; }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-user-select:none; user-select:none; }
+    html,body { height:100%; }
+    body { font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;
+      background:var(--bg); color:var(--text); display:flex; flex-direction:column; overflow:hidden; }
+    [hidden]{display:none!important}
+    /* 状态条 */
+    .statusbar { display:flex; align-items:center; justify-content:space-between; padding:10px 18px;
+      border-bottom:1px solid var(--line); background:#fff; }
+    .sb-left, .sb-right { display:flex; align-items:center; gap:12px; }
+    .sb-logo { height:26px; }
+    .chip { border:1px solid var(--line); padding:3px 10px; font-size:12px; color:var(--muted); }
+    .chip.guard-on { color:var(--ok); border-color:#bfe5bf; background:#f0faf0; }
+    .link { font-size:13px; color:var(--accent); background:none; border:0; cursor:pointer; padding:4px 6px; }
+    .link:hover{text-decoration:underline}
+    /* 主屏 */
+    main { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:16px 24px 0; }
+    .welcome h1 { font-size:22px; }
+    .welcome p { color:var(--muted); font-size:13px; margin-top:2px; }
+    .home-grid { flex:1; overflow-y:auto; padding:18px 0; display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:18px; align-content:start; }
+    .tile { background:#eaf4fd; border:1px solid #cfe4f7; color:#005a9e; min-height:132px;
+      display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px;
+      cursor:pointer; font-family:inherit; padding:12px; }
+    .tile:hover{ background:#d9edfb; }
+    .tile .ico { width:40px; height:40px; background:var(--accent); color:#fff; font-size:20px;
+      display:flex; align-items:center; justify-content:center; font-weight:700; }
+    .tile .nm { font-size:14px; font-weight:600; color:var(--text); max-width:100%; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
+    .empty-guide { grid-column:1/-1; color:var(--muted); text-align:center; padding:30px 0; font-size:14px; }
+    /* 底部 Dock */
+    .dock { display:flex; align-items:center; justify-content:space-between; padding:10px 24px 14px;
+      border-top:1px solid var(--line); background:#fff; }
+    .dock-right { display:flex; gap:10px; }
+    .dock-btn { font-family:inherit; font-size:15px; padding:11px 22px; cursor:pointer;
+      border:1px solid var(--line); background:#fff; color:var(--text); display:flex; align-items:center; gap:8px; }
+    .dock-btn:hover{ background:var(--panel); }
+    .dock-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .dock-btn.primary:hover{ background:var(--accent-dark); }
+    /* 抽屉 */
+    .drawer-mask { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:40; }
+    .drawer { position:fixed; left:0; right:0; bottom:0; max-height:78%; background:#fff; z-index:41;
+      border-top:2px solid var(--accent); display:flex; flex-direction:column; }
+    .drawer-head { padding:12px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center;
+      justify-content:space-between; }
+    .drawer-head h2 { font-size:17px; }
+    .drawer-body { overflow-y:auto; padding:14px 18px 22px; display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:14px; }
+    .d-app { background:var(--panel); border:0; cursor:pointer; padding:14px 6px; font-family:inherit;
+      display:flex; flex-direction:column; align-items:center; gap:8px; }
+    .d-app:hover{ background:#e8eef6; }
+    .d-app .ico{ width:44px; height:44px; background:var(--accent); color:#fff; display:flex; align-items:center;
+      justify-content:center; font-size:19px; font-weight:700; }
+    .d-app.sys .ico{ background:#666; }
+    .d-app .nm { font-size:12px; color:var(--text); max-width:100%; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
+    /* 弹层 */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:flex;
+      align-items:center; justify-content:center; }
+    .modal { background:#fff; width:560px; max-width:94vw; max-height:86vh; overflow:auto; padding:22px; }
+    .modal h3 { font-size:18px; margin-bottom:12px; }
+    .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0;
+      border-bottom:1px solid #f0f0f0; font-size:14px; }
+    .row .path { color:var(--muted); font-size:12px; max-width:230px; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
+    .mini { font-family:inherit; font-size:12px; padding:5px 10px; cursor:pointer; border:1px solid var(--line);
+      background:#fff; }
+    .mini.blue{ background:var(--accent); color:#fff; border-color:var(--accent); }
+    .mini.danger{ color:var(--warn); border-color:#e6b4ac; }
+    label.f { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+    input[type=text], input[type=password], textarea { width:100%; padding:8px 10px; font-size:14px;
+      border:1px solid var(--line); font-family:inherit; }
+    .err { color:var(--warn); font-size:13px; min-height:18px; margin-top:6px; }
+    .ok { color:var(--ok); font-size:13px; min-height:18px; margin-top:6px; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:14px; }
+    .big-btn { font-family:inherit; font-size:15px; padding:10px 20px; border:0; background:var(--accent);
+      color:#fff; cursor:pointer; }
+    .big-btn.ghost { background:#fff; color:var(--text); border:1px solid var(--line); }
+    .clock { font-size:15px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="statusbar">
+    <div class="sb-left"><img class="sb-logo" src="logo-text.png" alt="全域" /></div>
+    <div class="sb-right">
+      <span class="chip" id="sb-machine">机器 -</span>
+      <span class="chip guard-on" id="sb-guard">防护中</span>
+      <span class="clock" id="sb-clock"></span>
+      <button class="link" id="sb-settings">设置</button>
+    </div>
+  </div>
+
+  <main>
+    <div class="welcome"><h1 id="course-name">…</h1><p>点击磁贴打开课程应用 · 登记上课在下方</p></div>
+    <div class="home-grid" id="home-grid"></div>
+  </main>
+
+  <div class="dock">
+    <div style="display:flex;gap:10px">
+      <button class="dock-btn primary" id="btn-class">上课登记</button>
+    </div>
+    <div class="dock-right">
+      <button class="dock-btn" id="btn-drawer">全部应用</button>
+    </div>
+  </div>
+
+  <div class="drawer-mask" id="drawer-mask" hidden></div>
+  <div class="drawer" id="drawer" hidden>
+    <div class="drawer-head"><h2>全部应用</h2><button class="link" id="btn-drawer-close">关闭</button></div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </div>
+
+  <!-- 设置（管理员） -->
+  <div class="overlay" id="set-overlay" hidden>
+    <div class="modal">
+      <h3>桌面设置（本机）</h3>
+      <label class="f">课程名称</label><input id="f-course-name" type="text" />
+      <label class="f">课程应用（点『添加应用』选 exe/快捷方式，可设名称与主屏固定）</label>
+      <div id="app-list"></div>
+      <div class="row" style="justify-content:flex-start"><button class="mini blue" id="btn-add-app">+ 添加应用</button></div>
+      <label class="f">禁用进程（逗号分隔 exe，如 chrome.exe）</label>
+      <input id="f-deny" type="text" />
+      <label class="f"><input id="f-guard-en" type="checkbox" style="width:auto" /> 启用禁用进程强杀</label>
+      <div class="row" style="justify-content:flex-start">
+        <button class="mini" id="btn-import">导入课程桌面包(.json)</button>
+        <button class="mini" id="btn-back-shell">回模式选择</button>
+      </div>
+      <div class="ok" id="set-msg"></div>
+      <div class="modal-actions">
+        <button class="big-btn ghost" id="btn-close-set">关闭</button>
+        <button class="big-btn" id="btn-save-set">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="desktop.js"></script>
+</body>
+</html>

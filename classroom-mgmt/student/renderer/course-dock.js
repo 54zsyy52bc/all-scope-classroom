@@ -11,8 +11,8 @@
 
   async function localCfg() {
     const bb = bridge();
-    if (!bb || !bb.getShellConfig) return null;
-    try { return await bb.getShellConfig(); } catch (_e) { return null; }
+    if (!bb || !bb.getDesktopConfig) return null;
+    try { return await bb.getDesktopConfig(); } catch (_e) { return null; }
   }
   function showDock(course) {
     const apps = (course && course.apps) || [];
@@ -57,7 +57,7 @@
   async function onAdmin() {
     if (!(await pwdOverlay())) return;
     const b2 = bridge();
-    if (b2 && b2.backToShell) { try { await b2.backToShell(); } catch (_e) { /* noop */ } }
+    if (b2 && b2.backToDesktop) { try { await b2.backToDesktop(); } catch (_e) { /* noop */ } }
   }
 
   async function boot() {
