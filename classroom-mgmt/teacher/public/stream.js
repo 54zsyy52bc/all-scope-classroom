@@ -55,8 +55,35 @@
     es.addEventListener('task.status', (e) => {
       const d = JSON.parse(e.data);
       logEvent(esc(d.payload.seat) + ' 号 ' + (d.payload.status || ''));
+      if (d.payload.status === 'help') flashHelp(d.payload.seat, d.payload.name || '');
       if (refreshSoonFn) refreshSoonFn();
     });
+
+    // 求助强提醒：顶部脉冲横幅 + 蜂鸣（8 秒限频）
+    function flashHelp(seat, name) {
+      const banner = document.getElementById('help-banner');
+      if (!banner) return;
+      const t = document.getElementById('help-banner-text');
+      if (t) t.textContent = name ? name + '（' + seat + ' 号）正在求助，请过去看一下！' : '座位 ' + seat + ' 有同学求助，请过去看一下！';
+      banner.hidden = false;
+      const now = Date.now();
+      if (!flashHelp.last || now - flashHelp.last > 8000) {
+        flashHelp.last = now;
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) {
+            const ac = new AC(); const g = ac.createGain(); g.connect(ac.destination);
+            for (let k = 0; k < 3; k += 1) {
+              const o = ac.createOscillator(); o.connect(g);
+              o.frequency.value = 880; o.type = 'square';
+              o.start(ac.currentTime + k * 0.28); o.stop(ac.currentTime + k * 0.28 + 0.18);
+            }
+          }
+        } catch (_e) { /* 无声环境忽略 */ }
+      }
+      clearTimeout(flashHelp.hideTimer);
+      flashHelp.hideTimer = setTimeout(() => { banner.hidden = true; }, 15000);
+    }
     es.addEventListener('student.return', (e) => {
       const d = JSON.parse(e.data);
       logEvent(esc(d.payload.seat) + ' 号归还器材');

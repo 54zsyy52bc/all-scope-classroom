@@ -682,3 +682,7 @@ button, .btn { box-shadow: none; }
 /* v5 组机换人续登记 */
 .btn-next { margin-top: 14px; }
 .hint-soft { margin-top: 8px; color: var(--muted); font-size: 13px; }
+/* v5 手动同步（学生主动刷新状态） */
+.sync-foot { margin: 18px auto 4px; display: block; font-family: inherit; font-size: 13px;
+  color: #6f6f6f; background: none; border: 1px dashed #cfcfcf; padding: 6px 16px; cursor: pointer; }
+.sync-foot:hover { color: #005a9e; border-color: #005a9e; }

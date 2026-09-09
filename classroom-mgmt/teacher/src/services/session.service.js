@@ -117,7 +117,14 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
   }
   const active = db.getCurrentSession();
   if (active && active.phase !== 'closed') {
-    fail('E-SESSION-02', '已有进行中的课堂会话，请先下课或关闭');
+    // v5.1：开新课即自动归档上一节遗留会话（含服务重启残留的 waiting），避免"一进来就是上节课"
+    try {
+      db.updateSession(active.session_id, { phase: 'closed', end_time: nowMs() });
+      sse.publish('phase.changed', { from: active.phase, to: 'closed' });
+      require('./policy.service').applyPolicy(active.session_id);
+      // eslint-disable-next-line no-console
+      console.log(`[session] 开新课前自动归档上节课 ${active.session_id}（${active.phase}→closed）`);
+    } catch (_e) { /* 归档失败不阻断开新 */ }
   }
 
   // 班级预设：未显式提供班级名/座位数/分组时，从预设加载

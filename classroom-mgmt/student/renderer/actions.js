@@ -170,6 +170,9 @@
         submitCheckin();
       } else if (act === 'next-reg') {
         nextMember();
+      } else if (act === 'sync-status') {
+        sendHello();
+        toast('已向老师请求同步，请稍候…');
       } else if (act === 'task-status') {
         submitTaskStatus(el.dataset.status);
       } else if (act === 'return-toggle') {

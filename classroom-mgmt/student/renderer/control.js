@@ -82,10 +82,18 @@
           t.remainingMs = Math.max(0, t.remainingMs - 1000);
           if (t.remainingMs <= 0) {
             t.timerState = 'expired'; // 本地兜底；教师端截止广播会校准
+            renderStage();
             toast('活动已截止：' + (t.title || ''), 'error');
             beep();
+            return;
           }
-          if (state.phase === 'task') renderStage();
+          // 只更新 .timer-time 文本，避免整页重绘导致计时器闪烁
+          const tt = state.phase === 'task' ? document.querySelector('.timer-time') : null;
+          if (tt) {
+            const mm = Math.floor(t.remainingMs / 60000).toString().padStart(2, '0');
+            const ss = Math.floor((t.remainingMs % 60000) / 1000).toString().padStart(2, '0');
+            tt.textContent = mm + ':' + ss;
+          } else if (state.phase === 'task') renderStage();
         }
       }, 1000);
     }

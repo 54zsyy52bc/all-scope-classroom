@@ -517,3 +517,10 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
 .inline-seats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ck { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
 .btn-sm { padding: 4px 10px; font-size: 13px; }
+/* 求助强提醒横幅（顶部脉冲红条 + 放大镜震动） */
+.help-banner { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; gap: 10px;
+  background: #c42b1c; color: #fff; font-size: 17px; font-weight: 700; padding: 10px 18px;
+  animation: hb-flash 0.9s step-end infinite; }
+.help-banner .hb-ico { width: 26px; height: 26px; background: #fff; color: #c42b1c; font-weight: 900;
+  display: flex; align-items: center; justify-content: center; }
+@keyframes hb-flash { 50% { opacity: 0.55; } }

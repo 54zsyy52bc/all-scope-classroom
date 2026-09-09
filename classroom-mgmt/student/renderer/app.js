@@ -92,7 +92,9 @@
   // 渲染
   // ---------------------------------------------------------------------------
   function renderStage() {
-    els.stage.innerHTML = Views.render(state);
+    // v5：所有视图底部常驻「同步状态」，学生可随时主动向老师请求同步（触发 hello→sync 校正）
+    els.stage.innerHTML = Views.render(state)
+      + '<button type="button" class="sync-foot" data-act="sync-status">⟳ 同步状态（手动刷新）</button>';
     saveLocal();
   }
 
@@ -199,7 +201,6 @@
   function onStageKeydown(e) {
     if (actions) actions.onStageKeydown(e);
   }
-
   // ---------------------------------------------------------------------------
   // 启动
   // ---------------------------------------------------------------------------
@@ -217,7 +218,6 @@
     els.stage.addEventListener('click', onStageClick);
     els.stage.addEventListener('keydown', onStageKeydown);
   }
-
   function hydrate(local, rt) {
     state.machineId = rt.machineId || '';
     state.seat = pad2(local.seat || rt.seat || '');
@@ -233,7 +233,6 @@
     renderConn();
     renderStage();
   }
-
   function wire() {
     // 活动计时器 + 锁定遮罩（control.js）
     const control = window.StudentControl.create({ state, els, toast, renderStage });
