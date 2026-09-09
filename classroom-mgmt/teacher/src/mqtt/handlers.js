@@ -37,10 +37,17 @@ function guardSeat(session, env, label) {
   return true;
 }
 
+// v5 组机：组容量=会话 group_members（seat 为组内序号 01..K）；缺省退回 GROUP_SIZE
 function deriveGroup(seat) {
   const n = parseInt(seat, 10);
-  const gs = require('../config').GROUP_SIZE || 5;
-  return `G${Math.floor((n - 1) / gs) + 1}`;
+  if (!Number.isFinite(n) || n < 1) return 'G1';
+  const cur = db.getCurrentSession();
+  const k = (cur && cur.group_members) || require('../config').GROUP_SIZE || 5;
+  return `G${Math.floor((n - 1) / k) + 1}`;
+}
+function pickGroup(env, seat) { // 显式组号(排除 '*' 占位)优先，否则按 seat 推导
+  const raw = (env && env.group) || (env && env.payload && env.payload.group);
+  return raw && raw !== '*' ? raw : deriveGroup(seat);
 }
 
 function seatStateOf(sessionId, seat) {
@@ -95,7 +102,7 @@ function handleCheckin(env, rawTopic) {
     return;
   }
   const seat = seatNum(env.seat);
-  const groupId = env.group || deriveGroup(seat);
+  const groupId = pickGroup(env, seat);
   const p = env.payload || {};
   const machineId = env.machineId || p.machineId;
 
@@ -154,7 +161,7 @@ function handleTaskStatus(env, rawTopic) {
     return;
   }
 
-  const groupId = env.group || deriveGroup(seat);
+  const groupId = pickGroup(env, seat);
   let dup = false;
   db.transaction(() => {
     const ev = db.insertEvent({
@@ -176,7 +183,7 @@ function handleReturn(env, rawTopic) {
   if (!guardSeat(session, env, 'return')) return;
   const seat = seatNum(env.seat);
   const p = env.payload || {};
-  const groupId = env.group || deriveGroup(seat);
+  const groupId = pickGroup(env, seat);
 
   let dup = false;
   db.transaction(() => {
@@ -256,7 +263,6 @@ async function handleHello(env) {
     log.error('hello 处理失败:', e.message);
   }
 }
-
 // 单条坏消息不得打断整条消息流：同步异常直接捕获，异步 Promise 挂 .catch。
 function safeRun(label, fn) {
   try {
@@ -270,7 +276,6 @@ function safeRun(label, fn) {
     return undefined;
   }
 }
-
 function dispatch(topic, buf) {
   let env;
   try {
@@ -293,5 +298,4 @@ function dispatch(topic, buf) {
       return undefined;
   }
 }
-
 module.exports = { dispatch, topics };

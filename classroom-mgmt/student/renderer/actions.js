@@ -37,6 +37,7 @@
         name: (document.getElementById('f-name') || {}).value || '',
         seat: pad2((document.getElementById('f-seat') || {}).value),
         studentNo: (document.getElementById('f-no') || {}).value || '',
+        group: (document.getElementById('f-group') || {}).value || '',
         note: (document.getElementById('f-note') || {}).value || '',
       };
     }
@@ -51,13 +52,17 @@
       state.name = v.name.trim();
       state.seat = v.seat;
       state.studentNo = v.studentNo.trim();
+      state.group = v.group;
       const equipments = equipment()
         .filter((e) => (state.equipQty[e.eqId] || 0) > 0)
         .map((e) => ({ eqId: e.eqId, qty: state.equipQty[e.eqId] }));
 
       const leaderEl = document.getElementById('f-leader');
       state.role = leaderEl && leaderEl.checked ? 'leader' : 'member';
-      if (!sendUp('checkin', { name: state.name, studentNo: state.studentNo, equipments, role: state.role })) return;
+      const payload = { name: state.name, studentNo: state.studentNo, equipments, role: state.role };
+      const gv = String(state.group || '').trim().replace(/^G/i, '');
+      if (/^\d{1,2}$/.test(gv)) payload.group = 'G' + Number(gv); // 学生可显式带组号（G3）；留空由教师端按 seat 自动
+      if (!sendUp('checkin', payload)) return;
 
       state.borrowed = equipments.map((x) => ({ eqId: x.eqId, qty: x.qty }));
       state.checkinDone = true;
