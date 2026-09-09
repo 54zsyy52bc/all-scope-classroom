@@ -1,9 +1,9 @@
 'use strict';
-// ===== v5 全域学生桌面 · 模式/课程/口令首屏（shell）=====
+// ===== v5 全域学生桌面 · 模式/课程/本机配置（配置本地化：设置存 app-config.json）=====
 (function () {
   const $ = (id) => document.getElementById(id);
-  let cfg = { courses: [], modeExit: { enabled: false }, admin: { enabled: false } };
-  let curCourse = null;
+  const b = () => window.classroom || null;
+  let sc = null; // { admin, modeExit, course, guard }（主进程读/存）
   let failCount = 0;
   let lockedUntil = 0;
 
@@ -11,89 +11,56 @@
     try {
       const line = '[shell][' + type + '] ' + (detail == null ? '' : String(detail));
       console.log(line);
-      if (global.classroom && global.classroom.log) global.classroom.log(line);
+      if (b() && b().log) b().log(line);
     } catch (_e) { /* noop */ }
   }
 
-  function httpBase() {
-    return new Promise((resolve) => {
-      if (global.classroom && global.classroom.getRuntime) {
-        global.classroom.getRuntime().then((rt) => {
-          const host = (rt && rt.siotIp) || '127.0.0.1';
-          const port = 3000;
-          resolve('http://' + host + ':' + port);
-        }).catch(() => resolve('http://127.0.0.1:3000'));
-      } else resolve('http://127.0.0.1:3000');
-    });
+  async function loadLocal() {
+    if (!b() || !b().getShellConfig) return;
+    try {
+      const cfg = await b().getShellConfig();
+      if (cfg) sc = cfg;
+    } catch (_e) { /* noop */ }
   }
 
-  async function api(method, url, body) {
-    try {
-      const base = await httpBase();
-      const opt = { method, headers: { 'Content-Type': 'application/json' } };
-      if (body) opt.body = JSON.stringify(body);
-      const res = await fetch(base + url, opt);
-      const j = await res.json();
-      return j && j.code === 0 ? j.data : null;
-    } catch (_e) { return null; }
+  function renderCourse() {
+    const c = (sc && sc.course) || { name: '信息技术·硬件实践课', apps: [] };
+    const box = $('course-list');
+    if (!box) return;
+    const appsN = (c.apps || []).length;
+    box.innerHTML = '<div class="course-item sel"><span>' + c.name.replace(/[<>&]/g, '')
+      + '</span><span class="tag">' + (appsN ? appsN + ' 个课程应用' : '未配应用') + '</span></div>';
   }
 
   async function refreshShellState() {
     try {
-      const st = global.classroom ? await global.classroom.getShellState() : { machineId: '', kiosk: false, autoStart: false };
+      const st = b() ? await b().getShellState() : { machineId: '', kiosk: false, autoStart: false };
       const mid = st.machineId || '-';
       $('h-machine').textContent = '机器 ' + mid;
       $('f-machine').textContent = mid;
       $('a-machine').textContent = mid;
-      const kiosk = st.kiosk ? '守卫中' : '普通(调试)';
-      $('f-kiosk').textContent = kiosk;
-      $('a-kiosk').textContent = kiosk + (st.autoStart ? ' · 自启开' : ' · 自启关');
+      $('f-kiosk').textContent = st.kiosk ? '守卫中' : '普通(调试)';
+      $('a-kiosk').textContent = (st.kiosk ? '守卫中' : '普通') + (st.autoStart ? ' · 自启开' : ' · 自启关');
       $('f-autostart').textContent = st.autoStart ? '开' : '关';
-      audit('boot', 'machine=' + mid + ' kiosk=' + st.kiosk);
     } catch (_e) { /* noop */ }
   }
 
-  async function loadCourses() {
-    const data = await api('GET', '/api/v1/shell/config');
-    if (data && data.courses && data.courses.length) {
-      cfg = data;
-      if (cfg.courses.length && !curCourse) curCourse = cfg.courses[0].id;
-      renderCourses();
-    } else {
-      cfg = { courses: [{ id: 'c1', name: '信息技术·硬件实践课', active: true }], modeExit: { enabled: false }, admin: { enabled: false } };
-      curCourse = 'c1';
-      renderCourses();
-    }
-  }
-
-  function renderCourses() {
-    const box = $('course-list');
-    box.innerHTML = (cfg.courses || []).map((c) =>
-      '<div class="course-item' + (curCourse === c.id ? ' sel' : '') + '" data-id="' + c.id + '">'
-      + '<span>' + String(c.name || '').replace(/[<>&]/g, '') + '</span>'
-      + (c.active ? '<span class="tag">当前可选</span>' : '') + '</div>'
-    ).join('') || '<div class="course-item">暂无课程</div>';
-    box.querySelectorAll('.course-item[data-id]').forEach((el) => {
-      el.onclick = () => { curCourse = el.dataset.id; renderCourses(); };
-    });
-  }
-
-  // ---- 口令 ----
+  // ---- 口令（本地校验，主进程哈希比对）----
   function askPwd(title, hint, scope) {
     return new Promise((resolve) => {
       $('pwd-title').textContent = title;
-      $('pwd-hint').textContent = hint || '口令（由老师设置）';
+      $('pwd-hint').textContent = hint;
       $('pwd-input').value = '';
       $('pwd-err').textContent = '';
       $('pwd-overlay').hidden = false;
       const done = (ok) => { $('pwd-overlay').hidden = true; resolve(ok); };
       const confirmFn = async () => {
         const now = Date.now();
-        if (now < lockedUntil) { $('pwd-err').textContent = '尝试过多，请稍候再试'; return; }
+        if (now < lockedUntil) { $('pwd-err').textContent = '尝试过多，请 30 秒后再试'; return; }
         const pwd = $('pwd-input').value;
-        const r = await api('POST', '/api/v1/shell/verify', { scope, pwd });
-        if (!r) { $('pwd-err').textContent = '无法连接教师机校验口令'; return; }
-        if (r.disabled || r.ok) { failCount = 0; done(true); return; }
+        let ok = false;
+        if (b() && b().verifyLocal) { try { const r = await b().verifyLocal(scope, pwd); ok = !!(r && r.ok); } catch (_e) { ok = false; } }
+        if (ok) { failCount = 0; done(true); return; }
         failCount += 1;
         if (failCount >= 3) { lockedUntil = now + 30000; failCount = 0; $('pwd-err').textContent = '口令错误，已锁定 30 秒'; return; }
         $('pwd-err').textContent = '口令错误，还可尝试 ' + (3 - failCount) + ' 次';
@@ -106,41 +73,75 @@
   }
 
   async function enterClassroom() {
-    const course = (cfg.courses || []).find((c) => c.id === curCourse) || null;
-    audit('mode:class', 'course=' + (course ? course.id : '-'));
-    try { localStorage.setItem('qy.course', JSON.stringify(course || { id: 'c1', name: '信息技术·硬件实践课', apps: [] })); } catch (_e) { /* noop */ }
-    // 主进程守卫：白名单应用 + 老师启用的禁用进程轮询
-    if (global.classroom && global.classroom.guardStart) {
-      try {
-        const deny = (cfg.guard && cfg.guard.enabled) ? cfg.guard.denyExe : [];
-        await global.classroom.guardStart({ apps: (course && course.apps) || [], denyExe: deny });
-      } catch (_e) { /* 守卫启动失败不阻断 */ }
-    }
-    if (global.classroom && global.classroom.enterClassroom) {
-      try { await global.classroom.enterClassroom(); } catch (_e) { /* noop */ }
-    }
+    audit('mode:class', 'course=' + ((sc && sc.course && sc.course.name) || '-'));
+    if (b() && b().guardStart) { try { await b().guardStart(); } catch (_e) { /* 守卫由主进程本地配置启动 */ } }
+    if (b() && b().enterClassroom) { try { await b().enterClassroom(); } catch (_e) { /* noop */ } }
   }
 
   async function goFree() {
     audit('mode:free-request', '');
-    if (cfg.modeExit && cfg.modeExit.enabled) {
+    if (sc && sc.modeExit && sc.modeExit.enabled) {
       const ok = await askPwd('自由创作', '请输入自由创作口令（老师设置）', 'mode-exit');
       if (!ok) return;
     }
-    if (global.classroom && global.classroom.unlockExit) {
-      try { await global.classroom.unlockExit(); } catch (_e) { /* noop */ }
-    } else {
-      window.close();
-    }
+    if (b() && b().unlockExit) { try { await b().unlockExit(); } catch (_e) { /* noop */ } }
+    else window.close();
+  }
+
+  function fillAdmin() {
+    if (!sc) return;
+    $('c-exit-en').checked = !!sc.modeExit.enabled;
+    $('c-admin-en').checked = !!sc.admin.enabled;
+    $('c-course-name').value = sc.course.name || '';
+    $('c-apps').value = (sc.course.apps || []).map((a) => (a.label || a.exe) + '|' + a.exe).join('\n');
+    $('c-deny').value = (sc.guard.denyExe || []).join(',');
+    $('c-guard-en').checked = !!sc.guard.enabled;
+    $('c-exit-pwd').value = '';
+    $('c-admin-pwd').value = '';
+    $('admin-err').textContent = '';
   }
 
   async function openAdmin() {
-    if (cfg.admin && cfg.admin.enabled) {
-      const ok = await askPwd('系统设置', '请输入管理员口令（与课程/自由创作口令不同）', 'admin');
+    if (sc && sc.admin && sc.admin.enabled) {
+      const ok = await askPwd('系统设置', '请输入管理员口令', 'admin');
       if (!ok) return;
     }
-    await refreshShellState();
+    await loadLocal(); await refreshShellState(); fillAdmin();
     $('admin-overlay').hidden = false;
+  }
+
+  async function saveAll() {
+    const errEl = $('admin-err');
+    const msg = (t, err) => { errEl.textContent = t; errEl.style.color = err ? '#c42b1c' : '#107c10'; };
+    if (!b() || !b().setShellConfig) { msg('当前运行环境不支持保存', true); return; }
+    // 口令（各自独立按钮逻辑：勾选状态 + 新口令）
+    if ($('c-exit-pwd').value) {
+      const r = await b().setShellConfig({ scope: 'mode-exit', pwd: $('c-exit-pwd').value, enabled: $('c-exit-en').checked });
+      if (r && r.ok) msg('自由创作口令已保存'); else if (r) msg('口令保存失败：' + (r.err || '未知'), true);
+    } else {
+      await b().setShellConfig({ scope: 'mode-exit', enabled: $('c-exit-en').checked });
+    }
+    if ($('c-admin-pwd').value) {
+      const r = await b().setShellConfig({ scope: 'admin', pwd: $('c-admin-pwd').value, enabled: $('c-admin-en').checked });
+      if (r && r.ok) msg('管理员口令已保存（两口令不可相同）'); else if (r) msg('口令保存失败：' + (r.err || '未知'), true);
+    } else {
+      await b().setShellConfig({ scope: 'admin', enabled: $('c-admin-en').checked });
+    }
+    // 课程 + 白名单 + 禁用进程
+    const apps = ($('c-apps').value || '').split('\n').map((ln) => ln.trim()).filter(Boolean)
+      .map((ln) => {
+        const i = ln.indexOf('|');
+        const label = (i >= 0 ? ln.slice(0, i) : ln).trim();
+        const exe = (i >= 0 ? ln.slice(i + 1) : ln).trim();
+        return { label: label || exe, exe };
+      }).filter((a) => a.exe);
+    const deny = ($('c-deny').value || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const r2 = await b().setShellConfig({
+      course: { name: $('c-course-name').value.trim() || '信息技术·硬件实践课', apps },
+      guard: { enabled: $('c-guard-en').checked, denyExe: deny },
+    });
+    if (r2 && r2.ok) { msg('本机桌面配置已保存（重启/进课堂生效）'); await loadLocal(); renderCourse(); }
+    else if (r2) msg('保存失败：' + (r2.err || '未知'), true);
   }
 
   function bind() {
@@ -150,29 +151,28 @@
     $('admin-close').onclick = () => { $('admin-overlay').hidden = true; };
     $('a-autostart').onclick = async () => {
       try {
-        const st = global.classroom ? await global.classroom.getShellState() : null;
-        if (global.classroom && global.classroom.setAutoStart) await global.classroom.setAutoStart(!(st && st.autoStart));
+        const st = b() ? await b().getShellState() : null;
+        if (b() && b().setAutoStart) await b().setAutoStart(!(st && st.autoStart));
         await refreshShellState();
       } catch (_e) { /* noop */ }
     };
     $('a-free').onclick = async () => { $('admin-overlay').hidden = true; await goFree(); };
-    // 主进程守卫拦截（如 Alt+F4）时给个提示
-    try {
-      if (global.classroom && global.classroom.onGuard) global.classroom.onGuard(() => {
-        const e = document.createElement('div');
-        e.textContent = '课堂桌面已锁定，无法直接退出（请在老师口令下操作）';
-        e.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#c42b1c;color:#fff;padding:10px 18px;z-index:99;';
-        document.body.appendChild(e);
-        setTimeout(() => e.remove(), 2600);
-      });
-    } catch (_e) { /* noop */ }
+    $('c-save').onclick = saveAll;
+    if (b() && b().onGuard) b().onGuard(() => {
+      const e = document.createElement('div');
+      e.textContent = '课堂桌面已锁定，无法直接退出（需老师口令）';
+      e.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#c42b1c;color:#fff;padding:10px 18px;z-index:99;';
+      document.body.appendChild(e);
+      setTimeout(() => e.remove(), 2600);
+    });
   }
 
   async function boot() {
     bind();
+    await loadLocal();
+    renderCourse();
     await refreshShellState();
-    await loadCourses();
-    audit('ready', 'courses=' + (cfg.courses || []).length);
+    audit('ready', 'course=' + ((sc && sc.course && sc.course.name) || '-') + ' 本地配置=' + (sc ? 'on' : 'off'));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

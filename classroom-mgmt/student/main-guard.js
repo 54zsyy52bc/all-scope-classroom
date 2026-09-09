@@ -3,6 +3,8 @@
 // 应用层防护边界：课堂模式启用 kiosk 全屏 + 仅白名单磁贴可开应用 + 禁用进程(浏览器等)
 // 每 3s 轮询 tasklist，命中 denyExe 即 taskkill 并通知渲染层；能防住课堂常见绕过。
 const { execFile, spawn } = require('node:child_process');
+const crypto = require('node:crypto');
+const SHELL_SALT = 'qy-local-shell-v5'; // 本地口令哈希盐
 
 module.exports = function registerGuard(deps) {
   const { app, ipcMain, readConfig, saveConfig } = deps;
@@ -48,6 +50,23 @@ module.exports = function registerGuard(deps) {
     if (denyList.length) { timer = setInterval(sweep, 3000); sweep(); }
   }
   function stop() { if (timer) clearInterval(timer); timer = null; denyList = []; allowMap = {}; }
+
+  // ---- 本地配置管理（口令哈希只经主进程；renderer 不可信） ----
+  function cfgDefault() { return { admin: { enabled: false, hash: '' }, modeExit: { enabled: false, hash: '' },
+    course: { name: '信息技术·硬件实践课', apps: [] }, guard: { enabled: false, denyExe: ['chrome.exe', 'msedge.exe', 'firefox.exe'] } }; }
+  function cfgRead() {
+    const cur = readConfig() || {}; const sc = cur.shell || {}; const d = cfgDefault();
+    return { admin: Object.assign(d.admin, sc.admin || {}), modeExit: Object.assign(d.modeExit, sc.modeExit || {}),
+      course: Object.assign(d.course, sc.course || {}), guard: Object.assign(d.guard, sc.guard || {}) };
+  }
+  function hashOf(scope, pwd) { return crypto.createHash('sha256').update(SHELL_SALT + ':' + scope + ':' + pwd).digest('hex'); }
+  function cfgPublic(sc) { return { admin: { enabled: !!sc.admin.enabled }, modeExit: { enabled: !!sc.modeExit.enabled }, course: sc.course, guard: sc.guard }; }
+  function guardPayload(sc) {
+    const deny = sc.guard.enabled ? (sc.guard.denyExe || []) : [];
+    return { apps: (sc.course.apps || []).map((a) => ({ id: a.id, label: a.label, exe: String(a.exe).toLowerCase() })), denyExe: deny };
+  }
+  function autoStartGuard(sc) { start(guardPayload(sc)); }
+
   function launch(appId) {
     const a = allowMap[appId];
     if (!a || !a.exe) return false;
@@ -56,7 +75,7 @@ module.exports = function registerGuard(deps) {
   }
 
   // ---- IPC（renderer ↔ guard）----
-  ipcMain.handle('guard:start', (_e, cfg) => { start(cfg || {}); return true; });
+  ipcMain.handle('guard:start', (_e, cfg) => { start(cfg || guardPayload(cfgRead())); return true; });
   ipcMain.handle('guard:stop', () => { stop(); return true; });
   ipcMain.handle('guard:launch', (_e, appId) => launch(String(appId || '')));
   ipcMain.handle('shell:get-state', () => {
@@ -67,11 +86,43 @@ module.exports = function registerGuard(deps) {
     try { saveConfig({ autoStart: !!on }); app.setLoginItemSettings({ openAtLogin: !!on }); } catch (_err) { /* noop */ }
     return true;
   });
+  ipcMain.handle('shell:get-config', () => cfgPublic(cfgRead()));
+  ipcMain.handle('shell:verify-local', (_e, scope, pwd) => {
+    const slot = (cfgRead() || {})[scope] || {};
+    if (!slot.enabled || !slot.hash) return { ok: true };
+    return { ok: hashOf(String(scope), String(pwd || '')) === slot.hash };
+  });
+  ipcMain.handle('shell:set-config', (_e, patch) => {
+    const sc = cfgRead(); const err = [];
+    const pw = patch && patch.pwd ? String(patch.pwd) : '';
+    if (patch && patch.scope && ['admin', 'mode-exit'].includes(patch.scope)) {
+      const slot = sc[patch.scope];
+      const other = patch.scope === 'admin' ? sc.modeExit : sc.admin;
+      if (patch.enabled != null) slot.enabled = !!patch.enabled;
+      if (pw) {
+        if (pw.length < 4 || pw.length > 32) { err.push('口令须 4-32 位'); }
+        else if (other.hash && other.hash === hashOf(patch.scope === 'admin' ? 'mode-exit' : 'admin', pw)) { err.push('管理员口令与自由创作口令不可相同'); }
+        else { slot.hash = hashOf(patch.scope, pw); slot.enabled = true; }
+      }
+    }
+    if (patch && patch.course) {
+      sc.course = { name: String(patch.course.name || '信息技术·硬件实践课').slice(0, 30),
+        apps: (Array.isArray(patch.course.apps) ? patch.course.apps : []).map((a, i) => ({
+          id: 'a' + (i + 1), label: String(a.label || a.exe || '应用').slice(0, 20),
+          exe: String(a.exe || '').toLowerCase().slice(0, 40) })).filter((a) => a.exe) };
+    }
+    if (patch && patch.guard) {
+      sc.guard = { enabled: !!patch.guard.enabled,
+        denyExe: (Array.isArray(patch.guard.denyExe) ? patch.guard.denyExe : []).map((x) => String(x).toLowerCase().slice(0, 40)).filter(Boolean) };
+    }
+    if (!err.length) { try { saveConfig({ shell: sc }); } catch (_e) { err.push('写入配置失败'); } }
+    return { ok: !err.length, err: err.join('；') };
+  });
   ipcMain.handle('shell:back', () => { // 课堂 → 回全域首屏（renderer 先验 admin 口令）
     stop();
     if (mainWindow) mainWindow.loadFile(require('node:path').join(app.getAppPath(), 'renderer', 'shell.html'));
     return true;
   });
 
-  return { setWindow, launch, start, stop };
+  return { setWindow, launch, start, stop, autoStartGuard, cfgRead, guardPayload };
 };

@@ -27,6 +27,9 @@ const CH = {
   guardStop: 'guard:stop',
   launchApp: 'guard:launch',
   backToShell: 'shell:back',
+  getShellConfig: 'shell:get-config',
+  setShellConfig: 'shell:set-config',
+  verifyLocal: 'shell:verify-local',
 };
 
 function str(v, max) {
@@ -76,6 +79,10 @@ contextBridge.exposeInMainWorld('classroom', {
   launchApp: (appId) => ipcRenderer.invoke(CH.launchApp, appId),
   backToShell: () => ipcRenderer.invoke(CH.backToShell),
   onKill: (cb) => ipcRenderer.on('guard:kill', (_e, name) => { try { cb(name); } catch (_err) { /* noop */ } }),
+  // v5 本地桌面配置（口令哈希在主进程校验与存储）
+  getShellConfig: () => ipcRenderer.invoke(CH.getShellConfig),
+  setShellConfig: (patch) => ipcRenderer.invoke(CH.setShellConfig, patch),
+  verifyLocal: (scope, pwd) => ipcRenderer.invoke(CH.verifyLocal, scope, pwd),
 
   // 关机票据校验：主进程用本地 secret 做 HMAC + 60s 时间窗比对
   verifyShutdown: (ticket) => ipcRenderer.invoke(CH.verify, cleanTicket(ticket)),
