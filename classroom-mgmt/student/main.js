@@ -8,7 +8,6 @@ const crypto = require('node:crypto');
 const registerGuard = require('./main-guard');
 const { execFile } = require('node:child_process');
 const { app, BrowserWindow, ipcMain } = require('electron');
-
 const APP_ROOT = __dirname;
 const CONFIG_PATH = path.join(APP_ROOT, 'app-config.json');
 
