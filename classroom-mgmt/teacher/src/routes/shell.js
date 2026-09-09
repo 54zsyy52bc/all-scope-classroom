@@ -16,7 +16,8 @@ function defaults() {
     salt: 'qy-shell-v5',
     modeExit: { enabled: false, hash: '' },
     admin: { enabled: false, hash: '' },
-    courses: [{ id: 'c1', name: '信息技术·硬件实践课', active: true }],
+    guard: { enabled: false, denyExe: ['chrome.exe', 'msedge.exe', 'firefox.exe'] },
+    courses: [{ id: 'c1', name: '信息技术·硬件实践课', active: true, apps: [{ id: 'a1', label: '画图', exe: 'mspaint.exe' }] }],
   };
 }
 function load() {
@@ -32,6 +33,7 @@ function hashOf(cfg, scope, pwd) {
 function publicCfg(cfg) {
   return {
     courses: cfg.courses || [],
+    guard: cfg.guard || { enabled: false, denyExe: [] },
     modeExit: { enabled: !!cfg.modeExit.enabled },
     admin: { enabled: !!cfg.admin.enabled },
   };
@@ -73,7 +75,18 @@ router.post('/config', asyncHandler(async (req, res) => {
     cfg.courses = courses.map((c, i) => ({
       id: c.id || 'c' + (i + 1), name: String(c.name || '').slice(0, 30),
       active: c.active !== false,
+      apps: Array.isArray(c.apps)
+        ? c.apps.map((a, k) => ({ id: a.id || 'a' + (k + 1), label: String(a.label || a.exe || '应用').slice(0, 20), exe: String(a.exe || '').toLowerCase().slice(0, 40) }))
+          .filter((a) => a.exe)
+        : [],
     })).filter((c) => c.name);
+  }
+  if (req.body.guard) {
+    cfg.guard = {
+      enabled: !!req.body.guard.enabled,
+      denyExe: Array.isArray(req.body.guard.denyExe)
+        ? req.body.guard.denyExe.map((x) => String(x).toLowerCase().slice(0, 40)).filter(Boolean) : [],
+    };
   }
   save(cfg);
   ok(res, publicCfg(cfg));

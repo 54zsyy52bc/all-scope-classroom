@@ -17,6 +17,7 @@
       </div>
     </div>
     <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" id="btn-shell-admin" title="学生机全域桌面配置">桌面设置</button>
       <span class="pill phase-pill" id="phase-pill">待课</span>
       <span class="pill conn-pill" id="conn-pill" data-state="offline">连接中</span>
     </div>
@@ -175,9 +176,96 @@
   <script src="term-ui.js"></script>
   <script src="app.js"></script>
   <script src="presets.js"></script>
+  <!-- v5 全域桌面配置弹窗 -->
+  <div class="overlay" id="overlay-shell" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="shell-title">
+      <h2 id="shell-title">全域学生桌面配置</h2>
+      <div class="grid2">
+        <fieldset>
+          <legend>口令（互相独立，不可相同）</legend>
+          <label>管理员口令
+            <span class="inline-seats">
+              <label class="ck"><input id="sf-admin-enable" type="checkbox" /> 启用</label>
+              <input id="sf-admin-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" />
+              <button type="button" class="btn btn-ghost btn-sm" id="sf-admin-save">保存</button>
+            </span>
+          </label>
+          <label>自由创作口令
+            <span class="inline-seats">
+              <label class="ck"><input id="sf-exit-enable" type="checkbox" /> 启用</label>
+              <input id="sf-exit-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" />
+              <button type="button" class="btn btn-ghost btn-sm" id="sf-exit-save">保存</button>
+            </span>
+          </label>
+          <p class="modal-hint">口令只在教师机以哈希保存；管理口令 ≠ 自由创作口令（服务端强制）。</p>
+        </fieldset>
+        <fieldset>
+          <legend>课程与应用白名单</legend>
+          <label>课程名称<input id="sf-course-name" type="text" maxlength="30" /></label>
+          <label>应用白名单（每行：显示名|exe，如 画图|mspaint.exe）
+            <textarea id="sf-apps" rows="4" placeholder="画图|mspaint.exe"></textarea>
+          </label>
+          <label>课堂禁用进程（逗号分隔 exe）
+            <input id="sf-deny" type="text" placeholder="chrome.exe,msedge.exe,firefox.exe" />
+          </label>
+          <label class="ck"><input id="sf-guard-enable" type="checkbox" /> 启用禁用进程轮询强杀</label>
+        </fieldset>
+      </div>
+      <p class="modal-hint" id="sf-msg" style="color:#107c10"></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close="overlay-shell">关闭</button>
+        <button class="btn btn-primary" id="sf-save-all">保存课程与白名单</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v5 全域桌面配置弹窗 -->
+  <div class="overlay" id="overlay-shell" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="shell-title">
+      <h2 id="shell-title">全域学生桌面配置</h2>
+      <div class="grid2">
+        <fieldset>
+          <legend>口令（互相独立，不可相同）</legend>
+          <label>管理员口令
+            <span class="inline-seats">
+              <label class="ck"><input id="sf-admin-enable" type="checkbox" /> 启用</label>
+              <input id="sf-admin-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" />
+              <button type="button" class="btn btn-ghost btn-sm" id="sf-admin-save">保存</button>
+            </span>
+          </label>
+          <label>自由创作口令
+            <span class="inline-seats">
+              <label class="ck"><input id="sf-exit-enable" type="checkbox" /> 启用</label>
+              <input id="sf-exit-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" />
+              <button type="button" class="btn btn-ghost btn-sm" id="sf-exit-save">保存</button>
+            </span>
+          </label>
+          <p class="modal-hint">口令只在教师机以哈希保存；管理口令 ≠ 自由创作口令（服务端强制）。</p>
+        </fieldset>
+        <fieldset>
+          <legend>课程与应用白名单</legend>
+          <label>课程名称<input id="sf-course-name" type="text" maxlength="30" /></label>
+          <label>应用白名单（每行：显示名|exe，如 画图|mspaint.exe）
+            <textarea id="sf-apps" rows="4" placeholder="画图|mspaint.exe"></textarea>
+          </label>
+          <label>课堂禁用进程（逗号分隔 exe）
+            <input id="sf-deny" type="text" placeholder="chrome.exe,msedge.exe,firefox.exe" />
+          </label>
+          <label class="ck"><input id="sf-guard-enable" type="checkbox" /> 启用禁用进程轮询强杀</label>
+        </fieldset>
+      </div>
+      <p class="modal-hint" id="sf-msg" style="color:#107c10"></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close="overlay-shell">关闭</button>
+        <button class="btn btn-primary" id="sf-save-all">保存课程与白名单</button>
+      </div>
+    </div>
+  </div>
+
   <script src="admit.js"></script>
   <script src="activity.js"></script>
   <script src="manage.js"></script>
   <script src="stream.js"></script>
+  <script src="shell-admin.js"></script>
 </body>
 </html>

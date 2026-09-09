@@ -23,6 +23,10 @@ const CH = {
   unlockExit: 'shell:unlock-exit',
   getShellState: 'shell:get-state',
   setAutoStart: 'shell:set-autostart',
+  guardStart: 'guard:start',
+  guardStop: 'guard:stop',
+  launchApp: 'guard:launch',
+  backToShell: 'shell:back',
 };
 
 function str(v, max) {
@@ -66,6 +70,12 @@ contextBridge.exposeInMainWorld('classroom', {
   setAutoStart: (on) => ipcRenderer.invoke(CH.setAutoStart, !!on),
   // 主进程守卫拦截通知（如 Alt+F4 / 非授权关闭）
   onGuard: (cb) => ipcRenderer.on('shell:guard-blocked', () => { try { cb(); } catch (_e) { /* noop */ } }),
+  // v5 进程守卫：白名单启动 / 禁用进程强杀通知
+  guardStart: (cfg) => ipcRenderer.invoke(CH.guardStart, cfg),
+  guardStop: () => ipcRenderer.invoke(CH.guardStop),
+  launchApp: (appId) => ipcRenderer.invoke(CH.launchApp, appId),
+  backToShell: () => ipcRenderer.invoke(CH.backToShell),
+  onKill: (cb) => ipcRenderer.on('guard:kill', (_e, name) => { try { cb(name); } catch (_err) { /* noop */ } }),
 
   // 关机票据校验：主进程用本地 secret 做 HMAC + 60s 时间窗比对
   verifyShutdown: (ticket) => ipcRenderer.invoke(CH.verify, cleanTicket(ticket)),

@@ -106,7 +106,16 @@
   }
 
   async function enterClassroom() {
-    audit('mode:class', 'course=' + (curCourse || '-'));
+    const course = (cfg.courses || []).find((c) => c.id === curCourse) || null;
+    audit('mode:class', 'course=' + (course ? course.id : '-'));
+    try { localStorage.setItem('qy.course', JSON.stringify(course || { id: 'c1', name: '信息技术·硬件实践课', apps: [] })); } catch (_e) { /* noop */ }
+    // 主进程守卫：白名单应用 + 老师启用的禁用进程轮询
+    if (global.classroom && global.classroom.guardStart) {
+      try {
+        const deny = (cfg.guard && cfg.guard.enabled) ? cfg.guard.denyExe : [];
+        await global.classroom.guardStart({ apps: (course && course.apps) || [], denyExe: deny });
+      } catch (_e) { /* 守卫启动失败不阻断 */ }
+    }
     if (global.classroom && global.classroom.enterClassroom) {
       try { await global.classroom.enterClassroom(); } catch (_e) { /* noop */ }
     }

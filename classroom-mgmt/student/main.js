@@ -5,6 +5,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const registerGuard = require('./main-guard');
 const { execFile } = require('node:child_process');
 const { app, BrowserWindow, ipcMain } = require('electron');
 
@@ -247,13 +248,6 @@ function createWindow() {
   }
   return mainWindow;
 }
-// 开机自启（上课模式重启回到全域桌面；管理员可在齿轮里关闭）
-function applyAutoStart(on) {
-  try {
-    if (on) saveConfig({ autoStart: true });
-    app.setLoginItemSettings({ openAtLogin: !!on });
-  } catch (_e) { /* 无权限忽略 */ }
-}
 // v5 shell IPC：模式切换 / 退出放行 / 桌面状态
 function registerShellIpc() {
   ipcMain.handle('shell:enter-classroom', () => {
@@ -266,11 +260,6 @@ function registerShellIpc() {
     setImmediate(() => { if (mainWindow) mainWindow.close(); });
     return true;
   });
-  ipcMain.handle('shell:get-state', () => {
-    const cfg = readConfig();
-    return { machineId: cfg.machineId || '', kiosk: isKiosk, autoStart: !!cfg.autoStart };
-  });
-  ipcMain.handle('shell:set-autostart', (_e, on) => { applyAutoStart(!!on); return true; });
 }
 // 启动
 const gotLock = app.requestSingleInstanceLock();
@@ -287,10 +276,16 @@ if (!gotLock) {
     const machineId = ensureMachineId();
     registerIpc(() => machineId);
     registerShellIpc();
-    applyAutoStart(readConfig().autoStart !== false); // v5：默认开机自启回全域桌面
+    const guard = registerGuard({ app, ipcMain, readConfig, saveConfig });
+    // v5：默认开机自启回全域桌面
+    try {
+      const _ac = readConfig();
+      if (_ac.autoStart !== false) { saveConfig({ autoStart: true }); app.setLoginItemSettings({ openAtLogin: true }); }
+    } catch (_e) { /* 无权限忽略 */ }
     // eslint-disable-next-line no-console
     console.log(`[boot] machineId=${machineId} config=${CONFIG_PATH}`);
     createWindow();
+    guard.setWindow(mainWindow);
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });

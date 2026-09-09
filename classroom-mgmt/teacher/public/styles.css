@@ -509,3 +509,11 @@ button, .btn { box-shadow: none; }
 .seat { position: relative; }
 .seat .ld { position: absolute; top: 2px; left: 2px; font-style: normal; font-size: 10px;
   line-height: 15px; padding: 0 5px; background: #0067C0; color: #fff; }
+/* v5 桌面设置弹窗 */
+.modal-wide { width: 760px; max-width: 94vw; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+fieldset { border: 1px solid var(--line); padding: 12px 14px; margin: 0; }
+legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
+.inline-seats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ck { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
+.btn-sm { padding: 4px 10px; font-size: 13px; }
