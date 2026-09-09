@@ -90,7 +90,7 @@ function getSnapshot() {
       role: s.role || null, // v5 组机：组长 leader / 成员 member
     }));
 
-  const groups = buildGroups(students, seatTaskStatus, conflictSeats);
+  const groups = buildGroups(students, seatTaskStatus, conflictSeats, sessionId);
 
   return {
     revision, serverTs: nowMs(),
@@ -99,7 +99,19 @@ function getSnapshot() {
   };
 }
 
-function buildGroups(students, seatTaskStatus, conflictSeats) {
+// v5 组机登记完成：显式（学生上报 group_done / 组长点完成）+ 隐式（组满自动）。
+// key: sessionId -> Set(groupId)；sessionId 唯一且不重用，无需清理。
+const doneGroups = new Map();
+function registerDone(sessionId, groupId) {
+  if (!doneGroups.has(sessionId)) doneGroups.set(sessionId, new Set());
+  doneGroups.get(sessionId).add(groupId);
+}
+function isDone(sessionId, groupId) {
+  const s = doneGroups.get(sessionId);
+  return !!(s && s.has(groupId));
+}
+
+function buildGroups(students, seatTaskStatus, conflictSeats, sessionId) {
   const byGroup = {};
   for (const s of students) {
     const g = s.groupId || 'G?';
@@ -115,9 +127,11 @@ function buildGroups(students, seatTaskStatus, conflictSeats) {
       if (m.returnStatus === 'done') doneCount += 1;
     }
     const returned = members.length > 0 && members.every((m) => m.returnStatus === 'done');
+    const checkedIn = members.filter((m) => m.checkinStatus === 'done').length;
+    const complete = isDone(sessionId, g) || (seats.length > 0 && checkedIn >= seats.length);
     return {
-      groupId: g, seats, checkedIn: members.filter((m) => m.checkinStatus === 'done').length,
-      helpCount, doneCount, returned, hasHelp: helpCount > 0,
+      groupId: g, seats, checkedIn,
+      helpCount, doneCount, returned, hasHelp: helpCount > 0, complete,
     };
   });
 }
@@ -126,4 +140,4 @@ function getConflicts() {
   return db.queryConflicts();
 }
 
-module.exports = { getSnapshot, getConflicts };
+module.exports = { getSnapshot, getConflicts, registerDone, isDone };

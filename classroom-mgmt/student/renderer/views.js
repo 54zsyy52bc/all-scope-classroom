@@ -104,7 +104,9 @@
       + '<p class="hint">等待老师发布任务，页面会自动切换。</p>'
       + '<button type="button" class="btn btn-primary btn-xl btn-next" data-act="next-reg">'
       + icon('user-plus', 22) + '本组下一位同学登记</button>'
-      + '<p class="hint hint-soft">本组共用一台电脑：上一位登完后点此，把机器交给下一位组员继续登记。</p></section>';
+      + '<button type="button" class="btn btn-xl btn-ghost-wide" data-act="group-done">'
+      + icon('check-check', 22) + '本组登记完成（没有更多同学了）</button>'
+      + '<p class="hint hint-soft">还有同学没登？点上方换下一位；若本组同学都已登记完，点下方结束本组登记。</p></section>';
   }
 
   function viewCheckin(state) {

@@ -6,6 +6,7 @@ const sse = require('../sse');
 const bridge = require('../mqtt/bridge');
 const commandSvc = require('../services/command.service');
 const taskSvc = require('../services/task.service');
+const dashboardSvc = require('../services/dashboard.service');
 const { seatNum, makeLogger } = require('../utils');
 // 主题常量取单一真源：classroom-mgmt/shared/topics.js（教师端/学生端共用，禁止各端复制）
 // 路径：teacher/src/mqtt/ → ../../../ = classroom-mgmt/ → shared/topics
@@ -212,6 +213,15 @@ function handleStatus(env) {
   db.touchSeat(session.session_id, seat, env.ts || Date.now());
 }
 
+// v5 组机：学生上报「本组登记完成」（显式；另有组满隐式完成在快照中计算）
+function handleGroupDone(env) {
+  const session = db.getCurrentSession();
+  if (!session) { log.warn('group_done 忽略：无进行中会话'); return; }
+  const groupId = pickGroup(env, env.seat);
+  dashboardSvc.registerDone(session.session_id, groupId);
+  sse.publish('group.done', { groupId, seat: env.seat, sessionId: session.session_id });
+}
+
 async function handleHello(env) {
   try {
     const session = db.getCurrentSession();
@@ -289,6 +299,7 @@ function dispatch(topic, buf) {
     case 'checkin': return safeRun('checkin', () => handleCheckin(env, topic));
     case 'task': return safeRun('task', () => handleTaskStatus(env, topic));
     case 'return': return safeRun('return', () => handleReturn(env, topic));
+    case 'group_done': return safeRun('group_done', () => handleGroupDone(env));
     case 'status': return safeRun('status', () => handleStatus(env));
     case 'hello': return safeRun('hello', () => handleHello(env));
     case 'sync': return undefined; // 教师发出的 sync，学生不回

@@ -133,17 +133,24 @@
           + '</div>';
       }).join('');
 
-      const badge = g.hasHelp
-        ? '<span class="group-badge b-help">求助 ' + g.helpCount + '</span>'
-        : (g.returned
-          ? '<span class="group-badge b-done">已归还</span>'
-          : '<span class="group-badge">' + g.checkedIn + '/' + g.seats.length + ' 登记</span>');
+      const badge = g.complete
+        ? '<span class="group-badge b-complete">登记完成</span>'
+        : (g.hasHelp
+          ? '<span class="group-badge b-help">求助 ' + g.helpCount + '</span>'
+          : (g.returned
+            ? '<span class="group-badge b-done">已归还</span>'
+            : '<span class="group-badge">' + g.checkedIn + '/' + g.seats.length + ' 登记</span>'));
 
       return '<section class="group' + (g.hasHelp ? ' has-help' : '') + (g.returned ? ' all-returned' : '') + '">'
         + '<div class="group-head"><span class="group-name">' + termLabel(g.groupId) + '</span>' + badge + '</div>'
         + '<div class="group-seats">' + tiles + '</div>'
         + '</section>';
     }).join('');
+
+    // 全部组完成 → 绿色横幅提示老师可以发布任务
+    const all = groups.length > 0 && groups.every((g) => g.complete);
+    const db = $('all-done-banner');
+    if (db) db.hidden = !all;
   }
   function renderAlerts(conflicts) {
     const box = $('alerts');

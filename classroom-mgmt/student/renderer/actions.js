@@ -173,6 +173,10 @@
       } else if (act === 'sync-status') {
         sendHello();
         toast('已向老师请求同步，请稍候…');
+      } else if (act === 'group-done') {
+        sendUp('group_done', { role: state.role || 'member' });
+        state.groupDone = true;
+        toast('已通知老师本组登记完成');
       } else if (act === 'task-status') {
         submitTaskStatus(el.dataset.status);
       } else if (act === 'return-toggle') {

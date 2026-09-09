@@ -84,6 +84,11 @@
       clearTimeout(flashHelp.hideTimer);
       flashHelp.hideTimer = setTimeout(() => { banner.hidden = true; }, 15000);
     }
+    es.addEventListener('group.done', (e) => {
+      const d = JSON.parse(e.data);
+      logEvent('终端 ' + String((d.payload && d.payload.groupId) || '').replace(/^G/, '') + ' 组登记完成');
+      if (refreshSoonFn) refreshSoonFn();
+    });
     es.addEventListener('student.return', (e) => {
       const d = JSON.parse(e.data);
       logEvent(esc(d.payload.seat) + ' 号归还器材');

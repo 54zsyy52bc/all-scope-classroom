@@ -524,3 +524,8 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
 .help-banner .hb-ico { width: 26px; height: 26px; background: #fff; color: #c42b1c; font-weight: 900;
   display: flex; align-items: center; justify-content: center; }
 @keyframes hb-flash { 50% { opacity: 0.55; } }
+/* 全部组登记完成横幅 */
+.done-banner { position: sticky; top: 0; z-index: 59; background: #107c10; color: #fff;
+  font-size: 17px; font-weight: 700; text-align: center; padding: 10px; animation: db-pop 0.5s ease; }
+@keyframes db-pop { from { transform: translateY(-8px); opacity: 0; } }
+.group-badge.b-complete { background: #107c10; color: #fff; }
