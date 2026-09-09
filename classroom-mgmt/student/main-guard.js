@@ -79,10 +79,16 @@ module.exports = function registerGuard(deps) {
     if (denyList.length) { timer = setInterval(sweep, 3000); sweep(); }
   }
   function stop() { if (timer) clearInterval(timer); timer = null; denyList = []; allowMap = {}; }
+  function shellStart(p) { // 兜底：cmd start 可解析 .lnk / UWP / 注册表关联
+    try { spawn('cmd', ['/c', 'start', '""', '"' + p + '"'], { detached: true, stdio: 'ignore', windowsHide: true }).unref(); } catch (_e) { /* noop */ }
+  }
   function launch(appId) {
     const a = allowMap[appId];
     if (!a || !a.path) return false;
-    spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return true; } // 快捷方式必须走 shell
+    const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.on('error', () => shellStart(a.path)); // exe 直接启动失败（UWP 等）→ shell 兜底
+    child.unref();
     return true;
   }
 
