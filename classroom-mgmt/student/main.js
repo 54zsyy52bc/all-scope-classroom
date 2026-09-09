@@ -273,24 +273,30 @@ if (!gotLock) {
     }
   });
   app.whenReady().then(() => {
-    const machineId = ensureMachineId();
-    registerIpc(() => machineId);
-    registerShellIpc();
-    const guard = registerGuard({ app, ipcMain, readConfig, saveConfig });
-    // v5：默认开机自启回全域桌面
+    // 启动全链路兜底：任何异常写 audit 日志并打印，避免“无窗口静默失败”
     try {
-      const _ac = readConfig();
-      if (_ac.autoStart !== false) { saveConfig({ autoStart: true }); app.setLoginItemSettings({ openAtLogin: true }); }
-    } catch (_e) { /* 无权限忽略 */ }
-    // eslint-disable-next-line no-console
-    console.log(`[boot] machineId=${machineId} config=${CONFIG_PATH}`);
-    createWindow();
-    guard.setWindow(mainWindow);
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+      const machineId = ensureMachineId();
+      registerIpc(() => machineId);
+      registerShellIpc();
+      const guard = registerGuard({ app, ipcMain, readConfig, saveConfig });
+      try { // v5：默认开机自启回全域桌面
+        const _ac = readConfig();
+        if (_ac.autoStart !== false) { saveConfig({ autoStart: true }); app.setLoginItemSettings({ openAtLogin: true }); }
+      } catch (_e) { /* 自启失败忽略 */ }
+      console.log(`[boot] machineId=${machineId} config=${CONFIG_PATH}`);
+      createWindow();
+      guard.setWindow(mainWindow);
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      });
+    } catch (err) {
+      try {
+        console.error('[boot] 启动失败:', err);
+        fs.appendFileSync(path.join(app.getPath('userData'), 'audit.log'),
+          new Date().toISOString() + ' [BOOT-FAIL] ' + (err && err.stack ? err.stack : String(err)) + '\n');
+      } catch (_e2) { /* noop */ }
+    }
   });
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+  app.on('window-all-closed', () => {    if (process.platform !== 'darwin') app.quit();
   });
 }
