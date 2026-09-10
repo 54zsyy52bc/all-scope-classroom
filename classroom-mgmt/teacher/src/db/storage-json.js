@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const TABLES = {
-  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'policy_mode'],
+  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'policy_mode', 'terminal_count', 'group_members'],
   t_student: ['stu_id', 'session_id', 'seat', 'group_id', 'name', 'student_no', 'checkin_time', 'checkin_status', 'machine_id', 'last_seen_at', 'return_status'],
   t_equipment: ['eq_id', 'eq_name', 'category', 'total'],
   t_equipment_borrow: ['borrow_id', 'session_id', 'seat', 'group_id', 'eq_id', 'qty', 'borrow_time', 'return_time', 'status'],

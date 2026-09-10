@@ -20,6 +20,7 @@ const sse = require('../sse');
 const bridge = require('../mqtt/bridge');
 const { fail } = require('../errors');
 const { makeLogger } = require('../utils');
+const { MAX_SEAT } = require('../config');
 
 const log = makeLogger(process.env.LOG_LEVEL || 'info');
 
@@ -39,7 +40,7 @@ function setPolicy(sessionId, mode) {
   const policy = applyPolicy(sessionId, true);
   // 双保险：cmd policy 单条广播偶有丢包 → 逐生广播 sync(policy) 强制解锁（student onSync 已处理 p.policy）
   try {
-    const students = (db.queryStudents(sessionId) || {}).items || [];
+    const students = (db.queryStudents(sessionId, { limit: MAX_SEAT }) || {}).items || [];
     for (const st of students) {
       if (st.seat) bridge.publishSync(st.seat, { policy });
     }

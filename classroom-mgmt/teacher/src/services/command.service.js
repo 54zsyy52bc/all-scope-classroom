@@ -5,6 +5,8 @@ const sse = require('../sse');
 const bridge = require('../mqtt/bridge');
 const { fail } = require('../errors');
 const { signToken, nowMs, seatNum, makeLogger } = require('../utils');
+// 取全量学生（组机模式座位数可到 84）必须显式给分页上限，否则默认 50 会漏掉第 10 台以后
+const MAX_SEAT = require('../config').MAX_SEAT;
 
 const log = makeLogger(process.env.LOG_LEVEL || 'info');
 
@@ -24,7 +26,7 @@ async function sendShutdown({ force = false, reason = '' } = {}) {
   }
 
   // 2) 归还闸门
-  const students = db.queryStudents(sessionId).items;
+  const students = db.queryStudents(sessionId, { limit: MAX_SEAT }).items;
   const pendingSeats = students.filter((s) => s.returnStatus !== 'done').map((s) => s.seat);
   if (!force && pendingSeats.length > 0) {
     fail('E-RETURN-01', `尚有 ${pendingSeats.length} 个座位未确认归还，如需强制关机请设 force=true`, { pendingSeats });
@@ -96,7 +98,7 @@ async function autoShutdown() {
   try {
     const session = db.getCurrentSession();
     if (!session) return;
-    const students = db.queryStudents(session.session_id || session.sessionId).items;
+    const students = db.queryStudents(session.session_id || session.sessionId, { limit: MAX_SEAT }).items;
     const allReturned = students.length > 0 && students.every((x) => x.returnStatus === 'done');
     if (!allReturned) return;
     await sendShutdown({ force: false, reason: 'auto' });

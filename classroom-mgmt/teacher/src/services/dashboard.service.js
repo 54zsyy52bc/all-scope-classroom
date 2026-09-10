@@ -6,6 +6,8 @@ const bridge = require('../mqtt/bridge');
 const sessionSvc = require('./session.service');
 const taskSvc = require('./task.service');
 const { nowMs, seatNum } = require('../utils');
+const { MAX_SEAT } = require('../config');
+const STUDENT_QUERY_LIMIT = MAX_SEAT; // 取全量座位（≤99），禁用默认分页 50
 
 function emptyStats() {
   return {
@@ -41,7 +43,9 @@ function getSnapshot() {
   }
 
   const sessionId = sessionRow.session_id;
-  const students = db.queryStudents(sessionId).items;
+  // 组机模式座位数 = 台数×每组人数（默认 14×6=84）> queryStudents 默认分页 50，
+  // 必须显式取全量，否则第 10 组以后整组从看板消失（座位墙/统计/任务人数全部截断）。
+  const students = db.queryStudents(sessionId, { limit: STUDENT_QUERY_LIMIT }).items;
   const totalSeats = sessionRow.total_seats;
   const checkedIn = students.filter((s) => s.checkinStatus === 'done').length;
   const online = students.filter((s) => s.online).length;

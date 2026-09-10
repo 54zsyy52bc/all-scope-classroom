@@ -82,6 +82,8 @@
 
     renderTask(snap.currentTask, s);
     renderGroups(snap.groups || [], snap.seats || []);
+    const hlp = window.DashboardStream; // 求助提醒与快照对齐：F5 刷新/重连后仍能看到未处理的求助
+    if (hlp && hlp.syncHelpFromSeats) hlp.syncHelpFromSeats(snap.seats || []);
     renderAlerts(snap.conflicts || []);
   }
 

@@ -3,6 +3,7 @@
 // 弥补 15s 心跳间隔与 SIoT 无 LWT 的缺口（ARCH §5.8）。
 const db = require('./db');
 const sse = require('./sse');
+const { MAX_SEAT } = require('./config');
 
 let prevOnline = new Set();
 let timer = null;
@@ -10,7 +11,7 @@ let timer = null;
 function scan() {
   const session = db.getCurrentSession();
   if (!session) { prevOnline = new Set(); return; }
-  const students = db.queryStudents(session.session_id).items;
+  const students = db.queryStudents(session.session_id, { limit: MAX_SEAT }).items;
   const curOnline = new Set(students.filter((s) => s.online).map((s) => s.seat));
   for (const s of students) {
     const wasOn = prevOnline.has(s.seat);

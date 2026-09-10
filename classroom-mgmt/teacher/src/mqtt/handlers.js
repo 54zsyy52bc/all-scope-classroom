@@ -11,24 +11,14 @@ const { seatNum, makeLogger } = require('../utils');
 // 主题常量取单一真源：classroom-mgmt/shared/topics.js（教师端/学生端共用，禁止各端复制）
 // 路径：teacher/src/mqtt/ → ../../../ = classroom-mgmt/ → shared/topics
 const topics = require('../../../shared/topics');
+const { seatInRange, pickGroup } = require('./seat-group');
 
 const log = makeLogger(process.env.LOG_LEVEL || 'info');
 
 const TASK_STATUS_VALUES = ['doing', 'done', 'help'];
 
-// 座位范围守卫：seat 必须为 1-99 的两位数字；若已知本会话总座位数（正整数），
-// 还须不超过该上限。越界报文一律忽略（不落库、不占 msg_id），
-// 防止越界座位造出幻影学生/负 pending 统计。totalSeats 未知（如无头测试桩）时退化为 1-99 校验。
-function seatInRange(seat, totalSeats) {
-  const s = String(seat == null ? '' : seat);
-  if (!/^\d{1,2}$/.test(s)) return false;
-  const n = parseInt(s, 10);
-  if (n < 1 || n > 99) return false;
-  const total = Number(totalSeats);
-  if (Number.isInteger(total) && total >= 1 && n > total) return false;
-  return true;
-}
-
+// 座位越界守卫：越界报文一律忽略（不落库、不占 msg_id），
+// 防止越界座位造出幻影学生/负 pending 统计。
 function guardSeat(session, env, label) {
   if (!session) return false;
   if (!seatInRange(env.seat, session.total_seats)) {
@@ -36,19 +26,6 @@ function guardSeat(session, env, label) {
     return false;
   }
   return true;
-}
-
-// v5 组机：组容量=会话 group_members（seat 为组内序号 01..K）；缺省退回 GROUP_SIZE
-function deriveGroup(seat) {
-  const n = parseInt(seat, 10);
-  if (!Number.isFinite(n) || n < 1) return 'G1';
-  const cur = db.getCurrentSession();
-  const k = (cur && cur.group_members) || require('../config').GROUP_SIZE || 5;
-  return `G${Math.floor((n - 1) / k) + 1}`;
-}
-function pickGroup(env, seat) { // 显式组号(排除 '*' 占位)优先，否则按 seat 推导
-  const raw = (env && env.group) || (env && env.payload && env.payload.group);
-  return raw && raw !== '*' ? raw : deriveGroup(seat);
 }
 
 function seatStateOf(sessionId, seat) {
@@ -73,7 +50,7 @@ function seatStateOf(sessionId, seat) {
 }
 
 function checkinStats(sessionId) {
-  const students = db.queryStudents(sessionId).items;
+  const students = db.queryStudents(sessionId, { limit: require('../config').MAX_SEAT }).items;
   const total = students.length;
   const checkedIn = students.filter((s) => s.checkinStatus === 'done').length;
   return { checkedIn, pending: total - checkedIn, rate: total > 0 ? Number((checkedIn / total).toFixed(4)) : 0 };

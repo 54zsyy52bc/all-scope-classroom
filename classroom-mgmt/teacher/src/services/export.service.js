@@ -36,7 +36,7 @@ function buildStudents(sessionIds) {
     const borrows = db.queryBorrows(sid, {}).items;
     const bySeat = {};
     for (const b of borrows) { bySeat[b.seat] = bySeat[b.seat] || []; bySeat[b.seat].push(`${b.qty}×${b.eqName}`); }
-    const students = db.queryStudents(sid).items;
+    const students = db.queryStudents(sid, { limit: cfg.MAX_SEAT }).items;
     for (const s of students) {
       const eq = (bySeat[s.seat] || []).join('、');
       rows.push([s.seat, s.groupId || '', s.name || '', s.studentNo || '', fmtTs(s.checkinTime), eq]);

@@ -152,12 +152,44 @@ globalThis.confirm = () => true;
 (0, eval)(fs.readFileSync(path.join(ROOT, 'admit.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'activity.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'manage.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'help-alert.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'stream.js'), 'utf8'));
 // 模拟浏览器：全部脚本加载后触发 DOMContentLoaded（app.js 的 init 在此执行）
 if (domReady) domReady();
 
+// ---------- 求助提醒状态机（help-alert.js）----------
+// 现场反馈："学生点了求助，大屏只提示一次"——这里锁死新行为：
+// 未处理前横幅常驻、每 repeatMs 重播、状态切走即出集合、教师「已阅」静音。
+function helpAlertChecks() {
+  const HA = globalThis.HelpAlert;
+  if (!HA) { check('help-alert.js 已加载', false, 'window.HelpAlert 缺失'); return; }
+  const a = HA.create({ repeatMs: 20000 });
+  const add = a.update({ seat: '03', name: '李四', status: 'help' });
+  check('首次求助 → 记为新增（立刻响）', add.isNewHelp === true && add.changed === true);
+  check('待处理数 = 1 且文案含座位', a.count() === 1 && a.text().includes('李四'));
+  check('同一座位重复点求助不再算新增', a.update({ seat: '03', name: '李四', status: 'help' }).isNewHelp === false);
+  check('未处理期间到点即可重播（不因只响过一次而静音）', a.dueForBeep(Date.now() + 20000) === true);
+  // 第二个座位同时求助 → 立即响且计数累加
+  const add2 = a.update({ seat: '07', name: '王五', status: 'help' });
+  check('第二个座位求助 → 新增且计数 2', add2.isNewHelp === true && a.count() === 2);
+  check('多人求助文案含条数', a.text().includes('2 位同学'));
+  // 教师「已阅」→ 静音，但集合保留（横幅不消失，等处理完）
+  a.acknowledge();
+  check('已阅后静音但仍在待处理集合', a.isMuted() === true && a.count() === 2);
+  check('静音期间不再重播', a.dueForBeep(Date.now() + 60000) === false);
+  // 新求助解除静音
+  a.update({ seat: '09', name: '赵六', status: 'help' });
+  check('新同学求助 → 自动解除静音', a.isMuted() === false);
+  // 学生把状态切走 → 出集合；全部处理完 → 空集合（横幅收起）
+  a.update({ seat: '03', status: 'done' });
+  a.update({ seat: '07', status: 'doing' });
+  a.update({ seat: '09', status: 'done' });
+  check('状态切走后集合清空（横幅自动收起）', a.count() === 0 && a.text() === '');
+}
+
 // ---------- 断言 ----------
 async function main() {
+  helpAlertChecks();
   // init 拉快照并渲染
   await new Promise((r) => setTimeout(r, 30));
   check('阶段渲染为 task（课中）', elsMap['phase-pill'].textContent === '课中', elsMap['phase-pill'].textContent);

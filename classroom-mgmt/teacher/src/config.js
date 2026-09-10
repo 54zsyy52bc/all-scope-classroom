@@ -28,6 +28,9 @@ const defaults = {
   EQUIP_FILE: path.join(PROJECT_ROOT, 'seeds', 'equipment.json'),
   DB_PATH: path.join(PROJECT_ROOT, 'classroom.db'),
   SEAT_COUNT: 50,
+  // 座位上限（服务端校验 1-99）：内部"取全量学生"的查询一律用它当分页上限，
+  // 避免 queryStudents 的默认分页 50 把组机模式（14 台×6 人=84 座）的后半班截掉。
+  MAX_SEAT: 99,
   // v5 组机（全域学生桌面）默认：机房台数 × 每组人数（大屏开始上课可自定义，totalSeats = T×K）
   TERMINAL_COUNT: 14,
   GROUP_MEMBERS: 6,
@@ -45,7 +48,7 @@ const defaults = {
 };
 
 const NUM_KEYS = [
-  'SIOT_WS_PORT', 'SIOT_TCP_PORT', 'SIOT_WEB_PORT', 'SEAT_COUNT',
+  'SIOT_WS_PORT', 'SIOT_TCP_PORT', 'SIOT_WEB_PORT', 'SEAT_COUNT', 'MAX_SEAT',
   'HTTP_PORT', 'GROUP_SIZE', 'HEARTBEAT_INTERVAL_MS',
   'OFFLINE_THRESHOLD_MS', 'SHUTDOWN_DELAY_SEC', 'HMAC_WINDOW_MS',
   'TERMINAL_COUNT', 'GROUP_MEMBERS',

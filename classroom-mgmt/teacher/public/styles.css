@@ -523,6 +523,11 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
   animation: hb-flash 0.9s step-end infinite; }
 .help-banner .hb-ico { width: 26px; height: 26px; background: #fff; color: #c42b1c; font-weight: 900;
   display: flex; align-items: center; justify-content: center; }
+/* 已阅·静音：停蜂鸣但横幅保留（求助未处理前不消失）；再有人求助自动恢复提示 */
+.help-banner .hb-ack { margin-left: auto; background: #fff; color: #c42b1c; border: 0; cursor: pointer;
+  font-size: 14px; font-weight: 700; padding: 6px 14px; }
+.help-banner .hb-ack:hover { background: #ffe7e5; }
+.help-banner[data-muted="true"] { animation: none; background: #8a1f14; }
 @keyframes hb-flash { 50% { opacity: 0.55; } }
 /* 全部组登记完成横幅 */
 .done-banner { position: sticky; top: 0; z-index: 59; background: #107c10; color: #fff;

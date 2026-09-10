@@ -26,10 +26,11 @@
   <!-- 全部组登记完成横幅 -->
   <div class="done-banner" id="all-done-banner" hidden role="status">全部小组已完成登记，可以发布任务了</div>
 
-  <!-- 求助强提醒横幅（学生按"求助"即时弹出+蜂鸣） -->
-  <div class="help-banner" id="help-banner" hidden role="alert" aria-live="assertive">
+  <!-- 求助强提醒横幅（学生按"求助"即时弹出+蜂鸣；未处理前常驻，每 20s 重播） -->
+  <div class="help-banner" id="help-banner" hidden role="alert" aria-live="assertive" title="点这里静音（求助未处理前横幅保留）">
     <span class="hb-ico">!</span>
     <span id="help-banner-text">有同学求助</span>
+    <button type="button" class="hb-ack" id="help-banner-ack">已阅 · 静音</button>
   </div>
 
   <section class="stats" aria-label="课堂统计">
@@ -182,6 +183,7 @@
   <div class="toast" id="toast" hidden></div>
 
   <script src="icons.js"></script>
+  <script src="help-alert.js"></script>
   <script src="term-ui.js"></script>
   <script src="app.js"></script>
   <script src="presets.js"></script>
