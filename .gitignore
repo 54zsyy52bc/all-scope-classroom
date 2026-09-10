@@ -34,6 +34,9 @@ classroom.db.json
 .DS_Store
 Thumbs.db
 *.tmp
+# 临时排查脚本/数据库副本（放 /tmp 更好；放仓库根会被 git add -A 误提交）
+/_tmp_*
+/.tmp_*
 
 # --- 本地编辑器/知识库（Obsidian 等）---
 /.obsidian/
