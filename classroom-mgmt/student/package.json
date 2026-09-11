@@ -26,6 +26,9 @@
     "files": [
       "main.js",
       "main-guard.js",
+      "guard-win.js",
+      "guard-apps.js",
+      "guard-window.ps1",
       "preload.js",
       "app-config.json",
       "renderer/**/*",

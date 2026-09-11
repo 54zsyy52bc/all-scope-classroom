@@ -225,8 +225,9 @@ async function handleHello(env) {
     let policy = null;
     if (session) {
       const tasks = db.listTasks(sessionId);
-      if (tasks.length) {
-        const t = tasks[tasks.length - 1];
+      const openTasks = tasks.filter((x) => !x.close_time);
+      if (openTasks.length) {
+        const t = openTasks[openTasks.length - 1];
         // 最近活动：带计时字段（迟到/重连学生据此恢复计时显示）
         currentTask = {
           taskId: t.task_id, title: t.title,

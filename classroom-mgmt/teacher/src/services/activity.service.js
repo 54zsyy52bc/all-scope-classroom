@@ -210,6 +210,36 @@ function timerControl({ taskId, action, durationSec }) {
   return { task, broadcast: { delivered: true, action } };
 }
 
+// ---------- 结束活动（计时的与非计时的活动都可随时结束）----------
+function endActivity({ taskId }) {
+  const t = taskOrFail(taskId);
+
+  // 幂等：已结束则直接返回，不重复广播
+  if (t.close_time) {
+    return { task: taskSvc.toTask(t), broadcast: { delivered: false, action: 'end' }, already: true };
+  }
+
+  // 摘掉截止定时器（避免结束后仍触发 expired）
+  clearTimer(taskId);
+
+  // 计时活动：落定时器关闭态；非计时活动保持 idle，不要动
+  if (t.timed) {
+    db.updateTaskTimer(taskId, { timer_state: 'closed', timer_remaining_ms: 0, timer_paused_at: null });
+  }
+
+  // 写 close_time（活动不再是"当前活动"）
+  db.closeTask(taskId, nowMs());
+
+  // 新指令：学生端据此收起活动卡，回到"等待老师发布新活动"
+  bridge.publishCommand('task_end', { taskId, title: t.title });
+  sse.publish('activity.ended', { taskId, title: t.title });
+
+  // 结束后若锁定策略为 activity 模式，因不再有 running 活动 → 自动回到锁屏
+  try { require('./policy.service').applyPolicy(t.session_id); } catch (_e) { /* 策略重算失败不阻断 */ }
+
+  return { task: taskSvc.toTask(db.getTask(taskId)), broadcast: { delivered: true, action: 'end' }, already: false };
+}
+
 // ---------- 查询 ----------
 function listActivities(sessionId) {
   return db.listTasks(sessionId).map((t) => {
@@ -225,4 +255,4 @@ function listActivities(sessionId) {
   });
 }
 
-module.exports = { publishActivity, timerControl, listActivities, expireTask };
+module.exports = { publishActivity, timerControl, endActivity, listActivities, expireTask };

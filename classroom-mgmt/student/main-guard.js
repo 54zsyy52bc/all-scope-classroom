@@ -1,12 +1,12 @@
 'use strict';
-// ===== v5.1 全域桌面守卫模块（主进程）=====
-// 应用白名单（完整路径）启动 + 禁用进程轮询强杀；桌面配置存独立 desktop-config.json；
-// 口令仍存 app-config.shell（哈希，主进程比对）。应用层防护边界同 v5 文档。
+// ===== v5.2 全域桌面守卫（主进程）：白名单启动 + 禁用强杀 + 非课堂窗口自动最小化 + 应用运行态注册表 =====
 const { execFile, spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { dialog } = require('electron');
+const createWinGuard = require('./guard-win');
+const createAppRegistry = require('./guard-apps');
 const SHELL_SALT = 'qy-local-shell-v5';
 
 module.exports = function registerGuard(deps) {
@@ -14,16 +14,22 @@ module.exports = function registerGuard(deps) {
   let mainWindow = null;
   let allowMap = {};
   let denyList = [];
+  let minimizeOthers = true;
   let timer = null;
   let busy = false;
   const isKiosk = !process.argv.includes('--no-kiosk') && !process.argv.includes('--dev');
   const DESKTOP_FILE = path.join(__dirname, 'desktop-config.json');
+  const GUARD_PS = path.join(__dirname, 'guard-window.ps1');
   const RENDERER = (f) => path.join(app.getAppPath(), 'renderer', f);
+
+  function log(m) { try { console.log('[guard] ' + m); } catch (_e) { /* noop */ } }
+  const registry = createAppRegistry({ onRunningChange: () => pushApps(), log });
+  const winGuard = createWinGuard({ scriptPath: GUARD_PS, onReport, log });
 
   function setWindow(win) { mainWindow = win; }
   function dDefault() {
     return { course: { id: 'c1', name: '信息技术·硬件实践课', homeApps: [], apps: [] },
-      guard: { enabled: false, denyExe: ['chrome.exe', 'msedge.exe', 'firefox.exe'] } };
+      guard: { enabled: false, denyExe: ['chrome.exe', 'msedge.exe', 'firefox.exe'], minimizeOthers: true } };
   }
   // ---- 桌面配置（独立 json，主进程唯一读写）----
   function dRead() {
@@ -37,7 +43,6 @@ module.exports = function registerGuard(deps) {
     fs.writeFileSync(DESKTOP_FILE, JSON.stringify(desktop, null, 2), 'utf8');
   }
   function migrateLegacy() {
-    // v5.0 曾把 course/guard 放 app-config.shell → 迁移到 desktop-config.json 并从 shell 移除
     const sc = (readConfig() || {}).shell || {};
     if ((sc.course && (sc.course.apps || []).length) || sc.guard) {
       const d = dRead();
@@ -46,8 +51,6 @@ module.exports = function registerGuard(deps) {
       try { dWrite(d); const next = Object.assign({}, sc); delete next.course; delete next.guard; saveConfig({ shell: next }); } catch (_e) { /* noop */ }
     }
   }
-  function appsPayload(desktop) { return (desktop.course.apps || []).map((a) => ({ id: a.id, name: a.name, path: a.path })); }
-
   function procList() {
     return new Promise((resolve) => {
       execFile('tasklist', ['/FO', 'CSV', '/NH'], { windowsHide: true, timeout: 5000 }, (err, out) => {
@@ -62,11 +65,19 @@ module.exports = function registerGuard(deps) {
     execFile('taskkill', ['/F', '/IM', name], { windowsHide: true }, () => { /* best-effort */ });
     try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('guard:kill', name); } catch (_e) { /* noop */ }
   }
-  async function sweep() {
-    if (busy || !denyList.length) return;
+  async function tick() { // 每轮：运行态推导 + 强杀禁用 + 最小化非课堂窗口
+    if (busy) return;
     busy = true;
-    const procs = await procList();
-    for (const p of new Set(procs)) { if (denyList.includes(p)) killProc(p); }
+    try {
+      const names = await procList();
+      registry.observe(names);
+      if (denyList.length) for (const p of new Set(names)) if (denyList.includes(p)) killProc(p);
+      if (minimizeOthers) {
+        const allow = registry.allowExeList();
+        allow.push(path.basename(process.execPath).toLowerCase()); // 自己（kiosk）必须进 allow，否则被自己最小化
+        winGuard.sweep(allow, false);
+      }
+    } catch (_e) { /* noop */ }
     busy = false;
   }
   function start(desktop) {
@@ -75,36 +86,46 @@ module.exports = function registerGuard(deps) {
       if (a && a.path) allowMap[a.id] = { name: a.name || path.basename(a.path), path: a.path };
     }
     denyList = (desktop && desktop.guard && desktop.guard.enabled ? desktop.guard.denyExe : []).map((x) => String(x).toLowerCase());
-    if (timer) clearInterval(timer);
-    if (denyList.length) { timer = setInterval(sweep, 3000); sweep(); }
+    minimizeOthers = desktop && desktop.guard && desktop.guard.minimizeOthers !== false;
+    registry.setApps((desktop && desktop.course && desktop.course.apps) || []);
+    if (timer) clearInterval(timer); timer = null;
+    const hasApps = Object.keys(allowMap).length > 0;
+    // 有课堂应用（推运行态/最小化）或启用强杀才轮询；否则不轮询省资源
+    if (hasApps || denyList.length) {
+      // 只要开了「非课堂窗口自动最小化」就必须起助手进程 —— 曾经只在 hasApps 时起，
+      // 导致「班级还没配课程应用但开了最小化」时 sweep 静默发不出去（助手没起来）。
+      if (minimizeOthers) winGuard.start();
+      timer = setInterval(tick, 3000); tick();
+    }
   }
-  function stop() { if (timer) clearInterval(timer); timer = null; denyList = []; allowMap = {}; }
-  function shellStart(p) { // 兜底：cmd start 可解析 .lnk / UWP / 注册表关联
+  function stop() {
+    if (timer) clearInterval(timer); timer = null;
+    denyList = []; allowMap = {}; minimizeOthers = true;
+    registry.setApps([]);
+    try { winGuard.stop(); } catch (_e) { /* noop */ }
+  }
+  function shellStart(p) { // cmd start 可解析 .lnk / UWP / 注册表关联
     try { spawn('cmd', ['/c', 'start', '""', '"' + p + '"'], { detached: true, stdio: 'ignore', windowsHide: true }).unref(); } catch (_e) { /* noop */ }
   }
-  // 第 3 级兜底：模拟人手在开始菜单搜索启动（Ctrl+Esc → 输入应用名 → 回车），
-  // 专治"检测是否被手动启动/需开始菜单项"的软件。应用名取 exe 文件名（无扩展名）。
-  function searchStart(name) {
+  function searchStart(name) { // 第 3 级兜底：模拟人手在开始菜单搜索启动（Ctrl+Esc → 输入 → 回车）
     try {
       const base = String(name || '').replace(/\\/g, '/').split('/').pop().replace(/\.[^.]+$/, '') || '应用';
       const safe = base.replace(/[{}()\[\]+^%~]/g, (m) => '{' + m + '}');
       const ps = "$w=New-Object -ComObject WScript.Shell;Start-Sleep -Milliseconds 250;"
         + "$w.SendKeys('^{ESC}');Start-Sleep -Milliseconds 900;"
         + "$w.SendKeys('" + safe + "');Start-Sleep -Milliseconds 700;$w.SendKeys('{ENTER}');";
-      const { execFile } = require('node:child_process');
       execFile('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', ps],
         { windowsHide: true, timeout: 12000 }, () => { /* best-effort */ });
     } catch (_e) { /* noop */ }
   }
-  // 进程是否已提权（学生端以管理员身份运行时，子进程自动继承高权限）
-  let elevatedCache = null;
+  let elevatedCache = null; // 进程是否已提权（学生端以管理员身份运行时子进程自动继承）
   function detectElevated() {
     return new Promise((resolve) => {
       if (elevatedCache != null) { resolve(elevatedCache); return; }
       execFile('net', ['session'], { windowsHide: true }, (err) => { elevatedCache = !err; resolve(elevatedCache); });
     });
   }
-  function runAsAdmin(p) { // 应用需要管理员权限 → 提权启动（学生端已提权时不弹 UAC）
+  function runAsAdmin(p) { // 应用需管理员权限 → 提权启动（学生端已提权时不弹 UAC）
     try {
       const cmd = 'Start-Process -FilePath \'' + String(p).replace(/'/g, "''") + '\' -Verb RunAs';
       execFile('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', cmd],
@@ -114,9 +135,10 @@ module.exports = function registerGuard(deps) {
   function launch(appId) {
     const a = allowMap[appId];
     if (!a || !a.path) return false;
+    procList().then((names) => { try { registry.bindLaunch(appId, names); } catch (_e) {} }).catch(() => {});
     if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return true; } // 快捷方式必须走 shell
     const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });
-    child.on('error', () => { // 直接启动失败 → 提权尝试(权限应用) + shell/开始菜单兜底
+    child.on('error', () => {
       detectElevated().then((elev) => {
         if (!elev) runAsAdmin(a.path);
         shellStart(a.path);
@@ -125,6 +147,31 @@ module.exports = function registerGuard(deps) {
     });
     child.unref();
     return true;
+  }
+
+  // ---- 运行态上报（PowerShell 助手每行 JSON 回传）----
+  let lastReport = null, lastMinReport = 0, lastAppsPush = 0;
+  function onReport(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (obj.error) { log('ps: ' + obj.error); return; }
+    lastReport = obj;
+    // minimized 数变化才通知（避免刷屏）；归零时复位以便下次变化再提醒
+    if (obj.minimized > 0 && obj.minimized !== lastMinReport) {
+      lastMinReport = obj.minimized;
+      const exes = (obj.candidates || []).map((c) => c.exe).filter(Boolean);
+      try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('guard:minimize', { exes }); } catch (_e) {}
+    } else if (obj.minimized === 0) lastMinReport = 0;
+    pushApps();
+  }
+  function pushApps() { // 节流 guard:apps ≤ 1 次/秒
+    const now = Date.now();
+    if (now - lastAppsPush < 1000) return;
+    lastAppsPush = now;
+    try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('guard:apps', appsState()); } catch (_e) {}
+  }
+  function appsState() {
+    return { ok: true, guardEnabled: denyList.length > 0, minimizeOthers,
+      apps: registry.state(), minimized: lastReport && typeof lastReport.minimized === 'number' ? lastReport.minimized : 0 };
   }
 
   // ---- 口令（app-config.shell，同 v5.0）----
@@ -140,10 +187,23 @@ module.exports = function registerGuard(deps) {
   ipcMain.handle('guard:start', () => { start(dRead()); return true; });
   ipcMain.handle('guard:stop', () => { stop(); return true; });
   ipcMain.handle('guard:launch', (_e, appId) => launch(String(appId || '')));
+  ipcMain.handle('guard:apps-state', () => appsState());
+  ipcMain.handle('guard:app-focus', (_e, appId) => {
+    const id = String(appId || '');
+    const st = registry.state().find((a) => a.id === id);
+    if (!st) return { ok: false, err: '应用不存在' };
+    if (st.running) {
+      const ex = registry.exeOf(id);
+      if (!ex) return { ok: false, err: '进程未知' };
+      winGuard.focus(ex); // 前台锁可能拦，返回 focused:0 属正常，渲染层容错
+      return { ok: true, focused: true };
+    }
+    const launched = launch(id); // launch 内部已 bindLaunch
+    return { ok: !!launched, launched: !!launched };
+  });
   ipcMain.handle('shell:get-state', async () => {
     const cfg = readConfig();
-    return { machineId: cfg.machineId || '', kiosk: isKiosk, autoStart: !!cfg.autoStart,
-      elevated: await detectElevated() }; // 学生端是否管理员运行（决定权限应用能否直开）
+    return { machineId: cfg.machineId || '', kiosk: isKiosk, autoStart: !!cfg.autoStart, elevated: await detectElevated() };
   });
   ipcMain.handle('shell:set-autostart', (_e, on) => {
     try { saveConfig({ autoStart: !!on }); app.setLoginItemSettings({ openAtLogin: !!on }); } catch (_err) { /* noop */ }
@@ -184,12 +244,12 @@ module.exports = function registerGuard(deps) {
         .map((a, i) => ({ id: 'a' + (i + 1), name: String(a.name || path.basename(a.path || '')).slice(0, 24),
           path: String(a.path || '').slice(0, 260) })).filter((a) => a.path);
       d.course = { id: 'c1', name: String(patch.course.name || '信息技术·硬件实践课').slice(0, 30),
-        homeApps: Array.isArray(patch.course.homeApps) ? patch.course.homeApps.map(String) : [],
-        apps };
+        homeApps: Array.isArray(patch.course.homeApps) ? patch.course.homeApps.map(String) : [], apps };
     }
     if (patch && patch.guard) {
       d.guard = { enabled: !!patch.guard.enabled,
-        denyExe: (Array.isArray(patch.guard.denyExe) ? patch.guard.denyExe : []).map((x) => String(x).toLowerCase().slice(0, 40)).filter(Boolean) };
+        denyExe: (Array.isArray(patch.guard.denyExe) ? patch.guard.denyExe : []).map((x) => String(x).toLowerCase().slice(0, 40)).filter(Boolean),
+        minimizeOthers: patch.guard.minimizeOthers !== false }; // 缺省视为 true
     }
     try { dWrite(d); } catch (_e) { err.push('写入桌面配置失败'); }
     return { ok: !err.length, err: err.join('；') };
@@ -203,7 +263,7 @@ module.exports = function registerGuard(deps) {
     if (r.canceled || !r.filePaths || !r.filePaths[0]) return { canceled: true };
     return { canceled: false, path: r.filePaths[0] };
   });
-  ipcMain.handle('desktop:import-config', async () => { // 课程包 json（U 盘/大屏导出）导入
+  ipcMain.handle('desktop:import-config', async () => {
     if (!mainWindow) return { ok: false, err: '窗口未就绪' };
     const r = await dialog.showOpenDialog(mainWindow, {
       title: '导入课程桌面包(.json)', properties: ['openFile'],
@@ -220,26 +280,12 @@ module.exports = function registerGuard(deps) {
       return { ok: true };
     } catch (e) { return { ok: false, err: '导入失败：' + (e.message || e) }; }
   });
-  ipcMain.handle('shell:open-desktop', () => { // 上课模式 → 桌面主屏
-    stop(); start(dRead());
-    if (mainWindow) mainWindow.loadFile(RENDERER('desktop.html'));
-    return true;
-  });
-  ipcMain.handle('shell:open-class', () => { // 桌面 → 课堂登记/任务
-    if (mainWindow) mainWindow.loadFile(RENDERER('index.html'));
-    return true;
-  });
-  ipcMain.handle('shell:back', () => { // 课堂 → 回桌面主屏
-    stop();
-    if (mainWindow) mainWindow.loadFile(RENDERER('desktop.html'));
-    return true;
-  });
-  ipcMain.handle('shell:go-shell', () => { // 桌面 → 模式选择屏
-    stop();
-    if (mainWindow) mainWindow.loadFile(RENDERER('shell.html'));
-    return true;
-  });
+  ipcMain.handle('shell:open-desktop', () => { stop(); start(dRead()); if (mainWindow) mainWindow.loadFile(RENDERER('desktop.html')); return true; });
+  ipcMain.handle('shell:open-class', () => { if (mainWindow) mainWindow.loadFile(RENDERER('index.html')); return true; });
+  ipcMain.handle('shell:back', () => { stop(); if (mainWindow) mainWindow.loadFile(RENDERER('desktop.html')); return true; });
+  ipcMain.handle('shell:go-shell', () => { stop(); if (mainWindow) mainWindow.loadFile(RENDERER('shell.html')); return true; });
+  try { app.on('before-quit', () => { try { winGuard.stop(); } catch (_e) {} }); } catch (_e) {} // 退出前停助手，否则主进程挂住
 
   migrateLegacy();
-  return { setWindow, launch, start, stop, dRead };
+  return { setWindow, launch, start, stop, dRead, winGuard, registry };
 };

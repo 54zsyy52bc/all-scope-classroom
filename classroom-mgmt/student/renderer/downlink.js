@@ -34,6 +34,7 @@
       if (p.action === 'start') return applyStart();
       if (p.action === 'task') return applyTask(p.task);
       if (p.action === 'end') return setPhase('return');
+      if (p.action === 'task_end') return applyTaskEnd(p);
       if (p.action === 'reset') return applyReset(p.seat);
       if (p.action === 'shutdown') return handleShutdown(p);
       if (p.action === 'shutdown_cancel') return applyShutdownCancel(p);
@@ -90,10 +91,14 @@
       if (p.equipment && typeof onEquipment === 'function') onEquipment({ equipment: p.equipment });
       // 锁定策略随 sync 下发：迟到/重连学生恢复锁定状态
       if (p.policy && typeof onPolicy === 'function') onPolicy(p.policy);
+      // 当前活动一律以服务端为权威：老师「结束活动」后 sync 回包的 currentTask 为 null，
+      // 必须据此清空本地活动卡，否则迟到/重连学生（条件赋值时代）会一直挂着已结束的活动。
+      const hasTask = !!(p.currentTask && p.currentTask.taskId);
+      state.currentTask = hasTask ? p.currentTask : null;
+      if (!hasTask) state.taskStatus = null;
       // 计时活动状态随 sync 恢复（含计时字段）
-      if (p.currentTask && p.currentTask.taskId) {
-        state.currentTask = p.currentTask;
-        if (typeof onTimer === 'function') onTimer({ action: 'sync', taskId: p.currentTask.taskId, remainingMs: p.currentTask.remainingMs });
+      if (hasTask && typeof onTimer === 'function') {
+        onTimer({ action: 'sync', taskId: p.currentTask.taskId, remainingMs: p.currentTask.remainingMs });
       }
       setPhase(p.phase || 'idle');
       // 服务端真值校正：教师端没写进去的提交要回滚，避免学生以为成功了
@@ -105,7 +110,6 @@
         state.returnDone = false;
         toast('归还未被教师端确认，请重新点一次确认归还', 'error');
       }
-      if (p.currentTask && p.currentTask.taskId) state.currentTask = p.currentTask;
       renderStage();
     }
 
@@ -145,6 +149,18 @@
       state.phase = 'task';
       renderStage();
       toast(task.timed && task.timerState === 'running' ? '新活动：' + task.title + '（计时中）' : '新任务：' + task.title, 'info');
+    }
+
+    // 教师端「结束活动」（大屏可对任何活动一键结束）：收起活动卡，回到"等待老师发布任务"。
+    // 只处理当前这个活动 —— 广播是全班单主题，避免误收别的活动的结束指令。
+    function applyTaskEnd(p) {
+      const cur = state.currentTask;
+      if (cur && cur.taskId && p.taskId && String(p.taskId) !== String(cur.taskId)) return undefined;
+      state.currentTask = null;
+      state.taskStatus = null;
+      renderStage();
+      toast('老师已结束当前活动', 'info');
+      return undefined;
     }
 
     function applyReset(seat) {

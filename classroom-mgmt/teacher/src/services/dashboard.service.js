@@ -53,9 +53,10 @@ function getSnapshot() {
   const returned = students.filter((s) => s.returnStatus === 'done').length;
   const checkinRate = totalSeats > 0 ? Number((checkedIn / totalSeats).toFixed(4)) : 0;
 
-  // 当前任务与任务状态
+  // 当前任务与任务状态：只取未结束的最后一个活动（活动结束后 currentTask 归零）
   const tasks = db.listTasks(sessionId);
-  const currentTaskRow = tasks.length ? tasks[tasks.length - 1] : null;
+  const openTasks = tasks.filter((t) => !t.close_time);
+  const currentTaskRow = openTasks.length ? openTasks[openTasks.length - 1] : null;
   let currentTask = null;
   let taskDoing = 0; let taskDone = 0; let taskHelp = 0;
   const seatTaskStatus = {};

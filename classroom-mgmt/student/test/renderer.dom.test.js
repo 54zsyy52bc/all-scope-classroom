@@ -225,6 +225,30 @@ async function main() {
   check('演练模式标记 dry=true', sd.dataset.dry === 'true', sd.dataset.dry);
   check('倒计时文案为演练提示', sdText.textContent.includes('演练'), sdText.textContent);
 
+  // 15) 教师端「结束活动」（大屏可对任何活动一键结束）：学生端收起活动卡
+  injectCmd('task', { task: { taskId: 'T-E1', title: '结束测试活动', desc: '' } });
+  await sleep(10);
+  check('结束活动前置：活动卡已显示', stage.innerHTML.includes('结束测试活动'), stage.innerHTML.slice(0, 80));
+  injectCmd('task_end', { taskId: 'T-OTHER', title: '别的活动' });
+  await sleep(10);
+  check('task_end：taskId 不匹配时忽略，活动卡保留', stage.innerHTML.includes('结束测试活动'), stage.innerHTML.slice(0, 80));
+  injectCmd('task_end', { taskId: 'T-E1', title: '结束测试活动' });
+  await sleep(10);
+  check('task_end：taskId 匹配时收起活动卡 -> 等待老师发布任务',
+    stage.innerHTML.includes('等待老师发布任务'), stage.innerHTML.slice(0, 80));
+
+  // 16) 回归点：sync 以服务端为权威，currentTask 为 null 必须清空本地活动卡
+  //     （旧实现是条件赋值，老师结束后重连的学生会一直挂着已结束的活动）
+  injectCmd('task', { task: { taskId: 'T-E2', title: '重连前活动', desc: '' } });
+  await sleep(10);
+  check('sync 清空前：活动卡显示', stage.innerHTML.includes('重连前活动'), stage.innerHTML.slice(0, 80));
+  injectSync(T.makeSync({
+    seat: '07', phase: 'task', checkinDone: false, returnDone: false, currentTask: null,
+  }));
+  await sleep(10);
+  check('sync：currentTask=null 清空本地活动卡',
+    stage.innerHTML.includes('等待老师发布任务'), stage.innerHTML.slice(0, 80));
+
   console.log('\n渲染层流程验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);
 }

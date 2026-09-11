@@ -181,6 +181,12 @@
       if (global.DashboardActivity) global.DashboardActivity.onSse({ event: 'activity.timer', data: e.data });
       if (refreshSoonFn) refreshSoonFn();
     });
+    // 活动结束（教师端一键结束）→ 收起活动条 + 刷新快照
+    es.addEventListener('activity.ended', (e) => {
+      if (global.DashboardActivity) global.DashboardActivity.onSse({ event: 'activity.ended', data: e.data });
+      logEvent('活动已结束');
+      if (refreshSoonFn) refreshSoonFn();
+    });
     es.addEventListener('policy.changed', (e) => {
       if (global.DashboardActivity) global.DashboardActivity.onSse({ event: 'policy.changed', data: e.data });
     });

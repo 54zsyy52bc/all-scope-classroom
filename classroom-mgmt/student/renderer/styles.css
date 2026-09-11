@@ -671,12 +671,7 @@ body {
 .btn, input, select, textarea, .chip, .tile, .seat-tile, .stat-tile { border-radius: 0 !important; }
 button, .btn { box-shadow: none; }
 
-/* v5 课程应用磁贴 + 管理员按钮 */
-.course-dock { display: flex; align-items: center; gap: 10px; padding: 8px 0 2px; flex-wrap: wrap; }
-.course-dock .dock-label { font-size: 13px; color: #6f6f6f; margin-right: 4px; }
-.dock-app { font-family: inherit; font-size: 13px; padding: 7px 16px; border: 1px solid #d7e7f7;
-  background: #eaf4fd; color: #005a9e; cursor: pointer; }
-.dock-app:hover { background: #d7e9f9; }
+/* v5 管理员按钮（原 v5 课程应用磁贴 .course-dock/.dock-app 已由悬浮窗 app-dock.js 取代，样式随文件删除） */
 .btn-link { font-family: inherit; font-size: 13px; color: #005a9e; background: none; border: 0; cursor: pointer; padding: 4px 8px; }
 .btn-link:hover { text-decoration: underline; }
 /* v5 组机换人续登记 */

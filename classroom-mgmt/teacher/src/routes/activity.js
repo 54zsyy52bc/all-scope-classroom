@@ -28,6 +28,11 @@ router.post('/sessions/:sessionId/activities/:taskId/timer', asyncHandler(async 
   ok(res, r);
 }));
 
+// 结束活动（计时的与非计时的活动都可随时结束）
+router.post('/sessions/:sessionId/activities/:taskId/end', asyncHandler(async (req, res) => {
+  ok(res, activitySvc.endActivity({ taskId: req.params.taskId }));
+}));
+
 // 锁定策略：设置（open | activity）
 router.post('/sessions/:sessionId/policy', asyncHandler(async (req, res) => {
   ok(res, policySvc.setPolicy(req.params.sessionId, (req.body || {}).mode));

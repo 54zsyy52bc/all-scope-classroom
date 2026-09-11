@@ -292,6 +292,73 @@ async function main() {
   // 恢复 open 模式，避免干扰后续归还流程
   await api('POST', `/api/v1/sessions/${sessionId}/policy`, { mode: 'open' });
 
+  step('7.7 一键结束活动（计时与非计时活动随时结束，全链路覆盖）');
+  // 1. 发布一个非计时活动
+  const endRes = await api('POST', `/api/v1/sessions/${sessionId}/activities`, { title: '一键结束活动', timed: false });
+  check('发布非计时活动 201', endRes.status === 201, `实际 ${endRes.status}`);
+  const endTaskId = endRes.json && endRes.json.data && endRes.json.data.task && endRes.json.data.task.taskId;
+  check('返回非空 endTaskId', !!endTaskId, String(endTaskId));
+  if (endRes.json && endRes.json.data && endRes.json.data.task) {
+    check('活动 timed=false', endRes.json.data.task.timed === false, `实际 ${JSON.stringify(endRes.json.data.task.timed)}`);
+  }
+  // 2. 学生机收到该活动的 task 广播（谓词带上 taskId 区分新消息）
+  const cmdEndTask = await waitForStu(stu.received, (m) => m.env.type === 'cmd' && m.env.payload.action === 'task'
+    && m.env.payload.task && m.env.payload.task.taskId === endTaskId);
+  check('学生机收到非计时活动广播', !!cmdEndTask);
+  if (cmdEndTask) console.log('  cmd.task(end) =', JSON.stringify(cmdEndTask.env.payload.task));
+  // 3. 快照把新活动当作当前活动
+  const snapBefore = await api('GET', '/api/v1/dashboard/snapshot');
+  const curBefore = snapBefore.json && snapBefore.json.data && snapBefore.json.data.currentTask;
+  check('快照当前活动为该活动', curBefore && curBefore.taskId === endTaskId,
+    curBefore ? JSON.stringify(curBefore) : 'currentTask=null');
+  // 4. 一键结束
+  const endCall = await api('POST', `/api/v1/sessions/${sessionId}/activities/${endTaskId}/end`);
+  check('一键结束 200', endCall.status === 200, `实际 ${endCall.status}`);
+  check('结束返回 already=false', endCall.json && endCall.json.data && endCall.json.data.already === false,
+    endCall.json ? JSON.stringify(endCall.json.data) : '');
+  check('结束写入 closeTime', !!(endCall.json && endCall.json.data && endCall.json.data.task && endCall.json.data.task.closeTime),
+    endCall.json ? JSON.stringify(endCall.json.data && endCall.json.data.task) : '');
+  // 5. SSE 收到 activity.ended
+  const endSse = await waitFor(sse.events, (e) => e.event === 'activity.ended' && e.payload.payload.taskId === endTaskId);
+  check('SSE 收到 activity.ended', !!endSse);
+  if (endSse) console.log('  SSE activity.ended =', JSON.stringify(endSse.payload.payload));
+  // 6. 学生机收到 task_end 指令
+  const cmdEnd = await waitForStu(stu.received, (m) => m.env.type === 'cmd' && m.env.payload.action === 'task_end'
+    && m.env.payload.taskId === endTaskId);
+  check('学生机收到 task_end 指令', !!cmdEnd);
+  if (cmdEnd) console.log('  cmd.task_end =', JSON.stringify(cmdEnd.env.payload));
+  // 7. 结束后快照不再把已结束活动当当前活动（焊接练习仍未结束，currentTask 不为 null）
+  const snapAfter = await api('GET', '/api/v1/dashboard/snapshot');
+  const curAfter = snapAfter.json && snapAfter.json.data && snapAfter.json.data.currentTask;
+  check('结束后快照不再以该活动为当前活动', !(curAfter && curAfter.taskId === endTaskId),
+    curAfter ? JSON.stringify(curAfter) : 'currentTask=null');
+  // 8. 活动列表里该活动 closeTime 已落库
+  const tasksEnd = await api('GET', `/api/v1/sessions/${sessionId}/tasks`);
+  const endRow = ((tasksEnd.json && tasksEnd.json.data) || []).find((t) => t.taskId === endTaskId);
+  check('活动列表该活动 closeTime 已落库', !!endRow && !!endRow.closeTime,
+    endRow ? JSON.stringify(endRow) : '未找到该活动');
+  // 9. 幂等：重复结束不重复广播
+  const endAgain = await api('POST', `/api/v1/sessions/${sessionId}/activities/${endTaskId}/end`);
+  check('重复结束 200', endAgain.status === 200, `实际 ${endAgain.status}`);
+  check('重复结束返回 already=true', endAgain.json && endAgain.json.data && endAgain.json.data.already === true,
+    endAgain.json ? JSON.stringify(endAgain.json.data) : '');
+  // 10. 迟到/重连的学生不会拿到已结束的活动（同一座位 SEAT 重发 hello，只看新 sync）
+  const n0 = stu.received.length;
+  stu.up(topics.makeEnvelope({ type: 'hello', seat: SEAT, payload: { machineId: 'PC-SMOKE-07' } }));
+  const t0 = Date.now();
+  while (Date.now() - t0 < 8000) {
+    if (stu.received.length > n0) break;
+    await sleep(80);
+  }
+  const newMsgs = stu.received.slice(n0);
+  const lateSync = newMsgs.find((m) => m.topic === topics.SYNC);
+  check('迟到学生收到新 sync 应答', !!lateSync, `新消息 ${newMsgs.length} 条`);
+  if (lateSync) {
+    console.log('  late.sync =', JSON.stringify(lateSync.env.payload));
+    check('迟到 sync 不携带已结束活动', !(lateSync.env.payload.currentTask && lateSync.env.payload.currentTask.taskId === endTaskId),
+      JSON.stringify(lateSync.env.payload.currentTask));
+  }
+
   step('8. 非法报文不得产生孤儿写入（E-REF-01 防护）');
   const before = (await api('GET', `/api/v1/sessions/${sessionId}/tasks`)).json.data.length;
   stu.up(topics.makeEnvelope({

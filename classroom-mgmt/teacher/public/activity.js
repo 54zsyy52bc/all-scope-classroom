@@ -28,26 +28,37 @@
 
   function renderBar() {
     const bar = $('activity-bar');
-    if (!barTask || !barTask.timed || barTask.timerState === 'closed' || barTask.timerState === 'idle') {
-      bar.hidden = true;
-      stopTick();
-      return;
-    }
+    // 只要有未结束的活动就显示活动条（计时的与非计时的都可显示），
+    // 按是否计时切换控件。这是"非计时活动无法结束"的根因修复点。
+    const active = !!(barTask && barTask.timerState !== 'closed');
+    if (!active) { bar.hidden = true; stopTick(); return; }
     bar.hidden = false;
     $('ab-title').textContent = barTask.title || '未命名活动';
     $('ab-desc').textContent = barTask.desc || '';
-    $('ab-time').textContent = fmt(barTask.remainingMs);
+    const timed = !!barTask.timed;
     const running = barTask.timerState === 'running';
-    $('ab-state').textContent = running ? '进行中' : barTask.timerState === 'paused' ? '已暂停' : '已截止';
-    $('ab-time').dataset.state = barTask.timerState;
-    $('ab-pause').hidden = !running;
-    $('ab-resume').hidden = running || barTask.timerState !== 'paused';
-    if (barTask.timerState === 'expired' && !expiredToasted) {
-      expiredToasted = true;
-      D.toast('活动已截止：' + (barTask.title || ''), true);
+    const wrap = $('ab-timer-wrap');
+    if (wrap) wrap.hidden = !timed;                  // 非计时活动：不显示倒计时区域
+    $('ab-pause').hidden = !timed || !running;
+    $('ab-resume').hidden = !timed || running || barTask.timerState !== 'paused';
+    const adj = $('ab-adjust'); if (adj) adj.hidden = !timed;
+    const rst = $('ab-restart'); if (rst) rst.hidden = !timed;
+    const end = $('ab-end'); if (end) end.hidden = false;
+    if (timed) {
+      $('ab-time').textContent = fmt(barTask.remainingMs);
+      $('ab-state').textContent = running ? '进行中' : barTask.timerState === 'paused' ? '已暂停' : '已截止';
+      $('ab-time').dataset.state = barTask.timerState;
+      if (barTask.timerState === 'expired' && !expiredToasted) {
+        expiredToasted = true;
+        D.toast('活动已截止：' + (barTask.title || ''), true);
+      }
+      if (barTask.timerState !== 'expired') expiredToasted = false;
+      startTick();
+    } else {
+      $('ab-state').textContent = '进行中';
+      $('ab-state').dataset.state = 'running';
+      stopTick();
     }
-    if (barTask.timerState !== 'expired') expiredToasted = false;
-    startTick();
   }
 
   function startTick() {
@@ -87,6 +98,12 @@
         barTask.timerState = p.state || barTask.timerState;
         if (p.remainingMs != null) barTask.remainingMs = p.remainingMs;
         renderBar();
+      }
+    } else if (e.event === 'activity.ended') {
+      if (barTask && p.taskId === barTask.taskId) {
+        barTask = null;
+        renderBar();
+        D.toast('活动已结束：' + (p.title || ''));
       }
     } else if (e.event === 'policy.changed') {
       updatePolicyLabel(p.mode);
@@ -158,6 +175,20 @@
     } finally { actDone('timer'); }
   }
 
+  // ---------- 结束活动（计时的与非计时的都可一键结束）----------
+  async function endActivity() {
+    if (!sessionId || !barTask) return;
+    if (!global.confirm('结束当前活动？学生端将收起活动卡' + (barTask.timed ? '，计时同时停止' : ''))) return;
+    if (!actGuard('end')) return;
+    try {
+      const j = await api('POST', '/api/v1/sessions/' + sessionId + '/activities/' + barTask.taskId + '/end', {});
+      if (j && j.code === 0) {
+        D.toast('活动已结束：' + (barTask.title || ''));
+        D.refreshSoon();
+      }
+    } finally { actDone('end'); }
+  }
+
   // ---------- 锁定策略开关 ----------
   let policyMode = 'open';
   function updatePolicyLabel(mode) {
@@ -196,7 +227,7 @@
     $('ab-pause').onclick = () => timerAction('pause');
     $('ab-resume').onclick = () => timerAction('resume');
     $('ab-restart').onclick = () => timerAction('restart');
-    $('ab-stop').onclick = () => { if (global.confirm('结束当前活动计时？')) timerAction('stop'); };
+    $('ab-end').onclick = endActivity;
     $('ab-adjust').onclick = () => {
       const min = global.prompt('调整时长为（分钟）：', barTask ? Math.round((barTask.durationSec || 600) / 60) : 10);
       const n = Number(min);

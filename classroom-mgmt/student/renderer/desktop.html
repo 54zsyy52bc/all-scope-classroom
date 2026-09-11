@@ -131,6 +131,7 @@
       <label class="f">禁用进程（逗号分隔 exe，如 chrome.exe）</label>
       <input id="f-deny" type="text" />
       <label class="f"><input id="f-guard-en" type="checkbox" style="width:auto" /> 启用禁用进程强杀</label>
+      <label class="f"><input id="f-min" type="checkbox" style="width:auto" /> 非课堂应用窗口自动最小化</label>
       <div class="row" style="justify-content:flex-start">
         <button class="mini" id="btn-import">导入课程桌面包(.json)</button>
         <button class="mini" id="btn-back-shell">回模式选择</button>
@@ -143,6 +144,8 @@
     </div>
   </div>
 
+  <div id="app-dock"></div>
   <script src="desktop.js"></script>
+  <script src="app-dock.js"></script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const taskSvc = require('../services/task.service');
+const activitySvc = require('../services/activity.service');
 const db = require('../db');
 const { ok, asyncHandler } = require('../response');
 const { fail } = require('../errors');
@@ -19,10 +20,9 @@ router.get('/sessions/:sessionId/tasks', asyncHandler(async (req, res) => {
   ok(res, taskSvc.listTasksWithStats(req.params.sessionId));
 }));
 
-// 关闭任务
+// 关闭任务（统一委托到结束活动实现：写 close_time + 广播 + 清定时器）
 router.post('/tasks/:taskId/close', asyncHandler(async (req, res) => {
-  const { task } = taskSvc.closeTask(req.params.taskId);
-  ok(res, { task });
+  ok(res, activitySvc.endActivity({ taskId: req.params.taskId }));
 }));
 
 // 某任务全班状态

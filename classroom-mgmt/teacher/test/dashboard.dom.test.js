@@ -68,7 +68,7 @@ const byId = new Set([
   'm-import-result', 'm-class-list', 'm-activity-list',
   'f-task-preset', 'f-task-timed', 'f-task-duration',
   'activity-bar', 'ab-icon', 'ab-title', 'ab-desc', 'ab-time', 'ab-state',
-  'ab-pause', 'ab-resume', 'ab-adjust', 'ab-restart', 'ab-stop', 'btn-policy',
+  'ab-timer-wrap', 'ab-pause', 'ab-resume', 'ab-adjust', 'ab-restart', 'ab-stop', 'ab-end', 'btn-policy',
 ]);
 for (const id of byId) elsMap[id] = makeEl(id);
 // 弹窗内的输入框：让 querySelectorAll('input') 返回假元素

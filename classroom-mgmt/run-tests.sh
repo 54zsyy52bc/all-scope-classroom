@@ -95,7 +95,7 @@ for base in \
   "$TEACHER/server.js" \
   "$TEACHER/src/"*.js "$TEACHER/src/"*/*.js \
   "$TEACHER/public/"*.js \
-  "$STUDENT/main.js" "$STUDENT/preload.js" "$STUDENT/renderer/"*.js \
+  "$STUDENT/"*.js "$STUDENT/renderer/"*.js \
   "$STUDIO/src/"*.js "$STUDIO/renderer/"*.js \
   "$STUDIO/electron/"*.js "$STUDIO/preload.js"; do
   [ -f "$base" ] || continue

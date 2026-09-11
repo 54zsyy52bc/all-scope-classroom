@@ -102,7 +102,7 @@
 
   // ---- 设置 ----
   function draftFromCfg() {
-    draft = { course: { name: dcfg.course.name, homeApps: (dcfg.course.homeApps || []).slice(), apps: apps().map((a) => Object.assign({}, a)) }, guard: { enabled: !!dcfg.guard.enabled, denyExe: (dcfg.guard.denyExe || []).slice() } };
+    draft = { course: { name: dcfg.course.name, homeApps: (dcfg.course.homeApps || []).slice(), apps: apps().map((a) => Object.assign({}, a)) }, guard: { enabled: !!dcfg.guard.enabled, denyExe: (dcfg.guard.denyExe || []).slice(), minimizeOthers: dcfg.guard.minimizeOthers !== false } };
   }
   function renderAppList() {
     const box = $('app-list');
@@ -156,6 +156,7 @@
     $('f-course-name').value = draft.course.name;
     $('f-deny').value = draft.guard.denyExe.join(',');
     $('f-guard-en').checked = draft.guard.enabled;
+    $('f-min').checked = !!draft.guard.minimizeOthers;
     renderAppList();
     toast('');
     $('set-overlay').hidden = false;
@@ -191,6 +192,7 @@
     draft.course.name = $('f-course-name').value.trim() || '信息技术·硬件实践课';
     draft.guard.denyExe = ($('f-deny').value || '').split(',').map((x) => x.trim()).filter(Boolean);
     draft.guard.enabled = $('f-guard-en').checked;
+    draft.guard.minimizeOthers = $('f-min').checked;
     const r = await bb.setDesktopConfig({ course: draft.course, guard: draft.guard });
     if (r && r.ok) {
       dcfg = { course: draft.course, guard: draft.guard };
