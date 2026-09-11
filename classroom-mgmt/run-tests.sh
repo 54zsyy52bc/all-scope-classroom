@@ -7,11 +7,11 @@
 #   ./run-tests.sh --full     # 完整模式：快速模式 + 真实 SIoT broker 全链路冒烟
 #
 # 覆盖:
-#   教师端  selfcheck / routes / preset-pkg / dashboard.dom
+#   教师端  selfcheck / routes / preset-pkg / dashboard.dom / export-sanitize / timer-restore / auth-cors / credential-gate
 #   Preset Studio  store（本地库）/ renderer.dom
 #   学生端  protocol / renderer.dom
 #   门禁    单文件 <= 300 行 / P0 emoji 扫描
-#   [--full] smoke(真实 broker 全链路 77 项) + net.broker(学生端真机联调)
+#   [--full] smoke(真实 broker 全链路 92 项) + net.broker(学生端真机联调)
 #
 # 退出码: 0 = 全部通过, 1 = 存在失败
 # =============================================================================
@@ -85,6 +85,10 @@ run_case "教师端自检 selfcheck"        "$TEACHER" env DB_PATH=/tmp/rt-selfc
 run_case "路由完整性 routes"           "$TEACHER" "$NODE" test/routes.js
 run_case "预设包协议 preset-pkg"       "$TEACHER" "$NODE" test/preset-pkg.test.js
 run_case "大屏渲染 dashboard.dom"      "$TEACHER" "$NODE" test/dashboard.dom.test.js
+run_case "导出净化 export-sanitize"    "$TEACHER" "$NODE" test/export-sanitize.test.js
+run_case "计时恢复 timer-restore"      "$TEACHER" "$NODE" test/timer-restore.test.js
+run_case "鉴权与CORS策略 auth-cors"    "$TEACHER" "$NODE" test/auth-cors.test.js
+run_case "凭据闸门 credential-gate"    "$TEACHER" "$NODE" test/credential-gate.test.js
 
 # ---------------------------------------------------------------------------
 # 1b. Preset Studio 独立应用（v4：办公端预设编辑器）

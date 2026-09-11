@@ -45,7 +45,7 @@
     host.innerHTML = list.map((a) =>
       '<div class="list-item">'
       + '<div class="li-main"><div>' + esc(a.name) + (a.category ? ' · ' + esc(a.category) : '') + '</div>'
-      + '<div class="li-sub">' + a.equipment.length + ' 件器材 · ' + a.taskTemplates.length + ' 个任务模板'
+      + '<div class="li-sub">' + a.equipment.length + ' 件器材 · ' + a.taskTemplates.length + ' 个活动模板'
       + (a.timed ? ' · 默认计时 ' + Math.round((a.durationSec || 0) / 60) + ' 分钟' : '')
       + '</div></div>'
       + '<span class="li-actions"><button class="mini-btn danger" data-activity-del="' + esc(a.presetId) + '">删除</button></span>'
@@ -54,13 +54,13 @@
   }
 
   async function removeClass(id, name) {
-    if (!global.confirm('删除班级预设「' + name + '」？\n（预设由办公端维护，此删除仅影响本机）')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '删除班级预设', message: '删除班级预设「' + name + '」？（预设由办公端维护，此删除仅影响本机）', confirmText: '删除', danger: true })) return;
     const j = await api('DELETE', '/api/v1/presets/classes/' + id);
     if (j && j.code === 0) { toast('已删除'); D.refreshPresets(); }
   }
 
   async function removeActivity(id, name) {
-    if (!global.confirm('删除活动预设「' + name + '」？\n（预设由办公端维护，此删除仅影响本机）')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '删除活动预设', message: '删除活动预设「' + name + '」？（预设由办公端维护，此删除仅影响本机）', confirmText: '删除', danger: true })) return;
     const j = await api('DELETE', '/api/v1/presets/activities/' + id);
     if (j && j.code === 0) { toast('已删除'); D.refreshPresets(); }
   }

@@ -268,6 +268,10 @@ body[data-phase="closed"] [data-phase-vis]:not([data-phase-vis*="closed"]) { dis
 }
 .modal input:focus { outline: none; border-color: var(--indigo); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.dialog-error { margin: 0 0 14px; font-size: 14px; color: #FCA5A5; }
+#dialog-prompt-wrap { display: block; margin-top: 4px; }
+#dialog-prompt-wrap[hidden] { display: none; }
+#dialog-prompt-label { display: block; margin-bottom: 6px; font-size: 15px; color: var(--muted); }
 
 /* ---------- Toast ---------- */
 .toast {

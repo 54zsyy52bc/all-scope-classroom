@@ -87,8 +87,19 @@ function buildEvents(sessionIds) {
 
 const BUILDERS = { students: buildStudents, tasks: buildTasks, equipment: buildEquipment, events: buildEvents };
 
+// 公式注入净化：单元格首字符为 = + - @ \t \r 时前置单引号（Excel 约定），
+// 防止导出的 CSV 在 Excel 中被执行（如 "=1+1" / "@SUM" / "-2+3"）。仅处理字符串，数字/空值不受影响。
+const FORMULA_PREFIX_CHARS = ['=', '+', '-', '@', '\t', '\r'];
+function sanitizeCell(v) {
+  if (typeof v !== 'string' || v.length === 0) return v;
+  if (FORMULA_PREFIX_CHARS.includes(v[0])) return "'" + v;
+  return v;
+}
+
 function csvOf(headers, rows) {
-  return withBOM(Papa.unparse({ fields: headers, data: rows }));
+  const safeRows = rows.map((row) => row.map(sanitizeCell));
+  // withBOM 在字符串最前加 UTF-8 BOM，净化只改单元格内容，不影响 BOM
+  return withBOM(Papa.unparse({ fields: headers, data: safeRows }));
 }
 
 function writeCsv(dir, report, headers, rows) {
@@ -169,4 +180,4 @@ function resolveFile(exportId, fileName) {
   return { filePath, file: found };
 }
 
-module.exports = { REPORTS, createExport, getExport, resolveFile };
+module.exports = { REPORTS, createExport, getExport, resolveFile, sanitizeCell, csvOf };

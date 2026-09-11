@@ -110,7 +110,7 @@
   }
 
   async function removeDictItem(eqId, name) {
-    if (!global.confirm('从字典删除「' + name + '」？\n（已保存活动中的器材不受影响）')) return;
+    if (!await global.PresetDialog.confirmDialog({ title: '删除器材', message: '从字典删除「' + name + '」？（已保存活动中的器材不受影响）', confirmText: '删除', danger: true })) return;
     try {
       await global.StudioApi.removeDict(eqId);
       toast('已删除');

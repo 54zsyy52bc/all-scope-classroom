@@ -17,8 +17,10 @@
   "OFFLINE_THRESHOLD_MS": 45000,
   "SHUTDOWN_DELAY_SEC": 10,
   "HMAC_WINDOW_MS": 60000,
-  "ENABLE_AUTH": false,
+  "ENABLE_AUTH": true,
   "TEACHER_TOKEN": "",
   "LOG_LEVEL": "info",
-  "HTTP_HOST": "0.0.0.0"
+  "CORS_ORIGINS": "",
+  "HTTP_HOST": "0.0.0.0",
+  "_HTTP_HOST_NOTE": "必须监听所有网卡：学生端桌面会跨机轮询 /api/v1/system/health 显示「教室在线」。安全由 ENABLE_AUTH 承担（本机与 health 免鉴权，其余跨机访问需 X-Teacher-Token）。改为 127.0.0.1 会导致全部学生机显示「教室离线」。"
 }

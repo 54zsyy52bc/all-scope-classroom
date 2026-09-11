@@ -36,6 +36,7 @@ function makeEl(id) {
 const documentStub = {
   readyState: 'complete',
   addEventListener() {},
+  removeEventListener() {},
   getElementById(id) {
     if (!elsMap[id]) elsMap[id] = makeEl(id);
     return elsMap[id];
@@ -234,8 +235,8 @@ async function main() {
   check('task_end：taskId 不匹配时忽略，活动卡保留', stage.innerHTML.includes('结束测试活动'), stage.innerHTML.slice(0, 80));
   injectCmd('task_end', { taskId: 'T-E1', title: '结束测试活动' });
   await sleep(10);
-  check('task_end：taskId 匹配时收起活动卡 -> 等待老师发布任务',
-    stage.innerHTML.includes('等待老师发布任务'), stage.innerHTML.slice(0, 80));
+  check('task_end：taskId 匹配时收起活动卡 -> 等待老师发布活动',
+    stage.innerHTML.includes('等待老师发布活动'), stage.innerHTML.slice(0, 80));
 
   // 16) 回归点：sync 以服务端为权威，currentTask 为 null 必须清空本地活动卡
   //     （旧实现是条件赋值，老师结束后重连的学生会一直挂着已结束的活动）
@@ -247,7 +248,7 @@ async function main() {
   }));
   await sleep(10);
   check('sync：currentTask=null 清空本地活动卡',
-    stage.innerHTML.includes('等待老师发布任务'), stage.innerHTML.slice(0, 80));
+    stage.innerHTML.includes('等待老师发布活动'), stage.innerHTML.slice(0, 80));
 
   console.log('\n渲染层流程验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);

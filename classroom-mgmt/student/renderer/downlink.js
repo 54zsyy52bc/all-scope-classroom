@@ -148,7 +148,7 @@
       state.taskStatus = null;
       state.phase = 'task';
       renderStage();
-      toast(task.timed && task.timerState === 'running' ? '新活动：' + task.title + '（计时中）' : '新任务：' + task.title, 'info');
+      toast(task.timed && task.timerState === 'running' ? '新活动：' + task.title + '（计时中）' : '新活动：' + task.title, 'info');
     }
 
     // 教师端「结束活动」（大屏可对任何活动一键结束）：收起活动卡，回到"等待老师发布任务"。

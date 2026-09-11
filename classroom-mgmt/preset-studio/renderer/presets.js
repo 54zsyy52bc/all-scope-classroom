@@ -75,7 +75,7 @@
   }
 
   async function removeClass(id, name) {
-    if (!global.confirm('删除班级预设「' + name + '」？')) return;
+    if (!await global.PresetDialog.confirmDialog({ title: '删除班级预设', message: '删除班级预设「' + name + '」？', confirmText: '删除', danger: true })) return;
     const j = await Editor.api('DELETE', '/api/v1/presets/classes/' + id);
     if (j && j.code === 0) { Editor.toast('已删除'); Editor.refreshPresets(); }
   }
@@ -118,7 +118,7 @@
     const list = rows.length ? rows : [{ title: '', desc: '' }];
     host.innerHTML = list.map((t, i) =>
       '<div class="tpl-row">'
-      + '<input data-tpl-title="' + i + '" value="' + Editor.esc(t.title || '') + '" placeholder="任务标题" />'
+      + '<input data-tpl-title="' + i + '" value="' + Editor.esc(t.title || '') + '" placeholder="活动标题" />'
       + '<input data-tpl-desc="' + i + '" value="' + Editor.esc(t.desc || '') + '" placeholder="说明（选填）" />'
       + '<button type="button" class="row-del" data-tpl-del="' + i + '">×</button>'
       + '</div>'
@@ -153,7 +153,7 @@
     host.innerHTML = acts.map((a) =>
       '<div class="list-item">'
       + '<div class="li-main"><div class="li-title">' + Editor.esc(a.name) + (a.category ? ' <span class="hint">' + Editor.esc(a.category) + '</span>' : '') + '</div>'
-      + '<div class="li-sub">' + a.equipment.length + ' 件器材 · ' + a.taskTemplates.length + ' 个任务模板'
+      + '<div class="li-sub">' + a.equipment.length + ' 件器材 · ' + a.taskTemplates.length + ' 个活动模板'
       + (a.timed ? ' · 计时 ' + Math.round((a.durationSec || 0) / 60) + ' 分钟' : '')
       + (a.note ? ' · ' + Editor.esc(a.note) : '') + '</div></div>'
       + '<div class="li-actions">'
@@ -214,7 +214,7 @@
   }
 
   async function removeActivity(id, name) {
-    if (!global.confirm('删除活动预设「' + name + '」？')) return;
+    if (!await global.PresetDialog.confirmDialog({ title: '删除活动预设', message: '删除活动预设「' + name + '」？', confirmText: '删除', danger: true })) return;
     const j = await Editor.api('DELETE', '/api/v1/presets/activities/' + id);
     if (j && j.code === 0) { Editor.toast('已删除'); Editor.refreshPresets(); }
   }

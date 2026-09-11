@@ -22,7 +22,18 @@
 
   function equipName(eqId) {
     for (const e of equipment()) if (e.eqId === eqId) return e.eqName;
-    return eqId;
+    return '未知器材';
+  }
+
+  // 阶段映射中文（唯一真源，对照审查标准总纲 §7.6 词表「阶段中文」）
+  function phaseLabel(phase) {
+    return ({
+      idle: '待课',
+      checkin: '登记中',
+      task: '课中',
+      return: '归还中',
+      closed: '已结束',
+    })[phase] || '待课';
   }
 
   // ---------------------------------------------------------------------------
@@ -84,7 +95,7 @@
     return '<section class="panel panel-center">'
       + '<span class="hero-icon">' + icon('monitor', 64) + '</span>'
       + '<h1 class="hero-title">等待老师开始上课</h1>'
-      + '<p class="hero-sub">老师点「上课」后，本页会自动切换到登记页面。<br />'
+      + '<p class="hero-sub">老师点「开始上课」后，本页会自动切换到登记页面。<br />'
       + '请先确认右上角连接状态为「已连接」。</p>'
       + '<div class="meta-row">'
       + '<span class="meta">' + icon('hash', 16) + '座位 ' + esc(state.seat || '未设置') + '</span>'
@@ -101,7 +112,7 @@
       + '<p class="hero-sub">' + esc(state.name || '') + ' · 座位 ' + esc(state.seat || '')
       + (state.role === 'leader' ? ' · 本组组长' : ' · 组员') + '</p>'
       + (items ? '<ul class="summary-list">' + items + '</ul>' : '')
-      + '<p class="hint">等待老师发布任务，页面会自动切换。</p>'
+      + '<p class="hint">等待老师发布活动，页面会自动切换。</p>'
       + '<button type="button" class="btn btn-primary btn-xl btn-next" data-act="next-reg">'
       + icon('user-plus', 22) + '本组下一位同学登记</button>'
       + '<button type="button" class="btn btn-xl btn-ghost-wide" data-act="group-done">'
@@ -112,7 +123,7 @@
   function viewCheckin(state) {
     return '<section class="panel">'
       + '<header class="panel-head">'
-      + '<span class="step-badge">第 1 步 / 共 3 步</span>'
+      + '<span class="step-badge">' + phaseLabel(state.phase) + '</span>'
       + '<h1 class="panel-title">' + icon('clipboard-check', 24) + '上课登记</h1>'
       + '<p class="panel-sub">每组共用一台电脑：组长先登记（座位号 01），其他同学按 02、03…依次登记。</p></header>'
       + '<div class="form-grid">'
@@ -157,8 +168,8 @@
     if (!t || !t.taskId) {
       return '<section class="panel panel-center">'
         + '<span class="hero-icon">' + icon('megaphone', 64) + '</span>'
-        + '<h1 class="hero-title">等待老师发布任务</h1>'
-        + '<p class="hero-sub">老师发布后，这里会出现任务内容和三个状态按钮。</p></section>';
+        + '<h1 class="hero-title">等待老师发布活动</h1>'
+        + '<p class="hero-sub">老师发布后，这里会出现活动内容和三个状态按钮。</p></section>';
     }
     const opts = [
       { key: 'doing', label: '进行中', iconName: 'play' },
@@ -177,7 +188,7 @@
       : state.taskStatus === 'help' ? '求助' : '尚未选择');
     return '<section class="panel">'
       + '<header class="panel-head">'
-      + '<span class="step-badge">第 1 步 / 共 1 步</span>'
+      + '<span class="step-badge">' + phaseLabel(state.phase) + '</span>'
       + '<h1 class="panel-title">' + icon('activity', 24) + esc(t.title) + '</h1>'
       + '<p class="panel-sub">' + esc(t.desc || '按老师要求完成操作，随时点下方按钮更新进度。') + '</p></header>'
       + timerBlock(t)
@@ -196,7 +207,7 @@
   function viewReturn(state) {
     return '<section class="panel">'
       + '<header class="panel-head">'
-      + '<span class="step-badge">第 1 步 / 共 2 步</span>'
+      + '<span class="step-badge">' + phaseLabel(state.phase) + '</span>'
       + '<h1 class="panel-title">' + icon('package-check', 24) + '归还确认</h1>'
       + '<p class="panel-sub">把器材放回器材柜，逐项打勾后再点确认归还。</p></header>'
       + returnList(state)

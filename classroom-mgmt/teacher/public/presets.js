@@ -49,8 +49,8 @@
   function onActivityChange() {
     const a = D.presets.activities.find((x) => x.presetId === $('f-activity-preset').value);
     $('f-activity-hint').textContent = a
-      ? a.equipment.length + ' 件器材 · ' + a.taskTemplates.length + ' 个任务模板将随上课下发'
-      : '选活动预设后，器材清单与任务模板将随上课下发';
+      ? a.equipment.length + ' 件器材 · ' + a.taskTemplates.length + ' 个活动模板将随上课下发'
+      : '选活动预设后，器材清单与活动模板将随上课下发';
   }
 
   // 上课中的活动预设 → 任务弹窗模板快捷按钮

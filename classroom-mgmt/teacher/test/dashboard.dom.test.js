@@ -82,15 +82,20 @@ elsMap['events-body'].prepend = (c) => { elsMap['events-body'].children.unshift(
 elsMap['events-body'].removeChild = () => { elsMap['events-body'].children.pop(); };
 
 let domReady = null;
+// 文档级监听（dialog.js 的 Esc 关闭绑定在 document 上）：既要有 removeEventListener，
+// 也要能派发键盘事件，否则弹窗组件的键盘路径无法被验证。
+const docHandlers = {};
 const documentStub = {
   readyState: 'loading',
   body: makeEl('body'),
-  addEventListener(ev, fn) { if (ev === 'DOMContentLoaded') domReady = fn; },
+  addEventListener(ev, fn) { docHandlers[ev] = fn; if (ev === 'DOMContentLoaded') domReady = fn; },
+  removeEventListener(ev) { delete docHandlers[ev]; },
   createTextNode(t) { return { textContent: t }; },
   getElementById(id) { return elsMap[id] || (elsMap[id] = makeEl(id)); },
   createElement(tag) { return makeEl(tag); },
   querySelectorAll(sel) { return []; },
 };
+function fireDocKey(key) { if (docHandlers.keydown) docHandlers.keydown({ key: key }); }
 
 // ---------- 桩 fetch / EventSource / confirm ----------
 const fetchLog = [];
@@ -146,6 +151,7 @@ globalThis.EventSource = EventSourceStub;
 globalThis.confirm = () => true;
 // 预载 Icons（真实 icons.js），然后按页面顺序加载 app.js → presets.js → activity.js → manage.js → stream.js
 (0, eval)(fs.readFileSync(path.join(ROOT, 'icons.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'dialog.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'term-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'presets.js'), 'utf8'));
@@ -262,14 +268,28 @@ async function main() {
   check('导出 POST 带 formats=[xlsx]', !!exportCall && exportCall.body.formats[0] === 'xlsx');
   check('触发文件下载（a.click）', clickedDownloads.length >= 1, clickedDownloads.join(','));
 
-  // 强制关机（confirm 桩返回 true）
+  // 强制关机（自定义确认弹窗，模拟点「确认」）
   elsMap['btn-shutdown'].onclick();
+  await new Promise((r) => setTimeout(r, 10));
+  check('关机确认弹窗打开', elsMap['overlay-dialog'].hidden === false);
+  // Esc 等价「取消」：弹窗关闭且不得发出关机请求（危险会话的键盘逃生路径）
+  fireDocKey('Escape');
+  await new Promise((r) => setTimeout(r, 10));
+  check('Esc 关闭确认弹窗', elsMap['overlay-dialog'].hidden === true);
+  check('Esc 取消不触发关机请求',
+    fetchLog.filter((f) => f.url.indexOf('/commands/shutdown') >= 0).length === 0);
+  // 再开一次，模拟点「确认」
+  elsMap['btn-shutdown'].onclick();
+  await new Promise((r) => setTimeout(r, 10));
+  elsMap['dialog-confirm'].onclick();
   await new Promise((r) => setTimeout(r, 10));
   const shutCall = fetchLog.find((f) => f.method === 'POST' && f.url === '/api/v1/commands/shutdown');
   check('强制关机 POST force=true', !!shutCall && shutCall.body.force === true);
 
-  // 结束课堂归档（return -> closed，v4.1 补的 UI 闭环）
+  // 结束课堂归档（return -> closed，自定义确认弹窗，模拟点「确认」）
   elsMap['btn-finish'].onclick();
+  await new Promise((r) => setTimeout(r, 10));
+  elsMap['dialog-confirm'].onclick();
   await new Promise((r) => setTimeout(r, 10));
   const finCall = fetchLog.find((f) => f.method === 'POST' && f.url === '/api/v1/session/finish');
   check('结束课堂 POST /session/finish', !!finCall, finCall ? '' : '无调用');

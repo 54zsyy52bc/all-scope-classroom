@@ -178,7 +178,7 @@
   // ---------- 结束活动（计时的与非计时的都可一键结束）----------
   async function endActivity() {
     if (!sessionId || !barTask) return;
-    if (!global.confirm('结束当前活动？学生端将收起活动卡' + (barTask.timed ? '，计时同时停止' : ''))) return;
+    if (!await global.DashboardDialog.confirmDialog({ title: '结束活动', message: '结束当前活动？学生端将收起活动卡' + (barTask.timed ? '，计时同时停止' : ''), confirmText: '结束活动', danger: true })) return;
     if (!actGuard('end')) return;
     try {
       const j = await api('POST', '/api/v1/sessions/' + sessionId + '/activities/' + barTask.taskId + '/end', {});
@@ -228,8 +228,22 @@
     $('ab-resume').onclick = () => timerAction('resume');
     $('ab-restart').onclick = () => timerAction('restart');
     $('ab-end').onclick = endActivity;
-    $('ab-adjust').onclick = () => {
-      const min = global.prompt('调整时长为（分钟）：', barTask ? Math.round((barTask.durationSec || 600) / 60) : 10);
+    $('ab-adjust').onclick = async () => {
+      const cur = barTask ? Math.round((barTask.durationSec || 600) / 60) : 10;
+      const min = await global.DashboardDialog.promptDialog({
+        title: '调整时长',
+        label: '调整时长为（分钟，1–120）：',
+        value: String(cur),
+        validate: (v) => {
+          if (v == null || String(v).trim() === '') return '请输入时长（分钟）';
+          const n = Number(v);
+          if (!Number.isFinite(n)) return '请输入数字分钟';
+          if (!Number.isInteger(n)) return '请输入整数分钟';
+          if (n <= 0 || n > 120) return '时长需在 1 到 120 分钟之间';
+          return null;
+        },
+      });
+      if (min == null) return;
       const n = Number(min);
       if (n > 0 && n <= 120) timerAction('adjust', n * 60);
     };

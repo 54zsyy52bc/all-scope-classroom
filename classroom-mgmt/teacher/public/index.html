@@ -24,7 +24,7 @@
   </header>
 
   <!-- 全部组登记完成横幅 -->
-  <div class="done-banner" id="all-done-banner" hidden role="status">全部小组已完成登记，可以发布任务了</div>
+  <div class="done-banner" id="all-done-banner" hidden role="status">全部小组已完成登记，可以发布活动了</div>
 
   <!-- 求助强提醒横幅（学生按"求助"即时弹出+蜂鸣；未处理前常驻，每 20s 重播） -->
   <div class="help-banner" id="help-banner" hidden role="alert" aria-live="assertive" title="点这里静音（求助未处理前横幅保留）">
@@ -44,13 +44,13 @@
       <i id="st-online-rate" class="mini">0%</i>
     </div>
     <div class="stat"><b id="st-help" class="hl-help">0</b><span>求助</span></div>
-    <div class="stat"><b id="st-task-done">0</b><span>任务完成</span></div>
+    <div class="stat"><b id="st-task-done">0</b><span>活动完成</span></div>
     <div class="stat"><b id="st-returned">0</b><span>已归还</span></div>
   </section>
 
   <section class="controls" aria-label="教师操作">
     <button id="btn-start" class="btn btn-primary" data-phase-vis="waiting">开始上课</button>
-    <button id="btn-task" class="btn" data-phase-vis="checkin task">发布任务</button>
+    <button id="btn-task" class="btn" data-phase-vis="checkin task">发布活动</button>
     <button id="btn-end" class="btn btn-warn" data-phase-vis="checkin task">下课</button>
     <button id="btn-finish" class="btn btn-danger" data-phase-vis="return">结束课堂</button>
     <button id="btn-shutdown" class="btn btn-danger" data-phase-vis="return">强制关机</button>
@@ -102,7 +102,7 @@
       <label>活动预设
         <select id="f-activity-preset"><option value="">（不使用预设）</option></select>
       </label>
-      <p class="modal-hint" id="f-activity-hint">选活动预设后，器材清单与任务模板将随上课下发</p>
+      <p class="modal-hint" id="f-activity-hint">选活动预设后，器材清单与活动模板将随上课下发</p>
       <div class="modal-actions">
         <button class="btn btn-ghost" data-close="overlay-start">取消</button>
         <button class="btn btn-primary" id="confirm-start">开始上课</button>
@@ -180,9 +180,26 @@
     </div>
   </section>
 
+  <!-- 通用确认/输入弹窗（替代原生 confirm/prompt；dialog.js 控制显隐与行为） -->
+  <div class="overlay" id="overlay-dialog" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <h2 id="dialog-title"></h2>
+      <p id="dialog-message"></p>
+      <label id="dialog-prompt-wrap" hidden><span id="dialog-prompt-label"></span>
+        <input id="dialog-input" type="text" />
+      </label>
+      <p class="dialog-error" id="dialog-error" hidden></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="dialog-cancel"></button>
+        <button class="btn btn-primary" id="dialog-confirm"></button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" hidden></div>
 
   <script src="icons.js"></script>
+  <script src="dialog.js"></script>
   <script src="help-alert.js"></script>
   <script src="term-ui.js"></script>
   <script src="app.js"></script>

@@ -6,8 +6,8 @@
 //   2) Electron 主进程内嵌（require('./server') 后调 start()）：复用同一份装配，窗口加载
 //      编辑器/大屏页面。stop() 用于退出时清理。
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
-const cors = require('cors');
 
 const cfg = require('./src/config');
 const db = require('./src/db');
@@ -31,7 +31,14 @@ const presetRouter = require('./src/routes/preset');
 const shellRouter = require('./src/routes/shell'); // v5 全域学生桌面：课程/口令
 const activityRouter = require('./src/routes/activity');
 const legacyRouter = require('./src/routes/legacy');
+const activitySvc = require('./src/services/activity.service');
 const { requireAuth } = require('./src/response');
+
+// CORS 策略见 src/http-security.js：默认放行「无 Origin」（curl/Node fetch/测试/MQTT 工具）、
+// 「Origin: null」（Electron file:// 渲染进程，学生端桌面探活 health）、「同源」（大屏同源访问），
+// 额外来源经 CORS_ORIGINS 显式放行。真正的安全边界是 requireAuth，CORS 只是浏览器侧的第二道约束。
+const { makeCorsMiddleware } = require('./src/http-security');
+const extraOrigins = String(cfg.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 // 0) 兜底：单条坏消息 / 未处理的 Promise 拒绝不得拖垮教师端进程。
 // 上课途中大屏断流比"进程崩溃并打印堆栈"代价大得多，故记录 error 后继续服务。
@@ -77,7 +84,7 @@ function flushAudit() {
 }
 function createApp() {
   const app = express();
-  app.use(cors());
+  app.use(makeCorsMiddleware(extraOrigins));
   app.use(express.json({ limit: '1mb' }));
   // 测试期操作审计：所有写请求（POST/PUT/DELETE）记一条 audit 日志到终端与文件，便于回传定位
   app.use((req, res, next) => {
@@ -118,10 +125,48 @@ function wire() {
   bridge.connect();
 }
 
+// 强闸门（可选）：仅 NODE_ENV=production 或显式 STRICT_CREDENTIALS=1 时，
+// 占位默认凭据（HMAC_SECRET=change-me-before-deploy）拒绝启动；默认只告警，避免破坏现有测试与现场部署。
+function enforceStrictCredentials() {
+  const strict = process.env.NODE_ENV === 'production' || process.env.STRICT_CREDENTIALS === '1';
+  if (!strict) return;
+  if (cfg.HMAC_SECRET === 'change-me-before-deploy') {
+    // eslint-disable-next-line no-console
+    console.error('[SECURITY] 启动被拒绝：HMAC_SECRET 仍为占位默认值 change-me-before-deploy。请在 app-config.json 中设置与学生端一致的密钥后再启动。');
+    process.exit(1);
+  }
+}
+
+// 鉴权开启但 TEACHER_TOKEN 为空：生成一次性随机令牌（仅内存，不写回 app-config.json），
+// 打印到启动日志，供其他机器跨机访问使用；本机大屏同源访问仍走回环免鉴权。
+function ensureTeacherToken() {
+  if (cfg.ENABLE_AUTH && !cfg.TEACHER_TOKEN) {
+    cfg.TEACHER_TOKEN = crypto.randomBytes(16).toString('hex');
+    // eslint-disable-next-line no-console
+    console.log(`[auth] 已生成一次性跨机访问令牌（重启失效，不写回配置文件）：${cfg.TEACHER_TOKEN}`);
+    // eslint-disable-next-line no-console
+    console.log('[auth] 如需稳定令牌，请在 app-config.json 显式设置 TEACHER_TOKEN。');
+  }
+}
+
+function printCredentialWarnings() {
+  if (!cfg.credentialWarnings || !cfg.credentialWarnings.length) return;
+  // eslint-disable-next-line no-console
+  console.warn('==================== 安全告警 ====================');
+  for (const w of cfg.credentialWarnings) console.warn('[WARN] ' + w);
+  // eslint-disable-next-line no-console
+  console.warn('==================================================');
+}
+
 function start() {
+  enforceStrictCredentials();
   initStorage();
+  ensureTeacherToken();
+  printCredentialWarnings();
   const app = createApp();
   wire();
+  // 进程重启后恢复仍在进行中的活动计时定时器（截止检测不丢）
+  try { activitySvc.restoreTimers(); } catch (_e) { /* 恢复失败不阻断启动 */ }
   const server = app.listen(cfg.HTTP_PORT, cfg.HTTP_HOST, () => {
     // eslint-disable-next-line no-console
     console.log(`课堂管理系统教师端已启动: http://${cfg.HTTP_HOST}:${cfg.HTTP_PORT}  (存储模式: ${initResult.mode})`);

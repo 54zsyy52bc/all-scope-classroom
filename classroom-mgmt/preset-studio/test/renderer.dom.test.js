@@ -48,6 +48,7 @@ const tabBtns = [makeEl('tab-classes'), makeEl('tab-activities'), makeEl('tab-di
 const documentStub = {
   readyState: 'loading',
   addEventListener(ev, fn) { if (ev === 'DOMContentLoaded') domReady = fn; },
+  removeEventListener() {},
   getElementById(id) { return elsMap[id] || (elsMap[id] = makeEl(id)); },
   createElement(tag) { return makeEl(tag); },
   createTextNode() { return { textContent: '' }; },

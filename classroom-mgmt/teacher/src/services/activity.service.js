@@ -65,6 +65,25 @@ function expireTask(taskId) {
   }
 }
 
+// 进程重启后恢复进行中的计时定时器：读取库中 timed=1 且 timer_state='running' 的任务，
+// 按真实剩余重挂 armTimer；已过期的直接置 expired 并触发对应提醒与策略重算（复用 expireTask，不另写语义）。
+function restoreTimers() {
+  let restored = 0;
+  let expired = 0;
+  try {
+    const rows = db.S().all('t_task').filter((t) => t.timed === 1 && t.timer_state === 'running');
+    for (const t of rows) {
+      const left = taskSvc.remainingMs(t, nowMs());
+      if (left <= 0) { expireTask(t.task_id); expired += 1; }
+      else { armTimer(t.task_id, left); restored += 1; }
+    }
+  } catch (e) {
+    log.warn('restoreTimers 异常:', e.message);
+  }
+  if (restored || expired) log.info(`restoreTimers: 重挂 ${restored} 个、立即到期 ${expired} 个计时任务`);
+  return { restored, expired };
+}
+
 // ---------- 发布活动 ----------
 function publishActivity({ sessionId, title, desc, source, activityPresetId, timed, durationSec }) {
   if (!title || !String(title).trim()) fail('E-VAL-01', 'title 为必填项');
@@ -255,4 +274,4 @@ function listActivities(sessionId) {
   });
 }
 
-module.exports = { publishActivity, timerControl, endActivity, listActivities, expireTask };
+module.exports = { publishActivity, timerControl, endActivity, listActivities, expireTask, restoreTimers };

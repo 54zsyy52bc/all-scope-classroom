@@ -100,7 +100,7 @@
     const banner = $('task-banner');
     if (!task) { banner.hidden = true; return; }
     banner.hidden = false;
-    $('task-title').textContent = task.title || '未命名任务';
+    $('task-title').textContent = task.title || '未命名活动';
     $('task-desc').textContent = task.desc || '';
     $('task-icon').innerHTML = icon('clipboard-check', 28);
     $('ts-doing').textContent = (stats && stats.taskDoing) || 0;
@@ -213,22 +213,22 @@
     }
   }
   async function onEnd() {
-    if (!window.confirm('确认下课？将进入归还阶段，学生归还全部器材后自动关机。')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '确认下课', message: '确认下课？将进入归还阶段，学生归还全部器材后自动关机。', confirmText: '确认下课', danger: true })) return;
     const j = await api('POST', API.end);
     if (j && j.code === 0) { logEvent('已下课，进入归还阶段'); refreshSoon(); }
   }
   async function onFinish() {
-    if (!window.confirm('确认结束课堂？本堂课将关闭归档，之后可重新开始上课。')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '确认结束课堂', message: '确认结束课堂？本堂课将关闭归档，之后可重新开始上课。', confirmText: '结束课堂', danger: true })) return;
     const j = await api('POST', API.finish);
     if (j && j.code === 0) { logEvent('课堂已结束归档'); refreshSoon(); }
   }
   async function onShutdown() {
-    if (!window.confirm('确认向全部学生机下发关机指令？')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '下发关机指令', message: '确认向全部学生机下发关机指令？', confirmText: '强制关机', danger: true })) return;
     const j = await api('POST', API.shutdown, { force: true });
     if (j && j.code === 0) { logEvent('已下发强制关机指令'); refreshSoon(); }
   }
   async function onResetSeat(seat) {
-    if (!window.confirm('确认重置 ' + seat + ' 号座位的登记？')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '重置座位登记', message: '确认重置 ' + seat + ' 号座位的登记？', confirmText: '重置', danger: true })) return;
     const j = await api('POST', API.reset, { seat });
     if (j && j.code === 0) { logEvent('已重置 ' + seat + ' 号登记'); refreshSoon(); }
   }
@@ -251,7 +251,7 @@
     toast('已生成 ' + files.length + ' 个 ' + format.toUpperCase() + ' 文件');
   }
   async function onCancelShutdown() {
-    if (!window.confirm('撤销已下发的关机指令？学生机将中止关机倒计时，可继续使用。')) return;
+    if (!await window.DashboardDialog.confirmDialog({ title: '撤销关机指令', message: '撤销已下发的关机指令？学生机将中止关机倒计时，可继续使用。', confirmText: '撤销关机', danger: false })) return;
     const j = await api('POST', '/api/v1/commands/shutdown-cancel');
     if (j && j.code === 0) { logEvent('已撤销关机指令，学生机可继续使用'); refreshSoon(); }
   }

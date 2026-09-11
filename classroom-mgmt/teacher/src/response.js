@@ -1,7 +1,9 @@
 'use strict';
 // 统一响应与错误处理。成功：{code:0,data,message:''}；失败带 errorCode。
+const crypto = require('crypto');
 const { BusinessError } = require('./errors');
 const cfg = require('./config');
+const { isLoopback, isLocalRequest } = require('./http-security');
 
 function ok(res, data, httpStatus = 200) {
   return res.status(httpStatus).json({ code: 0, data, message: '' });
@@ -27,9 +29,25 @@ function asyncHandler(fn) {
 
 function requireAuth(req, res, next) {
   if (!cfg.ENABLE_AUTH) return next();
+  // 探活接口免鉴权：学生端桌面（desktop.js）跨机轮询它显示「教室在线/离线」，
+  // 且该接口只返回运行状态，不含业务数据与身份信息，故保持公开。
+  if (req.originalUrl && req.originalUrl.endsWith('/system/health')) return next();
+  // 本机（教师机）免鉴权：大屏就在教师机上访问，既满足"默认开启鉴权"又不改变现场使用方式。
+  // 注意必须同时覆盖「回环」与「本机网卡地址」——老师用局域网 IP 打开大屏也要能用。
+  if (isLocalRequest(req)) return next();
+  // 跨机请求需 X-Teacher-Token，且按恒定时间比较，避免令牌可枚举
   const token = req.headers['x-teacher-token'];
-  if (token && token === cfg.TEACHER_TOKEN) return next();
+  if (token && cfg.TEACHER_TOKEN && safeEqual(token, cfg.TEACHER_TOKEN)) return next();
   return res.status(401).json({ code: 40100, message: '无效的教师端令牌', errorCode: 'E-AUTH-01', data: null });
 }
 
-module.exports = { ok, error, asyncHandler, requireAuth };
+// 恒定时间字符串比较：长度不等直接返回 false（避免 timingSafeEqual 因长度不一致抛错）
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+module.exports = { ok, error, asyncHandler, requireAuth, isLoopback, isLocalRequest, safeEqual };

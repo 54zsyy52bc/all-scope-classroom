@@ -35,6 +35,10 @@ const defaults = {
   TERMINAL_COUNT: 14,
   GROUP_MEMBERS: 6,
   HTTP_PORT: 3000,
+  // 必须监听所有网卡：学生端桌面（student/renderer/desktop.js）会用教师机 IP
+  // 跨机轮询 /api/v1/system/health 显示「教室在线/离线」，收敛到 127.0.0.1 会导致
+  // 全部学生机状态灯恒为「教室离线」。安全边界由 ENABLE_AUTH（默认开启）承担：
+  // 本机免鉴权 + health 免鉴权，其余跨机访问一律要求 X-Teacher-Token。
   HTTP_HOST: '0.0.0.0',
   TOPIC_PLAN: 'B',
   GROUP_SIZE: 5,
@@ -42,8 +46,11 @@ const defaults = {
   OFFLINE_THRESHOLD_MS: 45000,
   SHUTDOWN_DELAY_SEC: 10,
   HMAC_WINDOW_MS: 60000,
-  ENABLE_AUTH: false,
+  // 默认开启 HTTP API 鉴权；回环地址（大屏同源）免鉴权，跨机需 X-Teacher-Token。
+  ENABLE_AUTH: true,
   TEACHER_TOKEN: '',
+  // CORS 额外允许来源（逗号分隔，默认空）。无 Origin 的请求（curl/Node fetch/MQTT 工具）与同源请求始终放行。
+  CORS_ORIGINS: '',
   LOG_LEVEL: 'info',
 };
 
@@ -79,5 +86,22 @@ cfg.PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
 // broker 地址派生
 cfg.SIOT_TCP_URL = `mqtt://${cfg.SIOT_IP}:${cfg.SIOT_TCP_PORT}`;
 cfg.SIOT_WS_URL = `ws://${cfg.SIOT_IP}:${cfg.SIOT_WS_PORT}/ws`;
+
+// 凭据健康度自检：仅告警，不阻断启动（强闸门见 server.js，仅 production / STRICT_CREDENTIALS=1 生效）。
+// 注意：HMAC_SECRET 必须与学生对端一致，绝对不能在教师端自动改写，否则现场关机功能直接失效。
+const PLACEHOLDER_HMAC = 'change-me-before-deploy';
+cfg.credentialWarnings = [];
+if (cfg.HMAC_SECRET === PLACEHOLDER_HMAC) {
+  cfg.credentialWarnings.push('HMAC_SECRET 仍为占位默认值 change-me-before-deploy，现场关机功能可能被禁用；请在部署前设置为与学生端一致的密钥。');
+}
+if (cfg.ENABLE_AUTH === true && !cfg.TEACHER_TOKEN) {
+  cfg.credentialWarnings.push('已启用鉴权但 TEACHER_TOKEN 为空：启动时会生成一次性随机令牌（重启即失效），跨机调用方无法获知令牌、无法调用接口；如需稳定的跨机访问，请在 app-config.json 显式设置 TEACHER_TOKEN。');
+}
+if (cfg.HTTP_HOST === '0.0.0.0') {
+  // 监听全网卡是学生端探活的硬需求，本身不算风险；风险在于「全网卡 + 关闭鉴权」这个组合。
+  if (cfg.ENABLE_AUTH !== true) {
+    cfg.credentialWarnings.push('HTTP_HOST 为 0.0.0.0 且 ENABLE_AUTH 未开启：局域网内任何主机都可调用教师端接口（含关机），请在 app-config.json 中开启 ENABLE_AUTH。');
+  }
+}
 
 module.exports = cfg;
