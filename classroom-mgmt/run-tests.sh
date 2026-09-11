@@ -45,10 +45,29 @@ note() { echo "${DIM}-- $*${RESET}"; }
 ok()   { PASS=$((PASS + 1)); echo "  ${GREEN}[PASS]${RESET} $1"; }
 bad()  { FAILED=$((FAILED + 1)); FAILED_NAMES+=("$1"); echo "  ${RED}[FAIL]${RESET} $1"; }
 tail_log() { tail -12 "$LOG" | sed 's/^/        /'; }
+
+# 关掉占用指定端口的进程（按端口反查 PID，确保杀到 node 本体）
+kill_port() {
+  for p in $(netstat -ano 2>/dev/null | grep ":$1" | grep -i listening | awk '{print $5}' | sort -u); do
+    taskkill /F /PID "$p" >/dev/null 2>&1 || true
+  done
+}
+
+# 冒烟类用例失败时把完整日志单独留存：$LOG 是所有用例共用的、会被下个用例覆盖，
+# 只 tail 12 行往往看不到真正失败的那条断言，排查成本很高。
+CASE_NO=0
 run_case() { # run_case <名称> <目录> <命令...>
   local name="$1" dir="$2"; shift 2
+  CASE_NO=$((CASE_NO + 1))
   note "$name"
-  if ( cd "$dir" && "$@" ) >"$LOG" 2>&1; then ok "$name"; else bad "$name"; tail_log; fi
+  if ( cd "$dir" && "$@" ) >"$LOG" 2>&1; then
+    ok "$name"
+  else
+    bad "$name"
+    tail_log
+    cp -f "$LOG" "/tmp/run-tests-fail-${CASE_NO}.log" 2>/dev/null || true
+    echo "        ${DIM}(完整日志已留存: /tmp/run-tests-fail-${CASE_NO}.log)${RESET}"
+  fi
 }
 
 echo "================================================================"
@@ -145,6 +164,15 @@ if [ "$MODE" = "--full" ] || [ "$MODE" = "full" ]; then
       ok "broker 就绪（1883）"
 
       # 5.3 启动 teacher server（临时库）
+      # 关键：先确认 3000 端口干净。否则上一轮残留的 teacher server 仍占着端口，
+      # 新实例绑不上（且不会报错），就绪探测却会命中「旧服务」并返回 200，
+      # 于是冒烟打到一个持有旧库（可能处于 return 阶段）的进程上，
+      # 出现「sync 阶段为 null（未开课） -> return」这类看起来像代码 bug 的偶发失败。
+      kill_port 3000
+      for i in $(seq 1 10); do
+        netstat -ano 2>/dev/null | grep ':3000' | grep -qi listening || break
+        sleep 1
+      done
       rm -f /tmp/rt-e2e-$$.db*
       ( cd "$TEACHER" && DB_PATH=/tmp/rt-e2e-$$.db nohup "$NODE" server.js >/tmp/teacher-e2e.log 2>&1 & echo $! >/tmp/teacher-e2e.pid )
       SRV_PID=$(cat /tmp/teacher-e2e.pid 2>/dev/null || echo "")

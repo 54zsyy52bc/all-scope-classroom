@@ -298,9 +298,9 @@ async function main() {
   check('发布非计时活动 201', endRes.status === 201, `实际 ${endRes.status}`);
   const endTaskId = endRes.json && endRes.json.data && endRes.json.data.task && endRes.json.data.task.taskId;
   check('返回非空 endTaskId', !!endTaskId, String(endTaskId));
-  if (endRes.json && endRes.json.data && endRes.json.data.task) {
-    check('活动 timed=false', endRes.json.data.task.timed === false, `实际 ${JSON.stringify(endRes.json.data.task.timed)}`);
-  }
+  const endTaskDto = endRes.json && endRes.json.data && endRes.json.data.task;
+  check('活动 timed=false', !!(endTaskDto && endTaskDto.timed === false),
+    endTaskDto ? `实际 ${JSON.stringify(endTaskDto.timed)}` : '响应中没有 task');
   // 2. 学生机收到该活动的 task 广播（谓词带上 taskId 区分新消息）
   const cmdEndTask = await waitForStu(stu.received, (m) => m.env.type === 'cmd' && m.env.payload.action === 'task'
     && m.env.payload.task && m.env.payload.task.taskId === endTaskId);
@@ -343,21 +343,22 @@ async function main() {
   check('重复结束返回 already=true', endAgain.json && endAgain.json.data && endAgain.json.data.already === true,
     endAgain.json ? JSON.stringify(endAgain.json.data) : '');
   // 10. 迟到/重连的学生不会拿到已结束的活动（同一座位 SEAT 重发 hello，只看新 sync）
+  //     注意：不能"等到出现任意新消息就 break"——hello 之后可能先到达别的广播，
+  //     那样会漏掉稍后到达的 sync 而误判。这里一直等到「新增消息里出现 sync」为止。
   const n0 = stu.received.length;
   stu.up(topics.makeEnvelope({ type: 'hello', seat: SEAT, payload: { machineId: 'PC-SMOKE-07' } }));
   const t0 = Date.now();
+  let lateSync = null;
   while (Date.now() - t0 < 8000) {
-    if (stu.received.length > n0) break;
+    lateSync = stu.received.slice(n0).find((m) => m.topic === topics.SYNC);
+    if (lateSync) break;
     await sleep(80);
   }
   const newMsgs = stu.received.slice(n0);
-  const lateSync = newMsgs.find((m) => m.topic === topics.SYNC);
-  check('迟到学生收到新 sync 应答', !!lateSync, `新消息 ${newMsgs.length} 条`);
-  if (lateSync) {
-    console.log('  late.sync =', JSON.stringify(lateSync.env.payload));
-    check('迟到 sync 不携带已结束活动', !(lateSync.env.payload.currentTask && lateSync.env.payload.currentTask.taskId === endTaskId),
-      JSON.stringify(lateSync.env.payload.currentTask));
-  }
+  if (lateSync) console.log('  late.sync =', JSON.stringify(lateSync.env.payload));
+  check('迟到 sync 不携带已结束活动（且确实收到新 sync）',
+    !!(lateSync && !(lateSync.env.payload.currentTask && lateSync.env.payload.currentTask.taskId === endTaskId)),
+    lateSync ? JSON.stringify(lateSync.env.payload.currentTask) : `8s 内未收到新 sync（新增消息 ${newMsgs.length} 条）`);
 
   step('8. 非法报文不得产生孤儿写入（E-REF-01 防护）');
   const before = (await api('GET', `/api/v1/sessions/${sessionId}/tasks`)).json.data.length;

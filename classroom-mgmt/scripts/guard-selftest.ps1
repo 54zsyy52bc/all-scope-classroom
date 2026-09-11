@@ -36,8 +36,18 @@
  运行方式（Windows 默认执行策略通常禁止脚本，必须显式 Bypass，否则会报
  "因为在此系统上禁止运行脚本"）：
 
-   cd C:\你的路径\classroom-mgmt
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\guard-selftest.ps1
+   开发仓库：
+     cd C:\你的路径\classroom-mgmt
+     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\guard-selftest.ps1
+
+   交付包（把本脚本放在 5_部署工具\ 下）：
+     cd C:\你的路径\交付包_v4课堂管理系统\5_部署工具
+     powershell -NoProfile -ExecutionPolicy Bypass -File .\guard-selftest.ps1
+
+   脚本会自动在若干常见位置查找 guard-window.ps1；若没找到会列出它试过的路径，
+   此时用 -GuardPath 显式指定即可，例如：
+     powershell -NoProfile -ExecutionPolicy Bypass -File .\guard-selftest.ps1 `
+       -GuardPath "D:\学生端\resources\app\guard-window.ps1"
 
  依赖：仅 PowerShell 5.1 内置能力，不依赖任何第三方模块。
        本脚本自己在真实机器上可以随意 Add-Type 编译 C# 做 IsIconic 判定
@@ -47,6 +57,11 @@
 =============================================================================
 #>
 
+param(
+  # 可选：显式指定 guard-window.ps1 的完整路径（自动查找失败时使用）
+  [string]$GuardPath = ''
+)
+
 $ErrorActionPreference = 'Stop'
 
 # 仅支持 Windows
@@ -55,15 +70,43 @@ if ($env:OS -notlike '*Windows*') {
   exit 1
 }
 
-# 定位被自测的助手脚本（scripts/../student/guard-window.ps1）
-$guardPs = Join-Path $PSScriptRoot '..' 'student' 'guard-window.ps1'
-try {
-  $guardPs = Resolve-Path $guardPs -ErrorAction Stop
-} catch {
-  Write-Host ('[FAIL] 找不到助手脚本: ' + $guardPs)
-  Write-Host ('        原因: ' + $_.Exception.Message)
+# 定位被自测的助手脚本。本脚本会按顺序尝试以下布局，找到即用：
+#   1) -GuardPath 显式指定
+#   2) 开发仓库：       scripts/ 的兄弟目录 student/guard-window.ps1
+#   3) 交付包（同盘）： 5_部署工具/ 的兄弟目录 3_学生端/resources/app/guard-window.ps1
+#   4) 交付包（内层）： 3_学生端/scripts/ 的兄弟目录 resources/app/guard-window.ps1
+#   5) 与本脚本同目录 / 上一级目录
+#
+# 注意：PowerShell 5.1 的 Join-Path 只接受 Path + ChildPath 两个参数，
+#       传第三个参数会直接抛「找不到接受实际参数的位置形式参数」。
+#       -AdditionalChildPath 是 PowerShell 6+ 才有的，所以这里必须逐级拼接。
+function Join-Parts {
+  param([string]$Base, [string[]]$Parts)
+  $p = $Base
+  foreach ($x in $Parts) { $p = Join-Path $p $x }
+  return $p
+}
+
+$candidates = @()
+if ($GuardPath) { $candidates += $GuardPath }
+$candidates += (Join-Parts $PSScriptRoot @('..', 'student', 'guard-window.ps1'))
+$candidates += (Join-Parts $PSScriptRoot @('..', '3_学生端', 'resources', 'app', 'guard-window.ps1'))
+$candidates += (Join-Parts $PSScriptRoot @('..', 'resources', 'app', 'guard-window.ps1'))
+$candidates += (Join-Parts $PSScriptRoot @('guard-window.ps1'))
+$candidates += (Join-Parts $PSScriptRoot @('..', 'guard-window.ps1'))
+
+$guardPs = $null
+foreach ($c in $candidates) {
+  if (Test-Path -LiteralPath $c) { $guardPs = (Resolve-Path -LiteralPath $c).Path; break }
+}
+if (-not $guardPs) {
+  Write-Host '[FAIL] 找不到助手脚本 guard-window.ps1。已尝试以下位置：'
+  foreach ($c in $candidates) { Write-Host ('        ' + $c) }
+  Write-Host '        可用 -GuardPath 显式指定，例如：'
+  Write-Host '        powershell -NoProfile -ExecutionPolicy Bypass -File .\guard-selftest.ps1 -GuardPath "D:\...\resources\app\guard-window.ps1"'
   exit 1
 }
+Write-Host ('[信息] 助手脚本 = ' + $guardPs)
 
 $passed = 0
 $failed = 0
