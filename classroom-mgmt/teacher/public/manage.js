@@ -68,7 +68,11 @@
   // ---------- 导出备份（.kctpreset 文件下载）----------
   async function exportPackage() {
     const j = await api('GET', '/api/v1/presets/export');
-    if (!j || j.code !== 0) { toast('导出失败', true); return; }
+    if (!j || j.code !== 0) {
+      const f = window.ErrorFmt && window.ErrorFmt.format(j);
+      toast((f && f.title) || '导出失败，请稍后重试', true);
+      return;
+    }
     const pkg = j.data;
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
@@ -110,7 +114,9 @@
     importPkgCache = pkg; // 预演与确认共用同一份原始包
     const j = await api('POST', '/api/v1/presets/import', pkg); // 预演，不落库
     if (!j || j.code !== 0) {
-      showImportError((j && j.message) || '预设包校验失败，请确认文件来自「预设编辑器」导出的备份。');
+      const f = window.ErrorFmt && window.ErrorFmt.format(j);
+      showImportError((f && f.title + (f.hint ? ' · ' + f.hint : '')) ||
+        '预设包校验失败，请确认文件来自「预设编辑器」导出的备份。');
       return;
     }
     renderImportPreview(j.data);
@@ -150,7 +156,11 @@
   async function commitImport() {
     if (!importPkgCache) { toast('没有待导入的预设包', true); return; }
     const j = await api('POST', '/api/v1/presets/import?commit=true', importPkgCache);
-    if (!j || j.code !== 0) { toast((j && j.message) || '导入失败', true); return; }
+    if (!j || j.code !== 0) {
+      const f = window.ErrorFmt && window.ErrorFmt.format(j);
+      toast((f && f.title) || '导入失败，请稍后重试', true);
+      return;
+    }
     toast('已导入：新增 ' + (j.data.added || 0) + '，覆盖 ' + (j.data.updated || 0));
     importPkgCache = null;
     $('m-import-result').hidden = true;

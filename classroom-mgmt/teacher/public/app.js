@@ -38,7 +38,7 @@
         body: body ? JSON.stringify(body) : undefined,
       });
       const j = await r.json();
-      if (j.code !== 0) toast((j.errorCode || '') + ' ' + (j.message || '操作失败'), true);
+      if (j.code !== 0) { const f = window.ErrorFmt && window.ErrorFmt.format(j); toast((f && f.title) || '操作失败，请稍后重试', true); }
       return j;
     } catch (e) {
       toast('请求失败：' + e.message, true);
