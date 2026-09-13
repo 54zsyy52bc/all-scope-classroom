@@ -112,6 +112,7 @@ echo "${YELLOW}== 学生端 ==${RESET}"
 run_case "协议结构 protocol"        "$STUDENT" "$NODE" test/protocol.test.js
 run_case "渲染层流程 renderer.dom"  "$STUDENT" "$NODE" test/renderer.dom.test.js
 run_case "关机原子化 shutdown-atomic" "$STUDENT" "$NODE" test/shutdown-atomic.test.js
+run_case "渲染层 设置口令闸门 settings-gate" "$STUDENT" "$NODE" test/settings-gate.test.js
 
 # ---------------------------------------------------------------------------
 # 3. 质量门禁：常规文件 <= 300 行；db 仓储/存储后端允许 <= 320（函数仓库）

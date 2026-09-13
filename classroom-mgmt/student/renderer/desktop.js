@@ -7,6 +7,8 @@
     guard: { enabled: false, denyExe: [] } };
   let draft = null; // 编辑草稿 { course:{...}, guard:{...} }
   let firstPinHint = false;
+  let failCount = 0;   // 设置口令连续错误次数（模块级，跨弹窗累计）
+  let lockedUntil = 0; // 锁定解除时间戳（ms），0 表示未锁
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function audit(type, detail) {
@@ -149,8 +151,8 @@
       try { const pwdCfg = await bb.getShellConfig();
         if (pwdCfg && pwdCfg.admin && pwdCfg.admin.enabled) {
           const ok = await askPwd();
-          if (!ok) return;
-        } } catch (_e) { /* noop */ }
+          if (!ok) { floatToast('已取消：需要管理员口令才能打开设置', true); return; }
+        } } catch (_e) { floatToast('读取口令配置失败，已按无口令进入', true); }
     }
     draftFromCfg();
     $('f-course-name').value = draft.course.name;
@@ -174,16 +176,19 @@
       document.body.appendChild(ov);
       const fin = (ok) => { document.body.removeChild(ov); resolve(ok); };
       const go = async () => {
-        const pwd = document.getElementById('ap-pwd').value;
-        const err = document.getElementById('ap-err');
+        const now = Date.now();
+        if (now < lockedUntil) { $('ap-err').textContent = '口令错误，已锁定 30 秒'; return; }
+        const pwd = $('ap-pwd').value;
         const bb = b();
-        try { const r = bb ? await bb.verifyLocal('admin', pwd) : null; if (r && r.ok) { fin(true); return; } } catch (_e) { /* noop */ }
-        err.textContent = '口令错误';
+        try { const r = bb ? await bb.verifyLocal('admin', pwd) : null; if (r && r.ok) { failCount = 0; fin(true); return; } } catch (_e) { /* noop */ }
+        failCount += 1;
+        if (failCount >= 3) { lockedUntil = now + 30000; failCount = 0; $('ap-err').textContent = '口令错误，已锁定 30 秒'; return; }
+        $('ap-err').textContent = '口令错误，还可尝试 ' + (3 - failCount) + ' 次';
       };
-      document.getElementById('ap-no').onclick = () => fin(false);
-      document.getElementById('ap-yes').onclick = go;
-      document.getElementById('ap-pwd').onkeydown = (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') fin(false); };
-      setTimeout(() => { try { document.getElementById('ap-pwd').focus(); } catch (_e) { /* noop */ } }, 20);
+      $('ap-no').onclick = () => fin(false);
+      $('ap-yes').onclick = go;
+      $('ap-pwd').onkeydown = (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') fin(false); };
+      setTimeout(() => { try { $('ap-pwd').focus(); } catch (_e) { /* noop */ } }, 20);
     });
   }
   async function saveSet() {
