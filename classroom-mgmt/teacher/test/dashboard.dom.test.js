@@ -69,6 +69,7 @@ const byId = new Set([
   'f-task-preset', 'f-task-timed', 'f-task-duration',
   'activity-bar', 'ab-icon', 'ab-title', 'ab-desc', 'ab-time', 'ab-state',
   'ab-timer-wrap', 'ab-pause', 'ab-resume', 'ab-adjust', 'ab-restart', 'ab-stop', 'ab-end', 'btn-policy',
+  'btn-borrow', 'overlay-borrow', 'borrow-title', 'bf-seat', 'bf-eq', 'bf-qty', 'bf-error', 'bf-submit',
 ]);
 for (const id of byId) elsMap[id] = makeEl(id);
 // 弹窗内的输入框：让 querySelectorAll('input') 返回假元素
@@ -85,17 +86,29 @@ let domReady = null;
 // 文档级监听（dialog.js 的 Esc 关闭绑定在 document 上）：既要有 removeEventListener，
 // 也要能派发键盘事件，否则弹窗组件的键盘路径无法被验证。
 const docHandlers = {};
+const docKeyHandlers = [];
 const documentStub = {
   readyState: 'loading',
   body: makeEl('body'),
-  addEventListener(ev, fn) { docHandlers[ev] = fn; if (ev === 'DOMContentLoaded') domReady = fn; },
-  removeEventListener(ev) { delete docHandlers[ev]; },
+  addEventListener(ev, fn) {
+    if (ev === 'keydown') { docKeyHandlers.push(fn); return; } // 多个组件各绑各的 Esc
+    docHandlers[ev] = fn;
+    if (ev === 'DOMContentLoaded') domReady = fn;
+  },
+  removeEventListener(ev, fn) {
+    if (ev === 'keydown') {
+      const i = docKeyHandlers.indexOf(fn);
+      if (i >= 0) docKeyHandlers.splice(i, 1);
+      return;
+    }
+    delete docHandlers[ev];
+  },
   createTextNode(t) { return { textContent: t }; },
   getElementById(id) { return elsMap[id] || (elsMap[id] = makeEl(id)); },
   createElement(tag) { return makeEl(tag); },
   querySelectorAll(sel) { return []; },
 };
-function fireDocKey(key) { if (docHandlers.keydown) docHandlers.keydown({ key: key }); }
+function fireDocKey(key) { for (const fn of docKeyHandlers.slice()) fn({ key: key }); }
 
 // ---------- 桩 fetch / EventSource / confirm ----------
 const fetchLog = [];
@@ -110,6 +123,12 @@ async function fetchStub(url, opts) {
     return { json: async () => ({ code: 0, data: { added: 0, updated: 0, skipped: 0, items: [] } }) };
   }
   if (url.includes('/presets/')) return { json: async () => ({ code: 0, data: [] }) };
+  if (url.endsWith('/equipment')) {
+    return { json: async () => ({ code: 0, data: [{ eq_id: 'E-LED', eq_name: 'LED 灯', category: '电子', total: 100 }] }) };
+  }
+  if (url.includes('/borrows')) {
+    return { json: async () => ({ code: 0, data: { borrowed: { eq_id: 'E-LED', qty: 2 }, message: '已补登 07 号 LED 灯 ×2' } }) };
+  }
   if (url.includes('/exports')) {
     return {
       json: async () => ({
@@ -160,6 +179,8 @@ globalThis.confirm = () => true;
 (0, eval)(fs.readFileSync(path.join(ROOT, 'manage.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'help-alert.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'stream.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'error-format.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'borrow.js'), 'utf8'));
 // 模拟浏览器：全部脚本加载后触发 DOMContentLoaded（app.js 的 init 在此执行）
 if (domReady) domReady();
 
@@ -308,6 +329,55 @@ async function main() {
   check('导出备份 GET /presets/export', !!pkgCall);
   check('导出触发 .kctpreset 文件下载', clickedDownloads.some((d) => d.endsWith('.kctpreset')),
     clickedDownloads.join(','));
+
+  // ---- 器材补登借用（L1 闭环：学生端提示「联系老师补登」的教师入口）----
+  check('补登弹窗初始隐藏', elsMap['overlay-borrow'].hidden === true);
+  elsMap['btn-borrow'].onclick();            // withGuard 包裹 → 异步
+  await new Promise((r) => setTimeout(r, 30));
+  check('点「补登借用」打开弹窗', elsMap['overlay-borrow'].hidden === false);
+  check('弹窗从快照取到会话号（无需外部注入）',
+    fetchLog.some((f) => f.url.endsWith('/dashboard/snapshot')));
+  check('器材下拉已填充台账', elsMap['bf-eq'].innerHTML.includes('LED 灯'), elsMap['bf-eq'].innerHTML.slice(0, 80));
+  // 座位号非法 → 就地中文报错，且不发请求
+  const borrowCallsBefore = fetchLog.filter((f) => f.url.includes('/borrows')).length;
+  elsMap['bf-seat'].value = '0';
+  elsMap['bf-eq'].value = 'E-LED';
+  elsMap['bf-qty'].value = '2';
+  elsMap['bf-submit'].onclick();
+  await new Promise((r) => setTimeout(r, 20));
+  check('座位非法 → 就地报错', elsMap['bf-error'].hidden === false && elsMap['bf-error'].textContent.includes('1~99'));
+  check('座位非法 → 不发出请求', fetchLog.filter((f) => f.url.includes('/borrows')).length === borrowCallsBefore);
+  // 未选器材 → 提示选择
+  elsMap['bf-seat'].value = '7';
+  elsMap['bf-eq'].value = '';
+  elsMap['bf-submit'].onclick();
+  await new Promise((r) => setTimeout(r, 20));
+  check('未选器材 → 就地报错', elsMap['bf-error'].textContent.includes('器材'));
+  // 合法提交 → POST 到当前会话的 borrows，关闭弹窗并记事件
+  elsMap['bf-eq'].value = 'E-LED';
+  elsMap['bf-seat'].value = '7';
+  elsMap['bf-qty'].value = '2';
+  elsMap['bf-submit'].onclick();
+  await new Promise((r) => setTimeout(r, 30));
+  const addCall = fetchLog.find((f) => f.method === 'POST' && f.url.indexOf('/borrows') >= 0);
+  check('补登 POST /sessions/<当前会话>/borrows', !!addCall &&
+    addCall.url === '/api/v1/sessions/S-TEST/borrows', addCall ? addCall.url : '无调用');
+  check('补登请求体座位/器材/数量正确',
+    !!addCall && addCall.body.seat === 7 && addCall.body.eqId === 'E-LED' && addCall.body.qty === 2,
+    addCall ? JSON.stringify(addCall.body) : '');
+  check('补登成功后关闭弹窗', elsMap['overlay-borrow'].hidden === true);
+  check('补登记入课堂事件',
+    elsMap['events-body'].children.some((c) => c.textContent && c.textContent.includes('补登 07 号')));
+  // Esc 关闭（键盘可达性，与其它弹窗一致）：关闭且不得触发补登
+  elsMap['btn-borrow'].onclick();
+  await new Promise((r) => setTimeout(r, 30));
+  check('重新打开弹窗', elsMap['overlay-borrow'].hidden === false);
+  const borrowCallsBeforeEsc = fetchLog.filter((f) => f.url.includes('/borrows')).length;
+  fireDocKey('Escape');
+  await new Promise((r) => setTimeout(r, 10));
+  check('Esc 关闭补登弹窗', elsMap['overlay-borrow'].hidden === true);
+  check('Esc 取消不触发补登请求',
+    fetchLog.filter((f) => f.url.includes('/borrows')).length === borrowCallsBeforeEsc);
 
   // 清理活动计时条/快照合并等残留定时器，避免进程退出竞态
   for (let i = 1; i <= 20; i += 1) clearInterval(i);

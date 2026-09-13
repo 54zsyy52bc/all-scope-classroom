@@ -278,13 +278,13 @@
     if (window.DashboardAdmit) {
       window.DashboardAdmit.init({ $, esc, api, logEvent, refreshSoon, withGuard });
     }
-    // 品牌标识改用 PNG 图（topbar 已静态写 <img class="brand-mark" src="logo-mark.png">），不再写入 innerHTML
     if (window.DashboardPreset) window.DashboardPreset.bind();
     $('overlay-start').querySelectorAll('input').forEach((i) => {
       i.addEventListener('keydown', (e) => { if (e.key === 'Enter') withGuard('start', onStart)(); });
     });
     if (window.DashboardActivity) window.DashboardActivity.init();
     if (window.DashboardManage) window.DashboardManage.init();
+    if (window.DashboardBorrow) window.DashboardBorrow.init({ $, esc, api, toast, logEvent, refreshSoon, withGuard });
   }
   async function init() {
     bind();

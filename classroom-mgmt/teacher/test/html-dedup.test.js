@@ -27,7 +27,8 @@ function idsOf(re) {
 
 console.log('-- HTML 单实例性（L3 死 DOM 防线）');
 
-const targets = ['overlay-shell', 'shell-title', 'sf-admin-save', 'sf-exit-save', 'sf-save-all', 'sf-apps', 'sf-msg'];
+const targets = ['overlay-shell', 'shell-title', 'sf-admin-save', 'sf-exit-save', 'sf-save-all', 'sf-apps', 'sf-msg',
+  'overlay-borrow', 'borrow-title', 'btn-borrow', 'bf-seat', 'bf-eq', 'bf-qty', 'bf-error', 'bf-submit'];
 for (const id of targets) {
   const re = new RegExp('id="' + id + '"', 'g');
   const n = count(re);

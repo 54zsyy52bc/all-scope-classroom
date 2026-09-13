@@ -58,6 +58,7 @@
     <button id="btn-export-xlsx" class="btn" data-phase-vis="checkin task return closed">导出 Excel</button>
     <button id="btn-export-csv" class="btn" data-phase-vis="checkin task return closed">导出 CSV</button>
     <button id="btn-manage" class="btn" data-phase-vis="waiting checkin">预设管理</button>
+    <button id="btn-borrow" class="btn" data-phase-vis="checkin task return">补登借用</button>
     <button id="btn-policy" class="btn" data-phase-vis="checkin task">锁定策略：全课可用</button>
   </section>
 
@@ -249,6 +250,25 @@
     </div>
   </div>
 
+  <!-- 补登借用弹窗（L1：学生端归还空态提示「联系老师补登」时的教师入口） -->
+  <div class="overlay" id="overlay-borrow" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="borrow-title">
+      <h2 id="borrow-title">补登借用</h2>
+      <p class="modal-hint">用于「器材已发给学生、但系统里没登记」的情况：补一条借出记录，归还流程即可正常走。</p>
+      <label>座位号<input id="bf-seat" type="number" min="1" max="99" placeholder="例如：7" /></label>
+      <label>器材
+        <select id="bf-eq"><option value="">（加载中…）</option></select>
+      </label>
+      <label>数量<input id="bf-qty" type="number" min="1" max="99" value="1" /></label>
+      <p class="dialog-error" id="bf-error" hidden></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close="overlay-borrow">取消</button>
+        <button class="btn btn-primary" id="bf-submit">确认补登</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="borrow.js"></script>
   <script src="admit.js"></script>
   <script src="activity.js"></script>
   <script src="manage.js"></script>
