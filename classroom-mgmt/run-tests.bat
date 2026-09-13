@@ -55,6 +55,7 @@ call :run_case "student protocol"         "%ROOT%student" "%NODE%" test\protocol
 call :run_case "student renderer.dom"     "%ROOT%student" "%NODE%" test\renderer.dom.test.js
 call :run_case "student shutdown-atomic"  "%ROOT%student" "%NODE%" test\shutdown-atomic.test.js
 call :run_case "student settings-gate"   "%ROOT%student" "%NODE%" test\settings-gate.test.js
+call :run_case "student delivery-image"  "%ROOT%student" "%NODE%" test\delivery-image.test.js
 
 del /q "%TMPDB%"* 2>nul
 
