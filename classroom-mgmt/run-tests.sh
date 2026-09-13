@@ -9,7 +9,7 @@
 # 覆盖:
 #   教师端  selfcheck / routes / preset-pkg / dashboard.dom / export-sanitize / timer-restore / auth-cors / credential-gate / error-format / html-dedup / terminology / borrow-create
 #   Preset Studio  store（本地库）/ renderer.dom
-#   学生端  protocol / renderer.dom
+#   学生端  protocol / renderer.dom / shutdown-atomic
 #   门禁    单文件 <= 300 行 / P0 emoji 扫描
 #   [--full] smoke(真实 broker 全链路 92 项) + net.broker(学生端真机联调)
 #
@@ -111,6 +111,7 @@ echo "${YELLOW}== 学生端 ==${RESET}"
 
 run_case "协议结构 protocol"        "$STUDENT" "$NODE" test/protocol.test.js
 run_case "渲染层流程 renderer.dom"  "$STUDENT" "$NODE" test/renderer.dom.test.js
+run_case "关机原子化 shutdown-atomic" "$STUDENT" "$NODE" test/shutdown-atomic.test.js
 
 # ---------------------------------------------------------------------------
 # 3. 质量门禁：常规文件 <= 300 行；db 仓储/存储后端允许 <= 320（函数仓库）

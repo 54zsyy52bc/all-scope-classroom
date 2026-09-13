@@ -105,6 +105,15 @@ function verifyShutdownToken(ticket) {
   }
   return { verified: true, reason: '', sessionId, ts };
 }
+// S-3：关机「校验 + 执行」在主进程内一气呵成（原子），渲染层只能发一次请求。
+// 旧实现把 verify/execute 拆成两个 IPC，决策点在渲染层：可绕过校验，且两步间隔存在 TOCTOU。
+function requestShutdown(ticket) {
+  const v = verifyShutdownToken(ticket);
+  // 未通过校验绝不执行；delaySec 也只在主进程取，渲染层无从干预
+  if (!v.verified) return Promise.resolve({ verified: false, reason: v.reason, executed: false, dryRun: false, delaySec: 0 });
+  return executeShutdown({ delaySec: readConfig().shutdownDelaySec, reason: 'teacher-cmd' })
+    .then((res) => Object.assign({ verified: true, reason: v.reason, sessionId: v.sessionId, ts: v.ts }, res));
+}
 function isDryRun(cfg) {
   // secret 仍是占位值 = 未授权部署，强制 dry-run（交付前必须改 secret 并置 dryRun=false）
   return cfg.dryRun === true || cfg.secret === PLACEHOLDER_SECRET;
@@ -117,7 +126,6 @@ function executeShutdown(opts) {
     Number.isFinite(requested) ? Math.round(requested) : 60));
   const comment = `课堂结束，计算机将在 ${delay} 秒后关机。请及时保存作品。`;
   if (isDryRun(cfg)) {
-    // eslint-disable-next-line no-console
     console.log(`[shutdown][dry-run] shutdown /s /t ${delay} /c "${comment}"`);
     return Promise.resolve({ executed: false, dryRun: true, delaySec: delay, comment });
   }
@@ -126,12 +134,10 @@ function executeShutdown(opts) {
       { windowsHide: true, timeout: 5000 },
       (err, stdout, stderr) => {
         if (err) {
-          // eslint-disable-next-line no-console
           console.error('[shutdown] 执行失败:', err.message, String(stderr || '').trim());
           resolve({ executed: false, dryRun: false, error: err.message, delaySec: delay });
           return;
         }
-        // eslint-disable-next-line no-console
         console.log(`[shutdown] 已下发：${delay} 秒后关机`);
         resolve({ executed: true, dryRun: false, delaySec: delay, comment });
       });
@@ -176,25 +182,22 @@ function registerIpc(getMachineId) {
     const cfg = writeConfig(patch);
     return { seat: normSeat(cfg.seat), name: cfg.name, studentNo: cfg.studentNo };
   });
-  ipcMain.handle('shutdown:verify', (_e, ticket) => verifyShutdownToken(ticket));
-  ipcMain.handle('shutdown:execute', (_e, opts) => executeShutdown(opts));
+  // S-3：关机只保留这一个原子通道（校验 + 执行都在主进程内完成）
+  ipcMain.handle('shutdown:request', (_e, ticket) => requestShutdown(ticket));
   // 撤销关机：教师端"撤销关机"指令 → shutdown /a 中止倒计时（学生归还后仍需继续使用）
   ipcMain.handle('shutdown:cancel', async () => {
     const cfg = readConfig();
     if (isDryRun(cfg)) {
-      // eslint-disable-next-line no-console
       console.log('[shutdown][dry-run] shutdown /a（撤销关机，演练不执行）');
       return { canceled: false, dryRun: true };
     }
     return new Promise((resolve) => {
       execFile('shutdown', ['/a'], { windowsHide: true, timeout: 5000 }, (err) => {
         if (err) {
-          // eslint-disable-next-line no-console
           console.error('[shutdown] 撤销失败:', err.message);
           resolve({ canceled: false, error: err.message });
           return;
         }
-        // eslint-disable-next-line no-console
         console.log('[shutdown] 已撤销关机（shutdown /a）');
         resolve({ canceled: true });
       });
@@ -202,7 +205,6 @@ function registerIpc(getMachineId) {
   });
   ipcMain.handle('app:log', (_e, line) => {
     const s = String(line == null ? '' : line).slice(0, 500);
-    // eslint-disable-next-line no-console
     console.log('[renderer]', s);
     // 测试期审计：同一份日志落盘到 userData/audit.log，便于事后回传定位
     try {

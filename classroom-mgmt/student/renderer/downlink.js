@@ -22,7 +22,6 @@
     const pad2 = c.pad2;
     const audit = c.audit;
     const resetEquipQty = c.resetEquipQty;
-    const getRuntime = c.getRuntime;
     const onEquipment = c.onEquipment;
     const onTimer = c.onTimer;
     const onPolicy = c.onPolicy;
@@ -177,25 +176,30 @@
       toast('老师已重置本座位登记，请重新登记', 'warn');
     }
 
+    // S-3：关机只走主进程的单一原子通道 requestShutdown（内部校验 + 执行）。
+    // 渲染层不再「先 verify 再 execute」——那等于把决策点放在渲染层，
+    // 既可能被绕过，也存在两步之间 60s 时间窗失效的 TOCTOU。
     function handleShutdown(p) {
       const b = bridge();
-      if (!b || !b.verifyShutdown) {
+      if (!b || !b.requestShutdown) {
         log('无主进程桥接，忽略关机指令（演练）');
         startCountdown(p.delaySec || 60, true);
         return;
       }
-      b.verifyShutdown({ sessionId: p.sessionId, ts: p.ts, token: p.token }).then((r) => {
+      b.requestShutdown({ sessionId: p.sessionId, ts: p.ts, token: p.token }).then((r) => {
         if (!r || !r.verified) {
           log('关机指令校验未通过，已忽略：' + (r && r.reason));
           toast('收到关机指令但校验未通过，已忽略', 'error');
           return;
         }
-        const rt = getRuntime();
-        return b.executeShutdown({ delaySec: rt ? rt.shutdownDelaySec : 60, reason: 'teacher-cmd' })
-          .then((res) => {
-            startCountdown((res && res.delaySec) || 60, !!(res && res.dryRun));
-            log('关机指令已执行' + (res && res.dryRun ? '（演练模式）' : ''));
-          });
+        if (!r.executed && !r.dryRun) {
+          // 校验通过但系统层执行失败（如 shutdown 被策略拦截）
+          log('关机指令已通过校验但执行失败：' + (r.error || '未知原因'));
+          toast('关机指令下发失败，请联系老师', 'error');
+          return;
+        }
+        startCountdown(r.delaySec || 60, !!r.dryRun);
+        log('关机指令已执行' + (r.dryRun ? '（演练模式）' : ''));
       }).catch((e) => {
         log('关机流程异常: ' + (e && e.message));
       });

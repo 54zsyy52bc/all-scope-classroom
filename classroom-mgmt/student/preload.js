@@ -14,8 +14,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CH = {
   runtime: 'app:getRuntime',
   profile: 'app:saveProfile',
-  verify: 'shutdown:verify',
-  execute: 'shutdown:execute',
+  // S-3：关机只暴露一个原子通道——校验与执行都在主进程内完成，渲染层无法绕过校验。
+  shutdown: 'shutdown:request',
   cancel: 'shutdown:cancel',
   log: 'app:log',
   // v5 全域桌面 shell / 桌面
@@ -103,14 +103,10 @@ contextBridge.exposeInMainWorld('classroom', {
   pickApp: () => ipcRenderer.invoke(CH.pickApp),
   importConfig: () => ipcRenderer.invoke(CH.importConfig),
 
-  // 关机票据校验：主进程用本地 secret 做 HMAC + 60s 时间窗比对
-  verifyShutdown: (ticket) => ipcRenderer.invoke(CH.verify, cleanTicket(ticket)),
-
-  // 执行关机。delaySec 超出范围由主进程裁剪；dry-run 时只打日志
-  executeShutdown: (opts) => ipcRenderer.invoke(CH.execute, {
-    delaySec: num(opts && opts.delaySec, undefined),
-    reason: str(opts && opts.reason, 200),
-  }),
+  // S-3：请求关机（原子）。主进程内部先校验票据再做 HMAC + 60s 时间窗比对，
+  // 通过后立即执行；渲染层只拿最终结果，无从"跳过校验直接执行"。
+  // 返回 { verified, reason, executed, dryRun, delaySec }；dry-run 时只打日志。
+  requestShutdown: (ticket) => ipcRenderer.invoke(CH.shutdown, cleanTicket(ticket)),
 
   // 撤销关机：中止本机已排定的关机倒计时（shutdown /a）；dry-run 时只打日志
   cancelShutdown: () => ipcRenderer.invoke(CH.cancel),
