@@ -10,7 +10,7 @@
 #   教师端  selfcheck / routes / preset-pkg / dashboard.dom / export-sanitize / timer-restore / auth-cors / credential-gate / error-format / html-dedup / terminology / borrow-create
 #   Preset Studio  store（本地库）/ renderer.dom
 #   学生端  protocol / renderer.dom / shutdown-atomic
-#   门禁    单文件 <= 300 行 / P0 emoji 扫描
+#   门禁    单文件 <= 300 行 / P0 emoji 扫描 / 批处理纯 ASCII
 #   [--full] smoke(真实 broker 全链路 92 项) + net.broker(学生端真机联调)
 #
 # 退出码: 0 = 全部通过, 1 = 存在失败
@@ -142,6 +142,23 @@ if grep -rIPn "$EMOJI_RE" "$TEACHER/public" "$STUDENT/renderer" "$STUDIO/rendere
 else
   ok "P0 emoji 扫描（UI 代码干净）"
 fi
+
+# ---------------------------------------------------------------------------
+# 5. 质量门禁：仓库内批处理必须「纯 ASCII」
+#    cmd.exe 会把批处理里的 UTF-8 中文按本地代码页解释，多字节序列可能配出假的
+#    ')' 或 '"'，破坏块/引号配对，整脚本直接报 "不是内部或外部命令" 而失效。
+#    实测：以「UTF-8 中文注释 + LF」写成的 .cmd 会在真机上完全无法执行。
+#    需要中文提示时，请改用 CRLF + chcp 65001（交付包内脚本即此格式）。
+# ---------------------------------------------------------------------------
+nonascii_bat=0
+for bat in "$ROOT"/*.bat "$ROOT"/*.cmd; do
+  [ -f "$bat" ] || continue
+  if LC_ALL=C grep -qP '[^\x00-\x7F]' "$bat" 2>/dev/null; then
+    echo "  ${RED}[非ASCII] ${bat#$ROOT/}（批处理里出现非 ASCII 字符）${RESET}"
+    nonascii_bat=1
+  fi
+done
+if [ "$nonascii_bat" -eq 0 ]; then ok "批处理纯 ASCII 门禁"; else bad "批处理纯 ASCII 门禁"; fi
 
 # ---------------------------------------------------------------------------
 # 5. 完整模式：真实 SIoT broker 全链路冒烟
