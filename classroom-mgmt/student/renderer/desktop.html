@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<html lang="zh-CN" data-page-node-id="REbY1uFlaX8NkhUThIWMrl">
+<head data-page-node-id="SDVUikMrzPbsu7au5ppVin">
+  <meta charset="UTF-8" data-page-node-id="xDT2JAG4DuS1FNu2JBlOm0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="ugOtxeOumEpeJetWwvhthN" />
   <title>全域 · 桌面</title>
-  <link rel="icon" type="image/png" href="logo-mark.png" />
+  <link rel="icon" type="image/png" href="logo-mark.png" data-page-node-id="8mEA0mx6u378T6yg1VvrnN" />
   <style>
     :root { --bg:#ffffff; --panel:#f5f5f5; --text:#1b1b1b; --muted:#6f6f6f; --line:#e0e0e0;
       --accent:#0078d7; --accent-dark:#006cc1; --ok:#107c10; --warn:#c42b1c; }
@@ -28,10 +28,20 @@
     .welcome p { color:var(--muted); font-size:13px; margin-top:2px; }
     .home-grid { flex:1; overflow-y:auto; padding:18px 0; display:grid;
       grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:18px; align-content:start; }
-    .tile { background:#eaf4fd; border:1px solid #cfe4f7; color:#005a9e; min-height:132px;
-      display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px;
-      cursor:pointer; font-family:inherit; padding:12px; }
-    .tile:hover{ background:#d9edfb; }
+    /* 磁贴：3D 舞台（perspective + preserve-3d），hover 时 inner 翻转露出背面 */
+    .tile, .d-app { position:relative; display:block; background:transparent; border:0; padding:0;
+      cursor:pointer; font-family:inherit; transform-style:preserve-3d; perspective:800px; }
+    .tile { min-height:132px; }
+    .tile-inner { position:relative; width:100%; min-height:132px; transform-style:preserve-3d;
+      transition: transform .52s cubic-bezier(.2,.8,.2,1); }
+    .tile-front, .tile-back { position:absolute; inset:0; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:8px; padding:12px;
+      backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+    .tile-front { background:#eaf4fd; border:1px solid #cfe4f7; color:#005a9e; }
+    .tile-back { background:var(--accent); color:#fff; transform:rotateY(180deg); }
+    .tile-back .bk-nm { font-size:14px; font-weight:700; }
+    .tile-back .bk-tip { font-size:12px; opacity:.9; }
+    .tile:hover .tile-front { background:#d9edfb; }
     .tile .ico { width:40px; height:40px; background:var(--accent); color:#fff; font-size:20px;
       display:flex; align-items:center; justify-content:center; font-weight:700; }
     .tile .nm { font-size:14px; font-weight:600; color:var(--text); max-width:100%; overflow:hidden;
@@ -55,11 +65,18 @@
     .drawer-head h2 { font-size:17px; }
     .drawer-body { overflow-y:auto; padding:14px 18px 22px; display:grid;
       grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:14px; }
-    .d-app { background:var(--panel); border:0; cursor:pointer; padding:14px 6px; font-family:inherit;
-      display:flex; flex-direction:column; align-items:center; gap:8px; }
-    .d-app:hover{ background:#e8eef6; }
+    .d-app { min-height:96px; }
+    .d-app .tile-inner { min-height:96px; }
+    .d-app .tile-front { background:var(--panel); border:1px solid var(--line,#e0e0e0); color:var(--text); }
+    .d-app:hover .tile-front { background:#e8eef6; }
+    .d-app .tile-back { background:var(--accent); }
+    .d-app .tile-back .bk-nm { font-size:12px; }
     .d-app .ico{ width:44px; height:44px; background:var(--accent); color:#fff; display:flex; align-items:center;
       justify-content:center; font-size:19px; font-weight:700; }
+    /* 系统项（上课登记/设置）无 tile-inner，保持平面磁贴观感 */
+    .d-app.sys { background:var(--panel); border:1px solid var(--line,#e0e0e0); padding:14px 6px;
+      display:flex; flex-direction:column; align-items:center; gap:8px; }
+    .d-app.sys:hover { background:#e8eef6; }
     .d-app.sys .ico{ background:#666; }
     .d-app .nm { font-size:12px; color:var(--text); max-width:100%; overflow:hidden;
       text-overflow:ellipsis; white-space:nowrap; }
@@ -86,65 +103,110 @@
       color:#fff; cursor:pointer; }
     .big-btn.ghost { background:#fff; color:var(--text); border:1px solid var(--line); }
     .clock { font-size:15px; font-weight:600; }
+
+    /* ===== Win8 / Metro 动效 ===== */
+    /* 页面入场：状态条 / 底栏 / 主区 轻微上滑淡入（仅加载时一次） */
+    @keyframes pageIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    .statusbar { animation: pageIn .30s ease both; }
+    .dock { animation: pageIn .30s .06s ease both; }
+    main { animation: pageIn .34s .10s ease both; }
+
+    /* 磁贴入场：错落淡入 + 轻微缩放（animation-delay 在 JS 中按序号设置；
+       backwards 使首帧（透明）在延迟期间生效，结束后交还普通样式，悬停微抬才不会被覆盖） */
+    @keyframes tileIn { from { opacity:0; transform:translateY(14px) scale(.94); } to { opacity:1; transform:none; } }
+    .tile, .d-app { animation: tileIn .32s cubic-bezier(.2,.8,.2,1) backwards; will-change:transform,opacity; }
+
+    /* 悬停：Win8 微抬 + 阴影（官方应用磁贴质感） */
+    .tile, .d-app { transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, background .14s ease; }
+    /* 悬停：Win8 官方磁贴标志性 3D 微倾斜 + 微抬 + 投影 */
+    .tile:hover, .d-app:hover { transform: perspective(600px) rotateX(8deg) rotateY(-3deg) translateY(-6px) scale(1.04);
+      box-shadow: 0 16px 30px rgba(0,0,0,.22); z-index:2; }
+    /* 悬停：磁贴翻转，露出背面（应用名 / 状态提示） */
+    .tile:hover .tile-inner, .d-app:hover .tile-inner { transform: rotateY(180deg); }
+    /* 按下：快速回弹 */
+    .tile:active, .d-app:active { transform: scale(.94); transition-duration:.06s; }
+
+    /* 抽屉滑入 + 遮罩淡入 */
+    @keyframes drawerUp { from { transform:translateY(100%); } to { transform:none; } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    .drawer { animation: drawerUp .30s cubic-bezier(.2,.8,.2,1) both; }
+    .drawer-mask { animation: fadeIn .20s ease both; }
+
+    /* 设置弹层：遮罩淡入 + 模态缩放淡入 */
+    @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes modalIn { from { opacity:0; transform:scale(.92) translateY(10px); } to { opacity:1; transform:none; } }
+    .overlay { animation: overlayIn .18s ease both; }
+    .modal { animation: modalIn .26s cubic-bezier(.2,.9,.25,1) both; transform-origin:center; }
+
+    /* 浮层提示滑入 */
+    @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(14px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+    .float-toast { animation: toastIn .26s ease both; }
+
+    /* 降级：尊重无障碍“减少动态” */
+    @media (prefers-reduced-motion: reduce) {
+      .statusbar, .dock, main, .tile, .d-app, .tile-inner, .drawer, .drawer-mask, .overlay, .modal, .float-toast
+        { animation:none!important; transition:none!important; }
+      .tile:hover .tile-inner, .d-app:hover .tile-inner { transform:none!important; }
+    }
   </style>
 </head>
-<body>
-  <div class="statusbar">
-    <div class="sb-left"><img class="sb-logo" src="logo-text.png" alt="全域" /></div>
-    <div class="sb-right">
-      <span class="chip" id="sb-machine">机器 -</span>
-      <span class="chip" id="sb-room">教室 -</span>
-      <span class="chip guard-on" id="sb-guard">防护中</span>
-      <span class="clock" id="sb-clock"></span>
-      <button class="link" id="sb-settings">设置</button>
+<body data-page-node-id="8Dt9XFHEfFEiMNxdAwsTXb">
+  <div class="statusbar" data-page-node-id="Wu5vbAbNfMgDm7iI5zeTRd">
+    <div class="sb-left" data-page-node-id="Vwj4WnJnmJqSgV8iVXyEfG"><img class="sb-logo" src="logo-text.png" alt="全域" data-page-node-id="qbL7NeyAcWkiyZiNdGCsqx" /></div>
+    <div class="sb-right" data-page-node-id="086xMJcWEOfIUzGseCgv8e">
+      <span class="chip" id="sb-machine" data-page-node-id="oBUCXYDXoEswr9hchHM55q">机器 -</span>
+      <span class="chip" id="sb-room" data-page-node-id="6znHxxvyUxenpPrr4utswc">教室 -</span>
+      <span class="chip guard-on" id="sb-guard" data-page-node-id="YKLDEmMiVAz4kcn2tCAUTC">防护中</span>
+      <span class="clock" id="sb-clock" data-page-node-id="eFeXuxHEAU1esuJdoI52LC"></span>
+      <button class="link" id="sb-settings" data-page-node-id="C8AzG98ylefU1sCHRCktvE">设置</button>
     </div>
   </div>
 
-  <main>
-    <div class="welcome"><h1 id="course-name">…</h1><p>点击磁贴打开课程应用 · 点下方【上课登记】完成登记</p></div>
-    <div class="home-grid" id="home-grid"></div>
+  <main data-page-node-id="FgBfkhwELNGZzJfTUQDKuz">
+    <div class="welcome" data-page-node-id="aabYpREvLsqGqF9T6VvOFb"><h1 id="course-name" data-page-node-id="nuCHuPSdYGfGKdY4vgsOqE">…</h1><p data-page-node-id="esC8IN5fCipGEiXiPuw8sB">点击磁贴打开课程应用 · 点下方【上课登记】完成登记</p></div>
+    <div class="home-grid" id="home-grid" data-page-node-id="nntmWbvhZxJGn9DUXcHGrH"></div>
   </main>
 
-  <div class="dock">
-    <div style="display:flex;gap:10px">
-      <button class="dock-btn primary" id="btn-class">上课登记</button>
+  <div class="dock" data-page-node-id="WaeEhmvpQQOYu9TRiDB3tU">
+    <div style="display:flex;gap:10px" data-page-node-id="PbpBJJHNwDS33GyknPxE2w">
+      <button class="dock-btn primary" id="btn-class" data-page-node-id="FUgFATXcE9D3BVpMQWdsGJ">上课登记</button>
     </div>
-    <div class="dock-right">
-      <button class="dock-btn" id="btn-drawer">全部应用</button>
+    <div class="dock-right" data-page-node-id="pdinpESC5gB70SF5TCK9aU">
+      <button class="dock-btn" id="btn-drawer" data-page-node-id="Ryp1IGNsDAnlv1dtRGvhLh">全部应用</button>
     </div>
   </div>
 
-  <div class="drawer-mask" id="drawer-mask" hidden></div>
-  <div class="drawer" id="drawer" hidden>
-    <div class="drawer-head"><h2>全部应用</h2><button class="link" id="btn-drawer-close">关闭</button></div>
-    <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-mask" id="drawer-mask" hidden data-page-node-id="4q4b1WQ9SjNhFAFqHtI7jy"></div>
+  <div class="drawer" id="drawer" hidden data-page-node-id="kP3eVUFbT5ELiiXhb3NV4F">
+    <div class="drawer-head" data-page-node-id="eFYry2rPsoBPMLYdXRu4HZ"><h2 data-page-node-id="oRDfL8mJndRcEnlVDAa6nD">全部应用</h2><button class="link" id="btn-drawer-close" data-page-node-id="iMG0EnEHl8KTRTH3GDT3QB">关闭</button></div>
+    <div class="drawer-body" id="drawer-body" data-page-node-id="t9NHWHkNhdBmXloXpMoqZI"></div>
   </div>
 
   <!-- 设置（管理员） -->
-  <div class="overlay" id="set-overlay" hidden>
-    <div class="modal">
-      <h3>桌面设置（本机）</h3>
-      <label class="f">课程名称</label><input id="f-course-name" type="text" />
-      <label class="f">课程应用（点『添加应用』选 exe/快捷方式，可设名称与主屏固定）</label>
-      <div id="app-list"></div>
-      <div class="row" style="justify-content:flex-start"><button class="mini blue" id="btn-add-app">+ 添加应用</button></div>
-      <label class="f">禁用进程（逗号分隔 exe，如 chrome.exe）</label>
-      <input id="f-deny" type="text" />
-      <label class="f"><input id="f-guard-en" type="checkbox" style="width:auto" /> 启用禁用进程强杀</label>
-      <label class="f"><input id="f-min" type="checkbox" style="width:auto" /> 非课堂应用窗口自动最小化</label>
-      <div class="row" style="justify-content:flex-start">
-        <button class="mini" id="btn-import">导入课程桌面包(.json)</button>
-        <button class="mini" id="btn-back-shell">回模式选择</button>
+  <div class="overlay" id="set-overlay" hidden data-page-node-id="NSokf3sRCkdkeEUcQKYBrE">
+    <div class="modal" data-page-node-id="QFdsKTiczDEKfQ0Mr6fQiC">
+      <h3 data-page-node-id="L8XrqhHqgTw1hAdtDQNfi8">桌面设置（本机）</h3>
+      <label class="f" data-page-node-id="i7DdH2BiPsF4MLcjT8KgER">课程名称</label><input id="f-course-name" type="text" data-page-node-id="ZMUJ3ui2dihGrJvTnuOPwB" />
+      <label class="f" data-page-node-id="630OgMLHu0Q7gSHwqqoVmI">课程应用（点『添加应用』选 exe/快捷方式，可设名称与主屏固定）</label>
+      <div id="app-list" data-page-node-id="8IhDmjX7w8OAG13cgSsI0B"></div>
+      <div class="row" style="justify-content:flex-start" data-page-node-id="GgXtztFIHS5Y4kwXydI1MS"><button class="mini blue" id="btn-add-app" data-page-node-id="wDxdN6zPOzUfggurLKrVo7">+ 添加应用</button></div>
+      <label class="f" data-page-node-id="0GFDIpEn3YdnbJdn59QDKq">禁用进程（逗号分隔 exe，如 chrome.exe）</label>
+      <input id="f-deny" type="text" data-page-node-id="oE74AMtgHeM0H6vaRuOyKJ" />
+      <label class="f" data-page-node-id="YJlQjQ2zkbLtUHPbi43UhG"><input id="f-guard-en" type="checkbox" style="width:auto" data-page-node-id="4HLdxCcRv2Z5KO7OxX3kM4" /> 启用禁用进程强杀</label>
+      <label class="f" data-page-node-id="dGLtQ94Nb3A68BczOMEbHp"><input id="f-min" type="checkbox" style="width:auto" data-page-node-id="2F96kLf1WOudGNi5UKhT14" /> 非课堂应用窗口自动最小化</label>
+      <div class="row" style="justify-content:flex-start" data-page-node-id="rHvR1V90Ut8ISzahsCZZPx">
+        <button class="mini" id="btn-import" data-page-node-id="FFs4TytFLYgmcTzDLtWLtT">导入课程桌面包(.json)</button>
+        <button class="mini" id="btn-back-shell" data-page-node-id="lC5vKepdi7LLhYfXJspiLk">回模式选择</button>
       </div>
-      <div class="ok" id="set-msg"></div>
-      <div class="modal-actions">
-        <button class="big-btn ghost" id="btn-close-set">关闭</button>
-        <button class="big-btn" id="btn-save-set">保存</button>
+      <div class="ok" id="set-msg" data-page-node-id="1VUoy5yBJMHMOpm2kylXKC"></div>
+      <div class="modal-actions" data-page-node-id="5E7dcbBcOZFYtF5kyRgwar">
+        <button class="big-btn ghost" id="btn-close-set" data-page-node-id="BGRXQI0uYAB19AwOZ19rMZ">关闭</button>
+        <button class="big-btn" id="btn-save-set" data-page-node-id="Ai6FC7Sp0BAbhCEw1bxB19">保存</button>
       </div>
     </div>
   </div>
 
-  <div id="app-dock"></div>
+  <div id="app-dock" data-page-node-id="R9y01mnlFDJUCx71lSDIZb"></div>
   <script src="desktop.js"></script>
   <script src="app-dock.js"></script>
 </body>

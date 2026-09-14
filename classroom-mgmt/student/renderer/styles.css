@@ -603,6 +603,10 @@ body {
 .activity-timer[data-state="expired"] .timer-label { color: var(--offline); }
 
 /* ---------- 锁定遮罩（软锁） ---------- */
+/* 入场过渡：遮罩淡入 + 卡片缩放上浮（仅 CSS 动画，hidden 切换仍由 JS 同步置位，
+   不破坏 renderer.dom.test.js 对 lock.hidden 的断言；减少动态偏好下全局降级为瞬时） */
+@keyframes lockIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lockCardIn { from { opacity: 0; transform: scale(0.92) translateY(12px); } to { opacity: 1; transform: none; } }
 .lock-overlay {
   position: fixed;
   inset: 0;
@@ -612,9 +616,14 @@ body {
   align-items: center;
   justify-content: center;
   cursor: not-allowed;
+  animation: lockIn 260ms var(--ease) both;
 }
 .lock-overlay[hidden] { display: none; }
-.lock-card { text-align: center; color: var(--text); user-select: none; }
+/* 注意：遮罩背景是近黑 rgba(12,16,24,.94)，文字必须是白色。
+   原写法 color: var(--text) 而 --text 在本文件从未定义 -> 解析失败后继承 body 的
+   --fg(#0F172A) 近黑，导致锁屏标题/副标题深底深色不可见，故显式写白。 */
+.lock-card { text-align: center; color: #fff; user-select: none;
+  animation: lockCardIn 320ms var(--ease) both; transform-origin: center; }
 .lock-icon {
   display: inline-flex;
   width: 96px; height: 96px;
@@ -626,7 +635,46 @@ body {
   margin-bottom: 20px;
 }
 .lock-title { font-size: 28px; font-weight: 700; margin: 0 0 8px; }
-.lock-sub { font-size: 18px; color: var(--muted); margin: 0; }
+.lock-sub { font-size: 18px; color: rgba(255, 255, 255, 0.82); margin: 0; }
+
+/* ---------- 阶段切换全屏擦除过渡（切课 / 待课→登记→课中→归还→已结束） ----------
+   由 app.js 在 renderStage() 检测到 phase 变化时，给 #fx-wipe 加 .play 触发一次；
+   纯视觉层、独立于 #stage，不触碰 stage.innerHTML，故不影响渲染层测试断言。 */
+@keyframes wipeSlide {
+  0%   { transform: translateX(-100%); }
+  45%  { transform: translateX(0); }
+  55%  { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}
+.fx-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  background: var(--accent, #0078D7);
+  transform: translateX(-100%);
+}
+.fx-wipe::after {
+  /* 中央品牌字，强化“切换中”的仪式感（不拦截点击） */
+  content: "全域课堂";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-family: var(--font-display);
+  opacity: 0;
+}
+@keyframes wipeLabel {
+  0%, 100% { opacity: 0; }
+  45%, 55% { opacity: 0.95; }
+}
+.fx-wipe.play { animation: wipeSlide 560ms var(--ease) both; }
+.fx-wipe.play::after { animation: wipeLabel 560ms var(--ease) both; }
 
 /* ---------- 全局兜底（2026-09-06 修复）：任何 [hidden] 一律隐藏 ----------
    .shutdown 曾只配 display:flex 无 [hidden] 覆盖 → 深色全屏层启动即常驻拦截点击 */

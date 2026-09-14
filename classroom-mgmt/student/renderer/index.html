@@ -43,6 +43,9 @@
     <p class="shutdown-text" id="shutdown-text"></p>
   </div>
 
+  <!-- 阶段切换全屏擦除过渡层（切课 / 待课→登记→课中→归还→已结束），由 app.js 触发 -->
+  <div class="fx-wipe" id="fx-wipe" aria-hidden="true"></div>
+
   <script src="../vendor/mqtt.min.js"></script>
   <script src="../shared/topics.js"></script>
   <script src="../shared/icons.js"></script>
@@ -52,6 +55,7 @@
   <script src="downlink.js"></script>
   <script src="actions.js"></script>
   <script src="control.js"></script>
+  <script src="fx.js"></script>
   <script src="app.js"></script>
   <script src="app-dock.js"></script>
   <script>

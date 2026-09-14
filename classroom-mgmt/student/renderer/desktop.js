@@ -22,6 +22,7 @@
   }
   function floatToast(text, err) {
     const e = document.createElement('div');
+    e.className = 'float-toast';
     e.textContent = text;
     e.style.cssText = 'position:fixed;bottom:74px;left:50%;transform:translateX(-50%);background:' + (err ? '#c42b1c' : '#107c10') + ';color:#fff;padding:9px 18px;z-index:99;font-size:13px;';
     document.body.appendChild(e);
@@ -67,8 +68,14 @@
   function apps() { return (dcfg.course && dcfg.course.apps) || []; }
   function tileHtml(a, big) {
     const initial = String(a.name || '?').slice(0, 1).toUpperCase();
-    return '<button type="button" class="' + (big ? 'tile' : 'd-app') + '" data-id="' + esc(a.id) + '">'
-      + '<span class="ico">' + esc(initial) + '</span><span class="nm">' + esc(a.name) + '</span></button>';
+    const cls = big ? 'tile' : 'd-app';
+    const tip = big ? '点击打开' : '课程应用';
+    // 双面结构：front 显示图标+名称，hover 时 inner 翻转露出 back（名称+状态提示）
+    return '<button type="button" class="' + cls + '" data-id="' + esc(a.id) + '" title="' + esc(a.name) + '">'
+      + '<span class="tile-inner">'
+      + '<span class="tile-front"><span class="ico">' + esc(initial) + '</span><span class="nm">' + esc(a.name) + '</span></span>'
+      + '<span class="tile-back"><span class="bk-nm">' + esc(a.name) + '</span><span class="bk-tip">' + tip + '</span></span>'
+      + '</span></button>';
   }
   function renderHome() {
     const grid = $('home-grid');
@@ -78,6 +85,8 @@
     grid.innerHTML = list.length ? shown.map((a) => tileHtml(a, true)).join('')
       : '<div class="empty-guide">还没有课程应用：点右上「设置」→ 添加应用（选 exe）<br/>或从 U 盘/教师机导入课程桌面包</div>';
     grid.querySelectorAll('[data-id]').forEach((el) => { el.onclick = () => openApp(el.dataset.id); });
+    // 错落入场：磁贴按序号延时，呈现 Win8 应用逐一浮现的节奏
+    grid.querySelectorAll('.tile').forEach((el, i) => { el.style.animationDelay = (i * 35) + 'ms'; });
   }
   function renderDrawer() {
     const body = $('drawer-body');
@@ -89,6 +98,8 @@
     body.querySelectorAll('[data-sys]').forEach((el) => {
       el.onclick = () => { closeDrawer(); const s = el.dataset.sys; if (s === 'class') enterClass(); else if (s === 'settings') openSettings(); };
     });
+    // 错落入场：抽屉内应用按序号延时（含上课登记 / 设置两个系统项）
+    body.querySelectorAll('.d-app').forEach((el, i) => { el.style.animationDelay = (i * 30) + 'ms'; });
   }
   function openApp(id) {
     audit('app-open', id);
@@ -117,8 +128,10 @@
       + '<button class="mini danger" data-a="del">删除</button></div>').join('')
       : '<div class="row">暂无应用</div>';
     box.querySelectorAll('.row').forEach((row) => {
+      const nameEl = row.querySelector('[data-f="name"]');
+      if (!nameEl) return; // 暂无应用占位行无输入框，跳过绑定，否则 null.oninput 抛错会阻断设置弹窗显示
       const i = Number(row.dataset.i);
-      row.querySelector('[data-f="name"]').oninput = (e) => { draft.course.apps[i].name = e.target.value; };
+      nameEl.oninput = (e) => { draft.course.apps[i].name = e.target.value; };
       row.querySelector('[data-a="pin"]').onclick = () => {
         const id = draft.course.apps[i].id;
         const hs = draft.course.homeApps;

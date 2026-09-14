@@ -92,10 +92,9 @@
   // 渲染
   // ---------------------------------------------------------------------------
   function renderStage() {
-    // v5：所有视图底部常驻「同步状态」，学生可随时主动向老师请求同步（触发 hello→sync 校正）
-    els.stage.innerHTML = Views.render(state)
-      + '<button type="button" class="sync-foot" data-act="sync-status">⟳ 同步状态（手动刷新）</button>';
+    els.stage.innerHTML = Views.render(state) + '<button type="button" class="sync-foot" data-act="sync-status">⟳ 同步状态（手动刷新）</button>';
     saveLocal();
+    if (global.StageFx) StageFx.onPhase(state.phase); // 仅 phase 切换时触发全屏擦除（见 fx.js）
   }
 
   function renderConn() {
