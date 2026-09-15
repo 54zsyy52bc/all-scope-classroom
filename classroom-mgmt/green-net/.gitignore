@@ -1,0 +1,7 @@
+node_modules/
+release/
+dist/
+*.log
+data/admin.json
+data/*.tmp
+src/shared/

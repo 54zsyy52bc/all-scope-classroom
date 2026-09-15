@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>SIoT 控制台</title>
+  <link rel="stylesheet" href="./assets/pages.css" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div class="page-head">
+      <h1>🛰️ SIoT 物联网服务</h1>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-recheck">重新检测</button>
+    </div>
+
+    <div class="card">
+      <div class="state info" id="status"><span class="dot"></span><span id="status-text">正在检测本机 SIoT 服务…</span></div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary big" id="btn-open" disabled>打开控制台</button>
+        <button class="btn big" id="btn-force">仍然尝试打开</button>
+      </div>
+      <p class="muted" style="margin-top:10px" id="url-line">控制台地址：--</p>
+    </div>
+
+    <div class="card" id="guide-card" hidden>
+      <h2>🚀 启动步骤 <span class="sub">按顺序做，一步都不要跳</span></h2>
+      <ol class="hint-list" id="guide"></ol>
+      <p class="muted">小提示：首次运行时 Windows 会弹窗问"是否允许访问网络"，要勾上「专用网络」和「公用网络」再点允许，否则设备连不上。</p>
+    </div>
+
+    <div class="card">
+      <h2>检测详情</h2>
+      <dl class="kv" id="detail">
+        <dt>MQTT 端口</dt><dd>--</dd>
+        <dt>网页端口</dt><dd>--</dd>
+      </dl>
+    </div>
+  </div>
+  <script src="./assets/common.js"></script>
+  <script src="./siot.js"></script>
+</body>
+</html>

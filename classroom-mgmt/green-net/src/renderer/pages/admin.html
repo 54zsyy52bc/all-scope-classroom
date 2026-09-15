@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>绿网 · 教师管理</title>
+  <link rel="stylesheet" href="./assets/pages.css" />
+</head>
+<body>
+
+  <!-- ===== 口令门 ===== -->
+  <div id="gate" hidden>
+    <div class="gate">
+      <div class="emoji">🔒</div>
+      <h1 id="gate-title">教师管理</h1>
+      <p id="gate-sub">请输入管理口令</p>
+      <input type="password" id="gate-pwd" autocomplete="off" placeholder="管理口令" />
+      <input type="password" id="gate-pwd2" autocomplete="off" placeholder="再输一次确认" hidden />
+      <p class="err" id="gate-err"></p>
+      <div class="actions">
+        <button class="btn" id="gate-cancel">返回首页</button>
+        <button class="btn primary" id="gate-ok">进入管理</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 管理主体 ===== -->
+  <div class="wrap" id="main" hidden>
+    <div class="page-head">
+      <h1>🔒 绿网 · 教师管理</h1>
+      <span class="spacer"></span>
+      <span class="muted" id="who"></span>
+      <button class="btn" id="btn-lock">锁定浏览器</button>
+      <button class="btn" id="btn-home">返回首页</button>
+    </div>
+
+    <div class="tabs-nav">
+      <button class="active" data-pane="pane-block">🚫 屏蔽名单</button>
+      <button data-pane="pane-nav">🧭 导航内容</button>
+      <button data-pane="pane-sys">⚙️ 系统设置</button>
+    </div>
+
+    <!-- ---------- 屏蔽名单 ---------- -->
+    <section class="pane" id="pane-block">
+      <div class="card">
+        <h2>总开关</h2>
+        <div class="row">
+          <label class="switch fixed"><input type="checkbox" id="bl-enabled" /> 启用网页屏蔽</label>
+          <label class="switch fixed"><input type="checkbox" id="bl-local" /> 始终允许本机地址（SIoT 控制台等）</label>
+          <div class="fixed">
+            <label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">屏蔽模式</label>
+            <select id="bl-mode" style="width:230px">
+              <option value="blacklist">黑名单：命中规则就拦截</option>
+              <option value="whitelist">白名单：只允许"允许清单"里的网站</option>
+            </select>
+          </div>
+        </div>
+        <p class="muted" id="bl-mode-hint" style="margin-top:8px"></p>
+      </div>
+
+      <div class="card">
+        <h2>屏蔽规则 <span class="sub">按顺序从上到下匹配，命中即拦截</span></h2>
+        <div class="rule-list">
+          <div class="rule head">
+            <span>类型</span><span>内容</span><span>备注（给学生看的理由）</span><span>启用</span><span></span>
+          </div>
+          <div id="rules"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="btn-add-rule">+ 添加一条规则</button>
+        </div>
+        <p class="muted" style="margin-top:10px">
+          <strong>域名</strong>：<code>game.com</code> 会拦下 <code>game.com</code> 和它的所有子域名；
+          <strong>关键词</strong>：网址里包含这几个字就拦；
+          <strong>网址前缀</strong>：以这段开头的网址拦；
+          <strong>正则</strong>：高级用法，不会写就少用。
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>允许清单（白名单例外） <span class="sub">最高优先级，这里的站点一定打得开</span></h2>
+        <div class="tag-list" id="allows"></div>
+        <div class="row" style="margin-top:12px">
+          <input type="text" id="allow-input" placeholder="输入域名，例如 mindplus.cc，回车添加" />
+          <button class="btn fixed" id="btn-add-allow">添加</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>试一试 <span class="sub">改完规则先在这里验证，再保存</span></h2>
+        <div class="row">
+          <input type="text" id="test-url" placeholder="粘贴一个网址，例如 https://www.douyin.com/" />
+          <button class="btn fixed" id="btn-test">测试</button>
+        </div>
+        <div class="state info" id="test-result" style="margin-top:12px;display:none"><span class="dot"></span><span id="test-text"></span></div>
+      </div>
+
+      <div class="card flat" style="display:flex;gap:10px;align-items:center">
+        <button class="btn primary" id="btn-save-block">保存屏蔽名单</button>
+        <span class="muted" id="bl-saved"></span>
+      </div>
+    </section>
+
+    <!-- ---------- 导航内容 ---------- -->
+    <section class="pane" id="pane-nav" hidden>
+      <div class="card">
+        <h2>页面标题</h2>
+        <div class="row">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">主标题</label><input type="text" id="nav-title" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">副标题</label><input type="text" id="nav-subtitle" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>快捷按钮 <span class="sub">首页最上面那一排（本机功能）</span></h2>
+        <div id="quick-edit"></div>
+      </div>
+
+      <div class="card">
+        <h2>分组与网站</h2>
+        <div id="groups-edit"></div>
+        <button class="btn" id="btn-add-group">+ 添加分组</button>
+      </div>
+
+      <div class="card flat" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn primary" id="btn-save-nav">保存导航内容</button>
+        <button class="btn danger" id="btn-reset-nav">恢复出厂默认</button>
+        <span class="muted" id="nav-saved"></span>
+      </div>
+    </section>
+
+    <!-- ---------- 系统设置 ---------- -->
+    <section class="pane" id="pane-sys" hidden>
+      <div class="card">
+        <h2>本机身份 <span class="sub">与全域学生端使用同一套身份字段</span></h2>
+        <div class="row">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">机器编号</label><input type="text" id="sys-machine" disabled /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">座位号</label><input type="text" id="sys-seat" placeholder="01" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">姓名</label><input type="text" id="sys-name" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>SIoT 物联网服务</h2>
+        <div class="row">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">服务地址</label><input type="text" id="sys-siot-host" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">MQTT 端口</label><input type="number" id="sys-siot-mqtt" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">网页端口</label><input type="number" id="sys-siot-http" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">WebSocket 端口</label><input type="number" id="sys-siot-ws" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>全域课堂系统对接</h2>
+        <div class="row">
+          <label class="switch fixed"><input type="checkbox" id="qy-enabled" /> 启用联动</label>
+          <label class="switch fixed"><input type="checkbox" id="qy-lock" /> 收到锁定策略时锁住浏览器</label>
+          <label class="switch fixed"><input type="checkbox" id="qy-close" /> 下课后自动关闭绿网</label>
+          <label class="switch fixed"><input type="checkbox" id="qy-hb" /> 上报在线心跳</label>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">MQTT 服务器</label><input type="text" id="qy-host" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">端口</label><input type="number" id="qy-port" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">账号</label><input type="text" id="qy-user" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">密码</label><input type="text" id="qy-pass" /></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">主题前缀</label><input type="text" id="qy-prefix" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">心跳间隔（秒）</label><input type="number" id="qy-hbsec" /></div>
+          <div class="fixed" style="align-self:flex-end"><button class="btn" id="btn-qy-test">查看连接状态</button></div>
+        </div>
+        <p class="muted" style="margin-top:10px" id="qy-state-line"></p>
+      </div>
+
+      <div class="card">
+        <h2>网络出口（代理）</h2>
+        <p class="muted" style="margin:-4px 0 12px">Windows 上 Chromium 默认不读系统/环境代理，公网站会打不开（ERR_FAILED -2）。一般保持「自动检测」即可，绿网会按环境或系统代理自动出网。</p>
+        <div class="row">
+          <div style="min-width:200px"><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">模式</label>
+            <select id="proxy-mode">
+              <option value="auto">自动检测（推荐）</option>
+              <option value="manual">手动指定</option>
+              <option value="off">关闭（直连）</option>
+            </select>
+          </div>
+          <div id="proxy-server-wrap"><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">代理地址</label><input type="text" id="proxy-server" placeholder="127.0.0.1:7897" /></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:1"><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">绕过列表（分号分隔，留空默认 &lt;local&gt;）</label><input type="text" id="proxy-bypass" placeholder="&lt;local&gt;" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>浏览器行为</h2>
+        <div class="row">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">启动首页</label><input type="text" id="sys-home" placeholder="留空 = 内置导航首页" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">最多标签数</label><input type="number" id="sys-maxtabs" min="1" max="30" /></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <label class="switch fixed"><input type="checkbox" id="sys-download" /> 允许下载文件</label>
+          <label class="switch fixed"><input type="checkbox" id="sys-devtools" /> 允许开发者工具（调试用）</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>管理口令</h2>
+        <div class="row">
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">原口令</label><input type="password" id="pwd-old" /></div>
+          <div><label style="font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:5px">新口令（至少 4 位）</label><input type="password" id="pwd-new" /></div>
+          <div class="fixed" style="align-self:flex-end"><button class="btn" id="btn-change-pwd">修改口令</button></div>
+        </div>
+        <p class="muted" style="margin-top:8px">口令只以 scrypt 哈希保存在 <code>data/admin.json</code> 里，任何地方都不存明文。</p>
+      </div>
+
+      <div class="card flat" style="display:flex;gap:10px;align-items:center">
+        <button class="btn primary" id="btn-save-sys">保存系统设置</button>
+        <span class="muted" id="sys-saved"></span>
+      </div>
+    </section>
+  </div>
+
+  <script src="./assets/common.js"></script>
+  <script src="./admin.js"></script>
+</body>
+</html>

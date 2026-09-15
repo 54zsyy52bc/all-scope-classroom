@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>全域课堂连接</title>
+  <link rel="stylesheet" href="./assets/pages.css" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div class="page-head">
+      <h1>🏫 全域课堂连接</h1>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-refresh">刷新</button>
+      <button class="btn" id="btn-reconnect">重新连接</button>
+    </div>
+
+    <div class="card">
+      <div class="state info" id="status"><span class="dot"></span><span id="status-text">正在读取…</span></div>
+      <dl class="kv" style="margin-top:14px" id="kv"></dl>
+    </div>
+
+    <div class="card">
+      <h2>课堂状态 <span class="sub">由老师的大屏下发</span></h2>
+      <dl class="kv" id="lesson">
+        <dt>当前阶段</dt><dd id="v-phase">--</dd>
+        <dt>使用策略</dt><dd id="v-policy">--</dd>
+        <dt>是否锁定</dt><dd id="v-lock">--</dd>
+        <dt>当前活动</dt><dd id="v-task">--</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>协议对照 <span class="sub">与《接口设计文档》一致</span></h2>
+      <table>
+        <thead><tr><th>方向</th><th>主题</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td>订阅</td><td class="mono" id="t-cmd">siot/ict_cmd</td><td>教师广播指令（policy / task / task_timer / end）</td></tr>
+          <tr><td>订阅</td><td class="mono" id="t-sync">siot/ict_sync</td><td>hello 应答：恢复锁定与计时状态</td></tr>
+          <tr><td>发布</td><td class="mono" id="t-hb">siot/ict_hb</td><td>心跳（默认关闭，见管理页设置）</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:10px">
+        绿网只读取教师端的广播指令，不会向课堂数据库写入登记 / 任务 / 归还数据 ——
+        这些仍由「全域学生桌面」负责，避免同一台机器出现两套状态。
+      </p>
+    </div>
+  </div>
+  <script src="./assets/common.js"></script>
+  <script src="./qy.js"></script>
+</body>
+</html>

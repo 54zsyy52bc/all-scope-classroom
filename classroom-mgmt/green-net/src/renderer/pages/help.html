@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>绿网使用帮助</title>
+  <link rel="stylesheet" href="./assets/pages.css" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div class="hero">
+      <h1>🌿 绿网使用帮助</h1>
+      <p>课堂上要用的物联网工具，都在这一个浏览器里。</p>
+    </div>
+
+    <div class="card">
+      <h2>🧑‍🎓 学生怎么用</h2>
+      <ol class="hint-list">
+        <li>打开绿网就停在<strong>导航首页</strong>，点卡片就能进对应的学习网站。</li>
+        <li>要连设备时，点工具栏的 <strong>「本机 IP」</strong>，把上面的大号地址填到设备程序里。</li>
+        <li>要用物联网服务时，点工具栏的 <strong>「SIoT 控制台」</strong>，服务没启动它会告诉你步骤。</li>
+        <li>标签页最多同时开 8 个；关掉最后一个会自动回到首页，不会把浏览器关没了。</li>
+        <li>看到"这个网页被老师屏蔽了"是正常的，回首页换个网站就好。</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>👩‍🏫 老师怎么管</h2>
+      <ol class="hint-list">
+        <li>按 <code>Ctrl + Shift + A</code>（或点工具栏最右边的 🔒），输入管理口令进入管理页。</li>
+        <li><strong>屏蔽名单</strong>：支持 4 种规则 —— 域名、关键词、网址前缀、正则；还有"白名单例外"用来放行必用站点。</li>
+        <li>也可以切成<strong>"只允许白名单"</strong>模式：除了例外清单里的站点，其它一律打不开。</li>
+        <li><strong>导航内容</strong>：新增/删除分组和网站卡片，改完点保存，学生端刷新首页立即生效。</li>
+        <li><strong>系统设置</strong>：SIoT 地址端口、全域联动开关、是否允许下载。</li>
+        <li>管理口令连续输错 3 次会锁定 60 秒，防止学生在课上试密码。</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>⌨️ 快捷键</h2>
+      <table>
+        <thead><tr><th>按键</th><th>作用</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">Ctrl + T</td><td>新标签页</td></tr>
+          <tr><td class="mono">Ctrl + W</td><td>关闭当前标签</td></tr>
+          <tr><td class="mono">Ctrl + L</td><td>定位到地址栏</td></tr>
+          <tr><td class="mono">Ctrl + R / F5</td><td>刷新</td></tr>
+          <tr><td class="mono">Alt + ← / →</td><td>后退 / 前进</td></tr>
+          <tr><td class="mono">Ctrl + Shift + A</td><td>打开教师管理</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🔗 和"全域"课堂系统的关系</h2>
+      <p class="muted">
+        绿网是由「全域学生桌面」拉起的课程应用之一。老师在大屏上发布活动、打开或关闭锁定策略时，
+        绿网会同步显示当前活动与倒计时；策略为"锁定"时，绿网会锁住上网功能，
+        等老师发布下一个活动再自动解锁。
+      </p>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn" onclick="window.GN.api.openInternal('qy')">查看课堂连接状态</button>
+      </div>
+    </div>
+  </div>
+  <script src="./assets/common.js"></script>
+</body>
+</html>

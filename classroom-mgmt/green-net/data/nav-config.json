@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "title": "绿网 · 学生导航",
+  "subtitle": "创客与物联网实践课堂",
+  "updatedAt": 0,
+  "quickActions": [
+    { "id": "qa-siot", "type": "internal", "action": "siot", "name": "SIoT 控制台", "icon": "🛰️", "desc": "打开本机物联网服务" },
+    { "id": "qa-ip", "type": "internal", "action": "ip", "name": "查看本机 IP", "icon": "🌐", "desc": "给设备填写地址" },
+    { "id": "qa-home", "type": "internal", "action": "home", "name": "回到首页", "icon": "🏠", "desc": "返回导航页" }
+  ],
+  "groups": [
+    {
+      "id": "g-program",
+      "name": "硬件编程",
+      "icon": "🧩",
+      "color": "#16a34a",
+      "sites": [
+        { "id": "s-mindplus", "name": "Mind+ 图形化编程", "url": "https://mindplus.cc/", "icon": "🧩", "desc": "拖拽积木写程序", "color": "#16a34a" },
+        { "id": "s-mixly", "name": "米思齐 Mixly", "url": "http://mixly.org/", "icon": "🔧", "desc": "开源图形化编程", "color": "#0d9488" },
+        { "id": "s-arduino", "name": "Arduino 官网", "url": "https://www.arduino.cc/", "icon": "⚙️", "desc": "开源硬件与代码", "color": "#0ea5e9" },
+        { "id": "s-unihiker", "name": "行空板 UNIHIKER", "url": "https://www.unihiker.com.cn/", "icon": "🖥️", "desc": "带屏的 Python 主板", "color": "#7c3aed" },
+        { "id": "s-mpython", "name": "掌控板 mPython", "url": "https://www.mpython.cn/", "icon": "🐍", "desc": "Python 编程学习板", "color": "#2563eb" }
+      ]
+    },
+    {
+      "id": "g-iot",
+      "name": "物联网与云平台",
+      "icon": "📡",
+      "color": "#0ea5e9",
+      "sites": [
+        { "id": "s-siot", "name": "SIoT 物联网服务", "url": "internal:siot", "icon": "🛰️", "desc": "本机 MQTT 服务控制台", "color": "#0891b2" },
+        { "id": "s-dfrobot", "name": "DFRobot 官网", "url": "https://www.dfrobot.com.cn/", "icon": "🤖", "desc": "创客硬件与教程", "color": "#ea580c" },
+        { "id": "s-community", "name": "DF 创客社区", "url": "https://mc.dfrobot.com.cn/", "icon": "💬", "desc": "作品分享与提问", "color": "#f59e0b" },
+        { "id": "s-tutorial", "name": "Mind+ 教程中心", "url": "https://mindplus.dfrobot.com.cn/dashboard", "icon": "📘", "desc": "官方案例与文档", "color": "#16a34a" }
+      ]
+    },
+    {
+      "id": "g-learn",
+      "name": "学习与拓展",
+      "icon": "📚",
+      "color": "#7c3aed",
+      "sites": [
+        { "id": "s-smartedu", "name": "国家中小学智慧教育平台", "url": "https://basic.smartedu.cn/", "icon": "🎓", "desc": "免费课程资源", "color": "#dc2626" },
+        { "id": "s-kepu", "name": "中国科普博览", "url": "https://www.kepu.net.cn/", "icon": "🔬", "desc": "科学知识科普", "color": "#0891b2" },
+        { "id": "s-scratch", "name": "Scratch 创意编程", "url": "https://scratch.mit.edu/", "icon": "🐱", "desc": "积木编程社区", "color": "#f59e0b" },
+        { "id": "s-w3school", "name": "W3School 教程", "url": "https://www.w3school.com.cn/", "icon": "📗", "desc": "网页技术入门", "color": "#16a34a" }
+      ]
+    },
+    {
+      "id": "g-tools",
+      "name": "课堂工具",
+      "icon": "🧰",
+      "color": "#64748b",
+      "sites": [
+        { "id": "s-ip", "name": "本机 IP 地址", "url": "internal:ip", "icon": "🌐", "desc": "查看网卡与局域网地址", "color": "#0ea5e9" },
+        { "id": "s-qy", "name": "全域课堂", "url": "internal:qy", "icon": "🏫", "desc": "查看课堂连接状态", "color": "#16a34a" }
+      ]
+    }
+  ]
+}

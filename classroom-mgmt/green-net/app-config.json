@@ -1,0 +1,41 @@
+{
+  "homeUrl": "internal:home",
+  "windowTitle": "绿网 · 物联网实践浏览器",
+  "kiosk": false,
+  "allowDownload": false,
+  "allowDevTools": false,
+  "allowPopups": false,
+  "maxTabs": 8,
+  "blockEnabled": true,
+  "blockMode": "blacklist",
+  "siot": {
+    "host": "127.0.0.1",
+    "httpPort": 8080,
+    "mqttPort": 1883,
+    "wsPort": 1888,
+    "autoOpen": false
+  },
+  "qy": {
+    "enabled": true,
+    "projectPrefix": "ICTClass",
+    "host": "127.0.0.1",
+    "port": 1883,
+    "wsPort": 1888,
+    "username": "siot",
+    "password": "dfrobot",
+    "lockOnPolicy": true,
+    "closeOnEnd": false,
+    "reportHeartbeat": false,
+    "heartbeatSec": 15
+  },
+  "proxy": {
+    "mode": "auto",
+    "server": "",
+    "bypass": "<local>"
+  },
+  "machineId": "",
+  "seat": "",
+  "name": "",
+  "studentNo": "",
+  "secret": "change-me-before-deploy"
+}

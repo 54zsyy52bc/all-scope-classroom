@@ -43,3 +43,6 @@ Thumbs.db
 
 # --- Obsidian：保留配置，排除本地工作区 UI 态 ---
 全域md文档/.obsidian/workspace.json
+
+# --- 落地页：green-net-b1 是本地联调/打包暂存副本（含 node_modules），不入库 ---
+/product-landing/green-net-b1/

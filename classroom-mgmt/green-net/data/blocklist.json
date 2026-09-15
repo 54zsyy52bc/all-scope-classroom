@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "enabled": true,
+  "mode": "blacklist",
+  "updatedAt": 0,
+  "updatedBy": "default",
+  "alwaysAllowLocal": true,
+  "allowDomains": [
+    "mindplus.cc",
+    "dfrobot.com.cn",
+    "dfrobot.com",
+    "mc.dfrobot.com.cn",
+    "mixly.org",
+    "arduino.cc",
+    "unihiker.com.cn",
+    "mpython.cn",
+    "basic.smartedu.cn",
+    "kepu.net.cn",
+    "scratch.mit.edu",
+    "w3school.com.cn",
+    "runoob.com"
+  ],
+  "rules": [
+    { "id": "r-game-01", "type": "keyword", "value": "游戏", "note": "游戏类关键词", "enabled": true },
+    { "id": "r-video-01", "type": "keyword", "value": "短视频", "note": "短视频关键词", "enabled": true },
+    { "id": "r-shop-01", "type": "domain", "value": "taobao.com", "note": "购物网站", "enabled": true },
+    { "id": "r-shop-02", "type": "domain", "value": "jd.com", "note": "购物网站", "enabled": true },
+    { "id": "r-sns-01", "type": "domain", "value": "douyin.com", "note": "娱乐社交", "enabled": true },
+    { "id": "r-sns-02", "type": "domain", "value": "kuaishou.com", "note": "娱乐社交", "enabled": true },
+    { "id": "r-sns-03", "type": "domain", "value": "weibo.com", "note": "娱乐社交", "enabled": true }
+  ]
+}

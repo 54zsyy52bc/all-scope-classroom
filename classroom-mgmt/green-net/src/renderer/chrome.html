@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <!-- 说明：外壳是本机受信任文件（不加载任何远程资源，且主进程禁止它导航/弹窗），
+       因此不在此处加 CSP —— file:// 下 'self' 语义不可靠，加了反而会挡掉自己的脚本。 -->
+  <title>绿网</title>
+  <link rel="stylesheet" href="chrome.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 顶栏：品牌 + 课堂状态 -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🌿</span>
+        <span class="brand-name">绿网</span>
+        <span class="brand-sub">物联网实践浏览器</span>
+      </div>
+      <div class="stat">
+        <span class="pill" id="pill-qy" title="与全域课堂系统的连接状态">全域：检测中</span>
+        <span class="pill" id="pill-block" title="网页屏蔽状态">屏蔽：--</span>
+        <span class="pill" id="pill-machine" title="本机机器编号">机器 --</span>
+      </div>
+    </header>
+
+    <!-- 标签栏 -->
+    <div class="tabstrip">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <button class="newtab" id="btn-new" title="新标签页 (Ctrl+T)">＋</button>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+      <button class="icon" id="btn-back" title="后退 (Alt+←)" disabled>←</button>
+      <button class="icon" id="btn-forward" title="前进 (Alt+→)" disabled>→</button>
+      <button class="icon" id="btn-reload" title="刷新 / 停止 (F5)">⟳</button>
+      <button class="icon" id="btn-home" title="返回导航首页">⌂</button>
+
+      <div class="address" id="address-wrap">
+        <span class="scheme" id="addr-scheme">🔒</span>
+        <input id="addr" type="text" spellcheck="false" autocomplete="off"
+               placeholder="输入网址，或点上面的按钮找我 →" />
+      </div>
+
+      <button class="chip go" id="btn-siot" title="打开本机 SIoT 物联网服务控制台">
+        <span class="chip-ico">🛰️</span><span class="chip-txt">SIoT 控制台</span>
+      </button>
+      <button class="chip go" id="btn-ip" title="查看本机 IP 地址（设备连接要用）">
+        <span class="chip-ico">🌐</span><span class="chip-txt">本机 IP</span>
+      </button>
+      <button class="chip ghost" id="btn-admin" title="教师管理 (Ctrl+Shift+A)">🔒</button>
+    </div>
+
+    <!-- 全域活动条（收到 cmd task 时出现） -->
+    <div class="taskbar" id="taskbar" hidden>
+      <span class="tb-label">当前活动</span>
+      <span class="tb-title" id="tb-title">--</span>
+      <span class="tb-timer" id="tb-timer" hidden>--:--</span>
+      <span class="tb-state" id="tb-state"></span>
+    </div>
+
+    <!-- 锁定提示条（课堂锁定时出现） -->
+    <div class="lockbar" id="lockbar" hidden>
+      <span>🔒 课堂锁定中：暂时不能上网，请听老师安排。</span>
+    </div>
+
+    <!-- 内容区：WebContentsView 会叠加在这一块之上 -->
+    <div class="content" id="content"></div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <!-- 口令输入弹窗 -->
+  <div class="modal" id="pwd-modal" hidden>
+    <div class="modal-box">
+      <h3 id="pwd-title">教师管理</h3>
+      <p class="modal-hint" id="pwd-hint">请输入管理口令</p>
+      <input type="password" id="pwd-input" autocomplete="off" placeholder="管理口令" />
+      <p class="modal-err" id="pwd-err"></p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="pwd-cancel">取消</button>
+        <button class="btn primary" id="pwd-ok">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="chrome.js"></script>
+</body>
+</html>

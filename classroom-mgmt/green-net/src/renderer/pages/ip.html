@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>本机 IP 地址</title>
+  <link rel="stylesheet" href="./assets/pages.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="page-head">
+      <h1>🌐 本机 IP 地址</h1>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-refresh">重新检测</button>
+      <button class="btn primary" id="btn-copy">复制全部</button>
+    </div>
+
+    <div class="card">
+      <h2>给设备填写这个地址 <span class="sub">行空板 / 掌控板 / 其他设备连 SIoT 时用</span></h2>
+      <div class="big-ip" id="primary">
+        <div>
+          <div class="lbl" id="primary-lbl">正在检测…</div>
+          <div class="addr" id="primary-ip">--</div>
+        </div>
+        <button class="btn" id="btn-copy-ip">复制这个地址</button>
+      </div>
+      <ul class="hint-list" id="hints"></ul>
+    </div>
+
+    <div class="card">
+      <h2>本机全部网卡 <span class="sub">按"能不能用来连设备"排序</span></h2>
+      <table>
+        <thead>
+          <tr><th>网卡</th><th>类型</th><th>IP 地址</th><th>子网</th><th>物理地址</th><th>备注</th></tr>
+        </thead>
+        <tbody id="ifaces">
+          <tr><td colspan="6" class="muted">正在检测…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>怎么用这个地址？</h2>
+      <ol class="hint-list">
+        <li>在本机双击 <code>start SIoT.bat</code> 启动物联网服务（首次运行要允许网络访问）。</li>
+        <li>设备（行空板等）连的是<strong>同一个 Wi-Fi / 同一个交换机</strong>，否则填了也连不上。</li>
+        <li>在设备的程序里把「服务器地址 / MQTT 主机」填成上面给出的那个地址，端口用 <code>1883</code>（WebSocket 用 <code>1888</code>）。</li>
+        <li>如果这里显示的是 <code>169.254.x.x</code>，说明没拿到路由器分配的地址，请重新插网线或重连 Wi-Fi。</li>
+      </ol>
+    </div>
+  </div>
+  <script src="./assets/common.js"></script>
+  <script src="./ip.js"></script>
+</body>
+</html>

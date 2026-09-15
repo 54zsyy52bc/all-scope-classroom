@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-page-node-id="rY7qqSXvW8O6itlA9wr4Q1">
+<head data-page-node-id="DUFGqj6lJ6IST5rVbks74W">
+<meta charset="UTF-8" data-page-node-id="bxuYmgLezwXJfNkJEuYeQZ">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" data-page-node-id="d8H5psWttEMJ9y3DAYD53y">
+<meta name="color-scheme" content="dark light" data-page-node-id="CTOX68BmmW6d6QRJmDpTwu">
+<title>Prism — 把散落的工作流，折射成一道清晰的光</title>
+<meta name="description" content="Prism 把文档、任务、代码与数据收进同一个可编程工作台。让 AI 处理噪音，你只负责判断。" data-page-node-id="Zllwherv6U3tYn7Si5ECTD">
+<script>
+  // 主题预置：避免首帧闪白
+  (function () {
+    var d = document.documentElement;
+    d.classList.add('js');   // 入场动效只在 JS 可用时启用，否则内容必须直接可见
+    try {
+      var t = localStorage.getItem('prism-theme');
+      if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      d.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="fSiWuHTF8HnRiwRBTwHvBe">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-page-node-id="hkj1FP5PuxNGGUHnn9Jc8w">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" data-page-node-id="usrDhWjDZoX5nbcCTC6sNg">
+<style>
+/* ============================================================
+   PRISM — 未来玻璃落地页
+   设计方向：Apple 发布会 × 玻璃光学的克制未来主义
+   色散隐喻：紫罗兰 #7C3AED → 霓虹粉 #EC4899 → 青 #06B6D4
+   ============================================================ */
+
+/* ---------- 1. 设计令牌 ---------- */
+:root {
+  --violet: #7C3AED;
+  --pink:   #EC4899;
+  --cyan:   #06B6D4;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+
+  --nav-h: 68px;
+  --radius-lg: 26px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+
+  --shell: 1180px;
+  --gutter: clamp(20px, 5vw, 40px);
+}
+
+html[data-theme="dark"] {
+  --bg:            #0A0B1A;
+  --bg-deep:       #06070F;
+  --text:          #F8FAFC;
+  --text-2:        rgba(248, 250, 252, 0.64);
+  --text-3:        rgba(248, 250, 252, 0.40);
+  --glass:         rgba(255, 255, 255, 0.05);
+  --glass-hi:      rgba(255, 255, 255, 0.085);
+  --glass-veil:    rgba(10, 11, 26, 0.62);
+  --hairline:      rgba(255, 255, 255, 0.12);
+  --hairline-soft: rgba(255, 255, 255, 0.07);
+  --grid-line:     rgba(255, 255, 255, 0.035);
+  --shadow-card:   0 24px 60px -28px rgba(0, 0, 0, 0.85), 0 2px 6px -2px rgba(0,0,0,.5);
+  --shadow-lift:   0 44px 90px -34px rgba(124, 58, 237, 0.55), 0 4px 14px -6px rgba(0,0,0,.6);
+  --bloom-1:       0.30;
+  --bloom-2:       0.20;
+  --bloom-3:       0.20;
+  --noise-opacity: 0.035;
+}
+
+html[data-theme="light"] {
+  --bg:            #F4F4FA;
+  --bg-deep:       #EDEDF6;
+  --text:          #0A0B1A;
+  --text-2:        rgba(10, 11, 26, 0.66);
+  --text-3:        rgba(10, 11, 26, 0.44);
+  --glass:         rgba(255, 255, 255, 0.62);
+  --glass-hi:      rgba(255, 255, 255, 0.82);
+  --glass-veil:    rgba(255, 255, 255, 0.72);
+  --hairline:      rgba(10, 11, 26, 0.10);
+  --hairline-soft: rgba(10, 11, 26, 0.06);
+  --grid-line:     rgba(10, 11, 26, 0.045);
+  --shadow-card:   0 20px 45px -26px rgba(24, 18, 60, 0.30), 0 2px 6px -2px rgba(24,18,60,.10);
+  --shadow-lift:   0 40px 80px -32px rgba(124, 58, 237, 0.42), 0 4px 14px -6px rgba(24,18,60,.14);
+  --bloom-1:       0.24;
+  --bloom-2:       0.17;
+  --bloom-3:       0.17;
+  --noise-opacity: 0.022;
+}
+
+/* ---------- 2. 基础重置 ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color .5s var(--ease-out-quint), color .5s var(--ease-out-quint);
+}
+
+h1, h2, h3, h4 { margin: 0; font-weight: 700; line-height: 1.1; }
+p { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+input { font: inherit; color: inherit; }
+svg { display: block; }
+ul { margin: 0; padding: 0; list-style: none; }
+img { max-width: 100%; display: block; }
+
+::selection { background: color-mix(in oklab, var(--violet) 55%, transparent); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-feature-settings: "zero" 1;
+}
+
+/* ---------- 3. 环境层：极光 / 网格 / 噪点 ---------- */
+.env {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.env__aurora {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(38% 32% at 22% 16%, color-mix(in oklab, var(--violet) calc(var(--bloom-1) * 100%), transparent), transparent 68%),
+    radial-gradient(34% 30% at 82% 10%, color-mix(in oklab, var(--cyan) calc(var(--bloom-2) * 100%), transparent), transparent 66%),
+    radial-gradient(48% 40% at 62% 92%, color-mix(in oklab, var(--pink) calc(var(--bloom-3) * 100%), transparent), transparent 70%),
+    radial-gradient(30% 26% at 8% 74%, color-mix(in oklab, var(--violet) calc(var(--bloom-2) * 100%), transparent), transparent 68%);
+  filter: blur(28px);
+  animation: aurora 26s var(--ease-in-out) infinite alternate;
+  will-change: transform;
+}
+@keyframes aurora {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  50%  { transform: translate3d(1.6%, -1.8%, 0) scale(1.07); }
+  100% { transform: translate3d(-1.6%, 1.4%, 0) scale(1.02); }
+}
+
+.env__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 72px 72px;
+  -webkit-mask-image: radial-gradient(ellipse 78% 58% at 50% 0%, #000 8%, transparent 72%);
+          mask-image: radial-gradient(ellipse 78% 58% at 50% 0%, #000 8%, transparent 72%);
+}
+
+.env__grain {
+  position: absolute;
+  inset: 0;
+  opacity: var(--noise-opacity);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- 4. 玻璃基元（渐变 hairline 边框） ---------- */
+.glass {
+  position: relative;
+  background: var(--glass);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border-radius: var(--radius-md);
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(145deg,
+              color-mix(in oklab, var(--text) 22%, transparent) 0%,
+              color-mix(in oklab, var(--text) 6%, transparent) 34%,
+              transparent 62%,
+              color-mix(in oklab, var(--violet) 22%, transparent) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ---------- 5. 布局骨架 ---------- */
+.shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+main { position: relative; z-index: 1; }
+
+/* 兜底：任何视口下都不产生横向滚动（clip 允许与 overflow-y:visible 共存） */
+main { overflow-x: clip; }
+
+section { scroll-margin-top: calc(var(--nav-h) + 24px); }
+
+.section {
+  padding-block: clamp(84px, 11vw, 148px);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.eyebrow__dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--cyan) 70%, transparent);
+  animation: ping 2.4s var(--ease-out-quint) infinite;
+}
+@keyframes ping {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--cyan) 60%, transparent); }
+  70%  { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.h-section {
+  font-size: clamp(1.85rem, 3.5vw, 2.9rem);
+  letter-spacing: -0.03em;
+  line-height: 1.14;
+  font-weight: 700;
+}
+
+.section__head {
+  max-width: 640px;
+  margin-bottom: clamp(40px, 5vw, 68px);
+}
+.section__head p {
+  margin-top: 18px;
+  color: var(--text-2);
+  font-size: clamp(0.98rem, 1.2vw, 1.08rem);
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+.section__head--center {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.grad-text {
+  background: linear-gradient(100deg, var(--violet) 0%, var(--pink) 54%, var(--cyan) 108%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+
+/* ---------- 6. 按钮 ---------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 24px;
+  height: 50px;
+  border-radius: var(--radius-pill);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform .45s var(--ease-out-quint),
+              box-shadow .45s var(--ease-out-quint),
+              background-color .35s var(--ease-out-quint),
+              color .35s var(--ease-out-quint);
+}
+.btn:hover  { transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.985); }
+
+.btn--primary {
+  color: #fff;
+  background: linear-gradient(100deg, var(--violet) 0%, var(--pink) 88%);
+  box-shadow: 0 14px 34px -14px color-mix(in oklab, var(--violet) 80%, transparent),
+              0 2px 0 0 rgba(255,255,255,.18) inset;
+}
+.btn--primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  background: radial-gradient(120px 90px at var(--mx, 50%) var(--my, 50%),
+              rgba(255, 255, 255, .40), transparent 70%);
+  transition: opacity .4s var(--ease-out-quint);
+}
+.btn--primary:hover {
+  box-shadow: 0 22px 52px -16px color-mix(in oklab, var(--pink) 85%, transparent),
+              0 2px 0 0 rgba(255,255,255,.26) inset;
+}
+.btn--primary:hover::after { opacity: 1; }
+
+.btn--ghost {
+  color: var(--text);
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 1px 0 0 var(--hairline) inset, 0 10px 26px -20px rgba(0,0,0,.7);
+}
+.btn--ghost:hover { background: var(--glass-hi); }
+
+.btn__icon { width: 17px; height: 17px; flex: none; }
+
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-2);
+  transition: color .3s var(--ease-out-quint), gap .3s var(--ease-out-quint);
+}
+.link-arrow:hover { color: var(--text); gap: 11px; }
+.link-arrow svg { width: 15px; height: 15px; }
+
+/* ---------- 7. 导航 ---------- */
+.progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--violet), var(--pink) 55%, var(--cyan));
+  z-index: 90;
+  pointer-events: none;
+}
+
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  transition: background-color .5s var(--ease-out-quint),
+              backdrop-filter .5s var(--ease-out-quint),
+              border-color .5s var(--ease-out-quint),
+              height .5s var(--ease-out-quint);
+  border-bottom: 1px solid transparent;
+}
+.nav.is-stuck {
+  height: 60px;
+  background: var(--glass-veil);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  border-bottom-color: var(--hairline-soft);
+}
+.nav__inner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: 1.06rem;
+  flex: none;
+}
+.brand__mark { width: 26px; height: 26px; flex: none; }
+.brand__mark .beam { opacity: .95; }
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+.nav__link {
+  position: relative;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-2);
+  transition: color .3s var(--ease-out-quint), background-color .3s var(--ease-out-quint);
+}
+.nav__link:hover { color: var(--text); background: var(--glass); }
+.nav__link.is-active { color: var(--text); }
+.nav__link.is-active::after {
+  content: "";
+  position: absolute;
+  left: 50%; bottom: 1px;
+  width: 16px; height: 2px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, var(--violet), var(--pink));
+}
+
+.nav__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  color: var(--text-2);
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+  transition: color .3s var(--ease-out-quint), background-color .3s var(--ease-out-quint),
+              transform .4s var(--ease-out-quint), box-shadow .3s var(--ease-out-quint);
+}
+.icon-btn:hover { color: var(--text); background: var(--glass-hi); transform: translateY(-1px); }
+.icon-btn:active { transform: scale(.94); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+.theme-toggle { position: relative; overflow: hidden; }
+.theme-toggle .ico { position: absolute; transition: transform .55s var(--ease-out-expo), opacity .35s ease; }
+.theme-toggle .ico--sun  { transform: translateY(140%) rotate(45deg); opacity: 0; }
+.theme-toggle .ico--moon { transform: translateY(0) rotate(0); opacity: 1; }
+html[data-theme="light"] .theme-toggle .ico--sun  { transform: translateY(0) rotate(0); opacity: 1; }
+html[data-theme="light"] .theme-toggle .ico--moon { transform: translateY(-140%) rotate(-45deg); opacity: 0; }
+
+.nav__cta { height: 40px; padding: 0 18px; font-size: 0.88rem; }
+
+.burger { display: none; }
+
+/* 移动端抽屉 */
+.sheet {
+  position: fixed;
+  inset: var(--nav-h) 0 auto 0;
+  z-index: 79;
+  margin: 0 var(--gutter);
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-hi);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--hairline) inset;
+  opacity: 0;
+  transform: translateY(-12px) scale(.98);
+  pointer-events: none;
+  transition: opacity .35s var(--ease-out-quint), transform .45s var(--ease-out-expo);
+}
+.sheet.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.sheet a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.sheet a:hover { background: var(--glass); color: var(--text); }
+.sheet a svg { width: 15px; height: 15px; opacity: .5; }
+.sheet .btn { width: 100%; margin-top: 10px; }
+
+/* ---------- 8. Hero ---------- */
+.hero {
+  position: relative;
+  padding-top: calc(var(--nav-h) + clamp(56px, 9vw, 108px));
+  padding-bottom: clamp(48px, 7vw, 84px);
+  text-align: center;
+}
+
+.hero__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  height: 36px;
+  padding: 0 8px 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+  font-size: 12px;
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+}
+.hero__tag b {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(100deg, var(--violet), var(--pink));
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-size: 10.5px;
+}
+.hero__tag span { padding-right: 12px; }
+
+.hero__title {
+  margin-top: 30px;
+  font-size: clamp(2.35rem, 6.6vw, 5rem);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+  max-width: 15em;
+  margin-inline: auto;
+}
+.hero__title .grad-text {
+  display: inline-block;
+  padding-bottom: 0.06em;
+  filter: drop-shadow(0 6px 30px color-mix(in oklab, var(--violet) 42%, transparent));
+}
+
+.hero__sub {
+  margin: 26px auto 0;
+  max-width: 31em;
+  font-size: clamp(1rem, 1.35vw, 1.14rem);
+  line-height: 1.78;
+  color: var(--text-2);
+  letter-spacing: -0.005em;
+  text-wrap: balance;   /* 避免 CJK 两字孤行 */
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 26px;
+  margin-top: 30px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+}
+.hero__meta li { display: inline-flex; align-items: center; gap: 7px; }
+.hero__meta svg { width: 13px; height: 13px; color: var(--cyan); }
+
+/* ---------- 9. CSS 3D 透视 Mockup ---------- */
+.stage {
+  position: relative;
+  margin-top: clamp(56px, 8vw, 92px);
+  perspective: 1600px;
+  perspective-origin: 50% 22%;
+}
+.stage__inner {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 14deg)) rotateY(var(--ry, 0deg));
+  transition: transform 1.1s var(--ease-out-expo);
+  will-change: transform;
+}
+.stage.is-live .stage__inner { transition: transform .12s linear; }
+
+/* 舞台光晕 */
+.stage::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8%;
+  width: min(760px, 88%);
+  height: 220px;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 50% at 50% 50%,
+              color-mix(in oklab, var(--violet) 40%, transparent), transparent 72%);
+  filter: blur(46px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.window {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(168deg,
+              color-mix(in oklab, var(--bg) 78%, var(--violet) 22%) 0%,
+              color-mix(in oklab, var(--bg) 88%, #000 12%) 100%);
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--hairline) inset;
+  transform-style: preserve-3d;
+}
+html[data-theme="light"] .window {
+  background: linear-gradient(168deg, #FFFFFF 0%, #F1EFFB 100%);
+  box-shadow: 0 30px 72px -36px rgba(24, 18, 60, 0.34),
+              0 2px 8px -3px rgba(24, 18, 60, 0.10),
+              0 0 0 1px var(--hairline) inset;
+}
+.window__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--glass);
+}
+.dots { display: flex; gap: 7px; }
+.dots i {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--hairline);
+}
+.dots i:nth-child(1) { background: color-mix(in oklab, var(--pink) 78%, transparent); }
+.dots i:nth-child(2) { background: color-mix(in oklab, #F59E0B 78%, transparent); }
+.dots i:nth-child(3) { background: color-mix(in oklab, var(--cyan) 78%, transparent); }
+.window__addr {
+  flex: 1;
+  max-width: 300px;
+  margin-inline: auto;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-hi);
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.window__bar svg { width: 15px; height: 15px; color: var(--text-3); }
+
+.window__body {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  min-height: 344px;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  border-right: 1px solid var(--hairline-soft);
+  background: color-mix(in oklab, var(--bg) 60%, transparent);
+}
+.rail__btn {
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  color: var(--text-3);
+  transition: color .3s var(--ease-out-quint), background-color .3s var(--ease-out-quint);
+}
+.rail__btn svg { width: 17px; height: 17px; }
+.rail__btn.is-on {
+  color: #fff;
+  background: linear-gradient(140deg, var(--violet), var(--pink));
+  box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--violet) 90%, transparent);
+}
+.rail__sep { flex: 1; }
+
+.canvas { padding: 20px 22px 22px; text-align: left; }
+.canvas__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.canvas__title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; }
+.chip {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--cyan);
+  background: color-mix(in oklab, var(--cyan) 16%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--cyan) 34%, transparent) inset;
+}
+.canvas__head .chip:last-child { margin-left: auto; color: var(--text-3); background: var(--glass); box-shadow: 0 0 0 1px var(--hairline) inset; }
+
+.chartbox {
+  position: relative;
+  border-radius: var(--radius-sm);
+  background: var(--glass);
+  box-shadow: 0 0 0 1px var(--hairline-soft) inset;
+  padding: 12px 12px 6px;
+}
+html[data-theme="light"] .chartbox {
+  background: linear-gradient(180deg, #FCFBFF 0%, #F4F1FC 100%);
+  box-shadow: 0 0 0 1px rgba(10, 11, 26, 0.08) inset;
+}
+html[data-theme="light"] .chart .gridline { stroke: rgba(10, 11, 26, 0.10); }
+html[data-theme="light"] .rail { background: #F6F4FE; }
+html[data-theme="light"] .row {
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px rgba(10, 11, 26, 0.075) inset, 0 1px 2px rgba(24, 18, 60, 0.04);
+}
+.chart { width: 100%; height: 118px; }
+.chart .gridline {
+  stroke: var(--hairline-soft);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 3 5;
+}
+
+/* 图表入场用纯 CSS 动画：不依赖 JS 添加的 class。
+   若脚本被拦截或延迟，.js 不存在，路径就直接以终态显示，永不空白。 */
+.js .chart .line {
+  stroke-dasharray: 620;
+  stroke-dashoffset: 620;
+  animation: chartDraw 2.1s var(--ease-out-expo) .9s forwards;
+}
+.js .chart .area { opacity: 0; animation: chartFade 1.1s ease 1.5s forwards; }
+@keyframes chartDraw { to { stroke-dashoffset: 0; } }
+@keyframes chartFade { to { opacity: 1; } }
+
+.chartbox__peak {
+  position: absolute;
+  top: 9px; right: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  background: var(--glass-hi);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+}
+.js .chartbox__peak {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: peakIn .7s var(--ease-out-expo) 2.1s forwards;
+}
+@keyframes peakIn { to { opacity: 1; transform: none; } }
+
+.rows { margin-top: 16px; display: grid; gap: 8px; }
+.row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: var(--glass);
+  box-shadow: 0 0 0 1px var(--hairline-soft) inset;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.row__tick {
+  display: grid;
+  place-items: center;
+  width: 18px; height: 18px;
+  border-radius: 6px;
+  flex: none;
+  color: #fff;
+}
+.row__tick svg { width: 12px; height: 12px; }
+.row__tick--v { background: linear-gradient(140deg, var(--violet), #A855F7); }
+.row__tick--p { background: linear-gradient(140deg, var(--pink), #F97316); }
+.row__tick--c { background: linear-gradient(140deg, var(--cyan), #22D3EE); }
+.row__time { margin-left: auto; font-size: 10.5px; color: var(--text-3); letter-spacing: 0.04em; }
+
+/* 漂浮卡 */
+.float {
+  position: absolute;
+  z-index: 3;
+  padding: 13px 15px;
+  border-radius: var(--radius-md);
+  background: var(--glass-hi);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  box-shadow: var(--shadow-lift), 0 0 0 1px var(--hairline) inset;
+  text-align: left;
+  animation: float 7s var(--ease-in-out) infinite alternate;
+}
+@keyframes float {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -12px, 0); }
+}
+/* 底部卡片位于倾斜平面近端，透视会把它再向外推 ~17px，
+   故内缩留量，避免在任何视口宽度下撑出横向滚动条 */
+.float--a { top: -26px; right: -28px; animation-delay: -1.1s; }
+.float--b { bottom: -30px; left: -8px; animation-delay: -3.4s; }
+
+.float__label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.float__value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.float__value svg { width: 16px; height: 16px; color: var(--violet); }
+.float--b .float__value svg { color: var(--cyan); }
+.float__bar {
+  margin-top: 10px;
+  height: 4px;
+  width: 132px;
+  border-radius: 3px;
+  background: var(--hairline-soft);
+  overflow: hidden;
+}
+html[data-theme="light"] .float__bar { background: rgba(10, 11, 26, 0.13); }
+.float__bar i {
+  display: block;
+  height: 100%;
+  width: 72%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--violet), var(--pink));
+  transform-origin: 0 50%;
+  animation: grow 2.6s var(--ease-out-expo) .6s both;
+}
+@keyframes grow { from { transform: scaleX(.05); } to { transform: scaleX(.72); } }
+
+/* ---------- 10. 信任条 ---------- */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px clamp(28px, 6vw, 72px);
+  padding-block: clamp(44px, 6vw, 64px);
+  border-top: 1px solid var(--hairline-soft);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.stat { text-align: center; }
+.stat__num {
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.stat__lab {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ---------- 11. 特性网格 3×3 ---------- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.feat {
+  position: relative;
+  padding: 28px 26px 30px;
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: 0 0 0 1px var(--hairline-soft) inset, var(--shadow-card);
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform .55s var(--ease-out-quint),
+              box-shadow .55s var(--ease-out-quint),
+              background-color .45s var(--ease-out-quint);
+}
+.feat::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(145deg, var(--feat-edge, var(--violet)), transparent 46%, transparent 70%, color-mix(in oklab, var(--feat-edge, var(--violet)) 45%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: .5;
+  transition: opacity .5s var(--ease-out-quint);
+  pointer-events: none;
+}
+.feat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  background: radial-gradient(260px 200px at var(--mx, 50%) var(--my, 0%),
+              color-mix(in oklab, var(--feat-edge, var(--violet)) 26%, transparent), transparent 68%);
+  transition: opacity .5s var(--ease-out-quint);
+  pointer-events: none;
+}
+.feat:hover {
+  transform: translateY(-7px);
+  background: var(--glass-hi);
+  box-shadow: 0 0 0 1px var(--hairline) inset,
+              0 34px 66px -30px color-mix(in oklab, var(--feat-edge, var(--violet)) 62%, transparent),
+              0 6px 18px -10px rgba(0,0,0,.5);
+}
+.feat:hover::before { opacity: 1; }
+.feat:hover::after  { opacity: 1; }
+
+.feat__num {
+  position: absolute;
+  top: 24px; right: 24px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  opacity: .75;
+}
+
+.feat__icon {
+  display: grid;
+  place-items: center;
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  margin-bottom: 22px;
+  color: #fff;
+  background: linear-gradient(145deg, var(--feat-c1), var(--feat-c2));
+  box-shadow: 0 12px 26px -14px color-mix(in oklab, var(--feat-c1) 95%, transparent),
+              0 1px 0 0 rgba(255,255,255,.28) inset;
+  transition: transform .55s var(--ease-out-expo);
+}
+.feat__icon svg { width: 22px; height: 22px; }
+.feat:hover .feat__icon { transform: scale(1.06) rotate(-4deg); }
+
+.feat h3 {
+  font-size: 1.06rem;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+.feat p {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  line-height: 1.72;
+  color: var(--text-2);
+}
+
+/* 循环三色 */
+.feat--v { --feat-edge: var(--violet); --feat-c1: #7C3AED; --feat-c2: #A855F7; }
+.feat--p { --feat-edge: var(--pink);   --feat-c1: #EC4899; --feat-c2: #F472B6; }
+.feat--c { --feat-edge: var(--cyan);   --feat-c1: #06B6D4; --feat-c2: #22D3EE; }
+
+/* ---------- 12. 评价轮播 ---------- */
+.quotes {
+  position: relative;
+  border-radius: var(--radius-lg);
+  background: var(--glass);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  box-shadow: 0 0 0 1px var(--hairline-soft) inset, var(--shadow-card);
+  overflow: hidden;
+}
+.quotes__viewport { overflow: hidden; }
+.quotes__track {
+  display: flex;
+  cursor: grab;
+  touch-action: pan-y;
+  transition: transform .75s var(--ease-out-expo);
+  will-change: transform;
+}
+.quotes__track.is-drag { cursor: grabbing; transition: none; user-select: none; }
+
+.slide {
+  flex: 0 0 100%;
+  padding: clamp(34px, 5vw, 62px) clamp(24px, 5vw, 74px) clamp(16px, 2.2vw, 22px);
+}
+
+.quote__mark {
+  width: 30px; height: 30px;
+  color: var(--violet);
+  opacity: .55;
+  margin-bottom: 22px;
+}
+.quote__text {
+  font-size: clamp(1.06rem, 1.9vw, 1.5rem);
+  line-height: 1.62;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  max-width: 30em;
+  text-wrap: pretty;
+}
+.quote__foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 32px;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 46px; height: 46px;
+  flex: none;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--bg), 0 10px 22px -12px rgba(0,0,0,.7);
+}
+.avatar--1 { background: linear-gradient(140deg, #7C3AED, #EC4899); }
+.avatar--2 { background: linear-gradient(140deg, #06B6D4, #7C3AED); }
+.avatar--3 { background: linear-gradient(140deg, #EC4899, #F59E0B); }
+.avatar--4 { background: linear-gradient(140deg, #22D3EE, #EC4899); }
+
+.quote__who { min-width: 0; }
+.quote__name { font-size: 0.94rem; font-weight: 600; letter-spacing: -0.01em; }
+.quote__role { font-size: 12px; color: var(--text-3); letter-spacing: 0.02em; }
+.stars { display: flex; gap: 3px; margin-left: auto; color: var(--pink); }
+.stars svg { width: 15px; height: 15px; }
+
+.quotes__bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 clamp(24px, 5vw, 74px) 26px;
+}
+.quotes__dots { display: flex; gap: 8px; }
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--hairline);
+  transition: width .45s var(--ease-out-expo), background-color .35s ease;
+}
+.dot.is-on {
+  width: 26px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--violet), var(--pink));
+}
+.quotes__arrows { display: flex; gap: 8px; margin-left: auto; }
+.arrow {
+  display: grid;
+  place-items: center;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  color: var(--text-2);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+  transition: color .3s var(--ease-out-quint), background-color .3s var(--ease-out-quint), transform .4s var(--ease-out-quint);
+}
+.arrow:hover { color: var(--text); background: var(--glass-hi); transform: translateY(-1px); }
+.arrow:active { transform: scale(.94); }
+.arrow svg { width: 17px; height: 17px; }
+.quotes__hint {
+  margin-left: auto;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+/* ---------- 13. FAQ ---------- */
+.faq { display: grid; gap: 10px; max-width: 860px; margin-inline: auto; }
+.faq__item {
+  border-radius: var(--radius-md);
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 0 1px var(--hairline-soft) inset;
+  transition: background-color .4s var(--ease-out-quint), box-shadow .4s var(--ease-out-quint);
+  overflow: hidden;
+}
+.faq__item.is-open {
+  background: var(--glass-hi);
+  box-shadow: 0 0 0 1px var(--hairline) inset, var(--shadow-card);
+}
+.faq__q {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px 22px;
+  text-align: left;
+  font-size: clamp(0.98rem, 1.3vw, 1.06rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.faq__q span { flex: 1; }
+.faq__chev {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--text-2);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+  transition: transform .5s var(--ease-out-expo), color .35s ease, background-color .35s ease;
+}
+.faq__chev svg { width: 16px; height: 16px; }
+.faq__item.is-open .faq__chev { transform: rotate(180deg); color: #fff; background: linear-gradient(140deg, var(--violet), var(--pink)); box-shadow: none; }
+
+.faq__a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .5s var(--ease-out-expo);
+}
+.faq__item.is-open .faq__a { grid-template-rows: 1fr; }
+.faq__a > div { overflow: hidden; }
+.faq__a p {
+  padding: 0 22px 24px;
+  font-size: 0.93rem;
+  line-height: 1.78;
+  color: var(--text-2);
+  max-width: 62em;
+}
+
+/* ---------- 14. 订阅 + 页脚 ---------- */
+.footer {
+  position: relative;
+  z-index: 1;
+  margin-top: clamp(24px, 4vw, 48px);
+  border-top: 1px solid var(--hairline-soft);
+}
+.subscribe {
+  position: relative;
+  border-radius: var(--radius-lg);
+  padding: clamp(38px, 6vw, 68px) clamp(24px, 5vw, 64px);
+  background: var(--glass);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  box-shadow: 0 0 0 1px var(--hairline-soft) inset, var(--shadow-card);
+  overflow: hidden;
+}
+.subscribe::after {
+  content: "";
+  position: absolute;
+  top: -60%; left: 50%;
+  width: 620px; height: 420px;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 50% at 50% 50%, color-mix(in oklab, var(--violet) 30%, transparent), transparent 70%);
+  filter: blur(30px);
+  pointer-events: none;
+}
+.subscribe__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 420px);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+}
+.subscribe h2 { font-size: clamp(1.55rem, 2.7vw, 2.15rem); letter-spacing: -0.03em; }
+.subscribe p { margin-top: 14px; color: var(--text-2); font-size: 0.94rem; line-height: 1.72; max-width: 34em; }
+
+.form { display: grid; gap: 10px; }
+.form__row {
+  display: flex;
+  gap: 8px;
+  padding: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+  transition: box-shadow .4s var(--ease-out-quint);
+}
+html[data-theme="light"] .form__row { background: rgba(255,255,255,.9); }
+.form__row.is-focus { box-shadow: 0 0 0 1px var(--violet) inset, 0 0 0 4px color-mix(in oklab, var(--violet) 16%, transparent); }
+.form__row.is-error { box-shadow: 0 0 0 1px var(--pink) inset, 0 0 0 4px color-mix(in oklab, var(--pink) 16%, transparent); animation: shake .42s var(--ease-in-out); }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  22% { transform: translateX(-7px); }
+  44% { transform: translateX(6px); }
+  66% { transform: translateX(-4px); }
+  84% { transform: translateX(2px); }
+}
+.form__input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  font-size: 0.92rem;
+  outline: none;
+}
+.form__input::placeholder { color: var(--text-3); }
+.form__btn {
+  flex: none;
+  height: 42px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(100deg, var(--violet), var(--pink));
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity .3s ease, transform .35s var(--ease-out-quint), box-shadow .35s var(--ease-out-quint);
+  box-shadow: 0 12px 28px -14px color-mix(in oklab, var(--violet) 85%, transparent);
+}
+.form__btn:hover:not(:disabled) { transform: translateY(-1px); }
+.form__btn:disabled { cursor: default; opacity: .82; }
+.form__btn.is-done { background: linear-gradient(100deg, var(--cyan), #22D3EE); box-shadow: 0 12px 28px -14px var(--cyan); }
+.form__btn svg { width: 16px; height: 16px; }
+
+.spinner {
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.form__note {
+  font-size: 11.5px;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+  padding-left: 6px;
+}
+.form__note.is-error { color: var(--pink); }
+
+.footer__bottom {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 34px;
+  padding-block: clamp(44px, 6vw, 66px);
+}
+.footer__brand p { margin-top: 16px; font-size: 0.87rem; line-height: 1.72; color: var(--text-2); max-width: 26em; }
+.footer__col h4 {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.footer__col li + li { margin-top: 11px; }
+.footer__col a {
+  font-size: 0.88rem;
+  color: var(--text-2);
+  transition: color .3s ease;
+}
+.footer__col a:hover { color: var(--text); }
+
+.footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  padding-block: 22px;
+  border-top: 1px solid var(--hairline-soft);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.footer__legal .mono { letter-spacing: 0.06em; }
+.footer__legal .spacer { margin-left: auto; }
+
+/* ---------- 15. Toast ---------- */
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px 13px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-hi);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: var(--shadow-lift), 0 0 0 1px var(--hairline) inset;
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  opacity: 0;
+  transform: translateY(18px) scale(.96);
+  transition: opacity .4s var(--ease-out-quint), transform .55s var(--ease-out-expo);
+}
+.toast.is-in { opacity: 1; transform: translateY(0) scale(1); }
+.toast__ico {
+  display: grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  flex: none;
+  border-radius: 50%;
+  color: #fff;
+}
+.toast__ico svg { width: 15px; height: 15px; }
+.toast--ok  .toast__ico { background: linear-gradient(140deg, var(--cyan), #22D3EE); }
+.toast--err .toast__ico { background: linear-gradient(140deg, var(--violet), var(--pink)); }
+.toast small { display: block; font-size: 11.5px; color: var(--text-3); font-weight: 400; margin-top: 1px; }
+
+/* ---------- 16. 入场动效 ---------- */
+.reveal {
+  transition: opacity .85s var(--ease-out-quint), transform .95s var(--ease-out-expo);
+  transition-delay: var(--d, 0ms);
+}
+/* 仅在有 JS 时预先隐藏：脚本失效时内容照常可见 */
+.js .reveal { opacity: 0; transform: translateY(22px); }
+.js .reveal.is-in { opacity: 1; transform: none; }
+
+/* ---------- 17. 响应式 ---------- */
+@media (max-width: 1080px) {
+  .nav__links { display: none; }
+  .burger { display: inline-grid; }
+  .subscribe__grid { grid-template-columns: 1fr; }
+  .footer__bottom { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 900px) {
+  .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .float--a { top: -18px; right: -4px; }
+  .float--b { bottom: -20px; left: -4px; }
+  .stage { perspective: 1100px; }
+}
+
+@media (max-width: 620px) {
+  :root { --nav-h: 62px; }
+  .hero { text-align: left; }
+  .hero__title, .hero__sub { margin-inline: 0; }
+  .hero__actions { justify-content: flex-start; }
+  .hero__meta { justify-content: flex-start; gap: 8px 8px; flex-direction: column; align-items: flex-start; }
+  .btn { width: 100%; }
+  .hero__actions { flex-direction: column; align-items: stretch; }
+  .features { grid-template-columns: 1fr; gap: 12px; }
+  .window__body { grid-template-columns: 1fr; }
+  .rail { flex-direction: row; justify-content: center; border-right: 0; border-bottom: 1px solid var(--hairline-soft); padding: 10px; }
+  .rail__sep { display: none; }
+  .canvas { padding: 16px; }
+  .float { display: none; }
+  .stage { perspective: none; }
+  .stage__inner { transform: none !important; }
+  .footer__bottom { grid-template-columns: 1fr; gap: 28px; }
+  .quotes__hint { display: none; }
+  .quote__foot { gap: 12px; }
+  .stars { margin-left: 0; width: 100%; }
+  .toasts { left: 16px; right: 16px; width: auto; transform: none; align-items: stretch; }
+  .toast { border-radius: var(--radius-md); }
+  .form__row { flex-wrap: wrap; border-radius: var(--radius-lg); }
+  .form__btn { width: 100%; justify-content: center; margin-top: 2px; }
+}
+
+@media (max-width: 420px) {
+  .nav__cta { display: none; }
+}
+
+/* ---------- 18. 无障碍 / 降级 ---------- */
+.skip {
+  position: absolute;
+  left: 50%;
+  top: -60px;
+  transform: translateX(-50%);
+  z-index: 200;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--violet);
+  color: #fff;
+  font-size: 0.85rem;
+  transition: top .3s var(--ease-out-quint);
+}
+.skip:focus { top: 12px; }
+
+.sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .reveal, .js .reveal { opacity: 1; transform: none; }
+  .stage__inner { transform: rotateX(8deg) !important; }
+  /* 图表直接落到终态，不留延迟窗口 */
+  .js .chart .line { animation: none; stroke-dashoffset: 0; }
+  .js .chart .area,
+  .js .chartbox__peak { animation: none; opacity: 1; transform: none; }
+}
+
+@supports not (backdrop-filter: blur(4px)) {
+  .glass, .nav.is-stuck, .feat, .float, .quotes, .toast, .form__row, .subscribe {
+    background: var(--glass-veil);
+  }
+}
+</style>
+</head>
+<body data-page-node-id="I809Qp5G4EWR3K0uIgvD5Y">
+
+<a class="skip" href="#main" data-page-node-id="IC4PxCMgT2AhR7KUCGwx98">跳到主要内容</a>
+
+<div class="progress" id="progress" aria-hidden="true" data-page-node-id="XUBGtp8p7J7GNrmOaLuXy4"></div>
+
+<!-- 环境层 -->
+<div class="env" aria-hidden="true" data-page-node-id="jwhvs103D3yqY9lMNZTZTh">
+  <div class="env__aurora" data-page-node-id="PrYUzVo8zIFGKtyPMcbgK6"></div>
+  <div class="env__grid" data-page-node-id="1ia2ZqIJNmTFYAv9DjuFX9"></div>
+  <div class="env__grain" data-page-node-id="FyHAeRhDBaZuFJeHjiEYqM"></div>
+</div>
+
+<!-- ===== 导航 ===== -->
+<header class="nav" id="nav" data-page-node-id="sTcbytajFkdNLZgH5u8peC">
+  <div class="shell nav__inner" data-page-node-id="AR2NOeU6WrAduaeMfNwYjo">
+    <a class="brand" href="#top" aria-label="Prism 首页" data-page-node-id="KkehZeSGkAOFzYQb62hF1w">
+      <svg class="brand__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" data-page-node-id="CfFHZbAgzFf4jWItTvaipQ">
+        <defs data-page-node-id="XZWlm1GpUSVgcMmzpIwGZY">
+          <linearGradient id="bg1" x1="4" y1="26" x2="28" y2="6" gradientUnits="userSpaceOnUse" data-page-node-id="cOveVIkTXDXK3bOBJrnxHp">
+            <stop stop-color="#7C3AED" data-page-node-id="fg8akTwQiIbk17dHTiCxHf"/><stop offset=".55" stop-color="#EC4899" data-page-node-id="LCxeBa5ivJy78n7jRorPs0"/><stop offset="1" stop-color="#06B6D4" data-page-node-id="E2nNTgSz3sg5sumHPY3j7t"/>
+          </linearGradient>
+        </defs>
+        <path d="M16 3.6 29 26.4H3L16 3.6Z" stroke="url(#bg1)" stroke-width="1.7" stroke-linejoin="round" data-page-node-id="BYhl5ZiH0PJVoqGtrk8o8h"/>
+        <path class="beam" d="M8.6 24.2 16 10.4l7.4 13.8" stroke="url(#bg1)" stroke-width="1.3" stroke-linejoin="round" opacity=".55" data-page-node-id="uMnen0f2pRoDcaDDfA1A9U"/>
+        <path d="M16 12.5v11" stroke="url(#bg1)" stroke-width="1.3" stroke-linecap="round" opacity=".8" data-page-node-id="BcyhExdSpwOjAXadxqUxte"/>
+      </svg>
+      <span data-page-node-id="mGoN2JfwLHCFkuxfOdho5D">Prism</span>
+    </a>
+
+    <nav class="nav__links" aria-label="主导航" data-page-node-id="s0mlrJLwzis82EmpkkfHGi">
+      <a class="nav__link" href="#features" data-page-node-id="QPIehS81BR3Kw9g5DRAnvW">特性</a>
+      <a class="nav__link" href="#quotes" data-page-node-id="YAInoy3CM7jQ2w5rK6bPs8">评价</a>
+      <a class="nav__link" href="#faq" data-page-node-id="S9oRjecWy2kw5F6kaULOyd">常见问题</a>
+      <a class="nav__link" href="#subscribe" data-page-node-id="cYIabkaLLPHDjIbpI48OdY">更新</a>
+    </nav>
+
+    <div class="nav__right" data-page-node-id="B3BEueY8BOFmJxLSNBY1qK">
+      <button class="icon-btn theme-toggle" id="themeToggle" type="button" aria-label="切换深浅色主题" aria-pressed="false" data-page-node-id="v3UpUijdbHInZwBA1drc3n">
+        <svg class="ico ico--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="t9bVSauEAA43oHAIlicY22">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" data-page-node-id="BjnUQlLhrBl4NcIcKtTNwO"/>
+        </svg>
+        <svg class="ico ico--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="mLw3ccMpWtLMHDZFl2J3bV">
+          <circle cx="12" cy="12" r="4" data-page-node-id="eiL3FCNknQRbBlZRIr0uo2"/>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" data-page-node-id="TeogEP7geXHtawIYJa2prn"/>
+        </svg>
+      </button>
+      <a class="btn btn--primary nav__cta" href="#subscribe" data-page-node-id="fOrjQ8xdn4ZjBn88wKfa0l">免费开始</a>
+      <button class="icon-btn burger" id="burger" type="button" aria-label="打开菜单" aria-expanded="false" aria-controls="sheet" data-page-node-id="wQDSRNlno4gCYfV3dgvStj">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" data-page-node-id="Ai0AtqDIkeZLeueeDU5f1H">
+          <path d="M4 7h16M4 12h16M4 17h16" data-page-node-id="MPcQg73a76xZumBI53rAzX"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- 移动端抽屉 -->
+<div class="sheet" id="sheet" data-page-node-id="yoIsmNreHvvYKdrp1gpODk">
+  <a href="#features" data-page-node-id="UxfPISmZkG3UkPjyLdHqez">特性 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="exnTUvXIXbNAFg2eCkPL5x"><path d="M9 6l6 6-6 6" data-page-node-id="LDe5u9gF0KWU3VHEznbQaf"/></svg></a>
+  <a href="#quotes" data-page-node-id="NIA3OtxxM6Zf4kIw9nTl1R">评价 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="BwyS10hLrD9f4nHDoHHVDS"><path d="M9 6l6 6-6 6" data-page-node-id="tXJ1Lj1W20XJ4IPtogneS0"/></svg></a>
+  <a href="#faq" data-page-node-id="P0DiRALtLQAsCvyQyu52rl">常见问题 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="L7qnQGD0VXaQsjOT0wT8j2"><path d="M9 6l6 6-6 6" data-page-node-id="WNLKEIRe66c0vUp91ld6Dz"/></svg></a>
+  <a href="#subscribe" data-page-node-id="ySNeFrGZj9ezcK7FBXtzeC">更新 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="OkZ8SF2wVAbGvUE3zXSwKe"><path d="M9 6l6 6-6 6" data-page-node-id="1YY8Idp4ZX2q0SYXDZu0gd"/></svg></a>
+  <a class="btn btn--primary" href="#subscribe" data-page-node-id="h5DN3A3ABM0o2fzbK1uCTa">免费开始使用</a>
+</div>
+
+<main id="main" data-page-node-id="BslMtBZDJySy8I5IRQSpdJ">
+
+<!-- ===== Hero ===== -->
+<section class="hero" data-page-node-id="HVGDLSP5hQkWCnWZZF1UCK">
+  <div class="shell" data-page-node-id="JfmUB0r8LwQLrKgMEBr0Kn">
+    <div class="hero__tag reveal" data-page-node-id="PecfBzdq8n0wsQRt6wQY6b">
+      <b data-page-node-id="PX8U42Mi1GmeNa46T48iZF">3.0</b>
+      <span data-page-node-id="7feOkfBWtyQMQ0ydBfe8Lf">现已正式发布 · 全平台同步上线</span>
+    </div>
+
+    <h1 class="hero__title reveal" style="--d:80ms" data-page-node-id="vkBvLFmAKdD8tFhROeDR7x">
+      把散落的工作流，<br data-page-node-id="9FXolR5cb0yRk8zDF8A9qM">
+      <span class="grad-text" data-page-node-id="ekD6gsXXZzRL1R2pBfXMuq">折射成一道清晰的光</span>
+    </h1>
+
+    <p class="hero__sub reveal" style="--d:160ms" data-page-node-id="vUmW8aqU0WrQd7XVYjQjhH">
+      Prism 把文档、任务、代码与数据，收进同一个可编程工作台。机器处理噪音，你负责判断。
+    </p>
+
+    <div class="hero__actions reveal" style="--d:240ms" data-page-node-id="UpbTOeoZd02NlsxD2AYTeA">
+      <a class="btn btn--primary" href="#subscribe" data-magnet data-page-node-id="J3P0cldfkB8s87YOe44zyh">
+        免费开始使用
+        <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="RCF5Km8zK6qnYVMPftZxEQ"><path d="M5 12h14M13 6l6 6-6 6" data-page-node-id="9WudOYncZhDqEN1o5jaqdH"/></svg>
+      </a>
+      <a class="btn btn--ghost" href="#features" data-page-node-id="K2t7SUuAvkChORKMkZJzLH">
+        <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="nn0HvjdHOhsKmYHiCFI8sV">
+          <circle cx="12" cy="12" r="9" data-page-node-id="M6FRJrOOFJwM9Lp5JE3ru4"/><path d="M10 8.5l6 3.5-6 3.5z" data-page-node-id="u9iFa8PKViVrMvlnRhdczT"/>
+        </svg>
+        观看 2 分钟演示
+      </a>
+    </div>
+
+    <ul class="hero__meta reveal" style="--d:320ms" data-page-node-id="HjOEyeH09EnVjiO6EysiIJ">
+      <li data-page-node-id="Sv4kBOEoMm6qRAPtFXm6i3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="KTlD4GhF6WfOcljtC286BM"><path d="M20 6 9 17l-5-5" data-page-node-id="U4UPVottuyUbsOGhP34yOc"/></svg>无需信用卡</li>
+      <li data-page-node-id="ayJPyzxyhWSAWTK6EpBzP2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="8BrmD7CnBokFsHylqtoF9U"><path d="M20 6 9 17l-5-5" data-page-node-id="RkAOIcJztZMm9aQVst3GFD"/></svg>14 天 Pro 全功能试用</li>
+      <li data-page-node-id="i5pOdhTDAL2qFJlDpBk3z8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="07wkvlhdZMrJLJkZUXpk5h"><path d="M20 6 9 17l-5-5" data-page-node-id="YFBPvWBjsXSX8S76YHAZ5W"/></svg>随时导出，零锁定</li>
+    </ul>
+
+    <!-- CSS 3D 透视 Mockup -->
+    <div class="stage reveal" id="stage" style="--d:380ms" data-page-node-id="BImlOY34Q8LB0QMfQpRz6O">
+      <div class="stage__inner" data-page-node-id="ouuCPQMEPfqnBtuAhzhFWa">
+        <div class="window" role="img" aria-label="Prism 工作台界面预览：左侧功能导航、中部趋势图表、下方任务列表" data-page-node-id="xdCZpXCn8y6vtrcjBs7KFx">
+          <div class="window__bar" data-page-node-id="jB2tLTc26qzJVy6QBwoCVz">
+            <div class="dots" aria-hidden="true" data-page-node-id="CwGXVro2gjhCAp6LE4Y9AK"><i data-page-node-id="zeFWvh1LHwqWh9RgRCD4zG"></i><i data-page-node-id="zxMv08IlY0uIkYIcGpLvoa"></i><i data-page-node-id="Nsksc6C646C2YEhKL6sVQF"></i></div>
+            <div class="window__addr mono" data-page-node-id="x8kvkZBpTjW4aY1vdoHDF6">prism.app/workspace</div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" data-page-node-id="lbVMUZTouAAski76DQXEJd"><circle cx="11" cy="11" r="7" data-page-node-id="Pg7dXNZ52zx7m3D0F1vKTF"/><path d="M20 20l-3.5-3.5" data-page-node-id="C8zB9cmn14pvFW5u7ev2ed"/></svg>
+          </div>
+
+          <div class="window__body" data-page-node-id="0fbS32QFeKUTfjeKwEnMXb">
+            <div class="rail" aria-hidden="true" data-page-node-id="saYDUfBtjg1TO0alArU0NK">
+              <span class="rail__btn is-on" data-page-node-id="fAV52MXippUM3FsHGVnhjz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="PSBMrTARgyTMCie0ZWLgDY"><rect x="3" y="3" width="7" height="9" rx="1.6" data-page-node-id="JqNHNIpSR0SdHvWCjGHeap"/><rect x="14" y="3" width="7" height="5" rx="1.6" data-page-node-id="TboQKPUy48Km7s3nYykR88"/><rect x="14" y="12" width="7" height="9" rx="1.6" data-page-node-id="RkOC1RT0sollxGKytt4NAM"/><rect x="3" y="16" width="7" height="5" rx="1.6" data-page-node-id="So8n1TmJKSMtSGn8BTXd3T"/></svg></span>
+              <span class="rail__btn" data-page-node-id="X2VJbJbKFUCaapwNkbFwXV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="XVQ5qXiEiP9P6vEGaHdHkq"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" data-page-node-id="JogNqxZaAiXtCEfmgBQKdV"/><circle cx="9" cy="7" r="4" data-page-node-id="EDREqjE7qy11M3umgmWsta"/><path d="M22 21v-2a4 4 0 0 0-3-3.9" data-page-node-id="91DY4BIO0tBw35PYkGkFGz"/><path d="M16 3.1a4 4 0 0 1 0 7.8" data-page-node-id="5VsesSLzOEcMJQ6d6rdBWw"/></svg></span>
+              <span class="rail__btn" data-page-node-id="GbkNeUtj1OCzevYV8B1rl0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="bn2KMpgAivLweaj7Tnl7Bj"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" data-page-node-id="1tIESctrm6p9VMMMZSdnYU"/></svg></span>
+              <span class="rail__sep" data-page-node-id="XsheUppxv2yT1yZGbFD1wj"></span>
+              <span class="rail__btn" data-page-node-id="H0FBlZnYiFeI9DrEBRRhCe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="SBhl5T4QIRDhmiJyDomPHj"><circle cx="12" cy="12" r="3" data-page-node-id="sBv5940yjgOkopKiRAK4Rs"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a1.7 1.7 0 0 0-1.5-1H1.4a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 3 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 3V2.9a2 2 0 1 1 4 0V3a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 9h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1z" data-page-node-id="FTqMZ5lC9AKt7hmBX8tedJ"/></svg></span>
+            </div>
+
+            <div class="canvas" data-page-node-id="SbAk0I3rb8VFNoHcqSi0Nc">
+              <div class="canvas__head" data-page-node-id="mQdVeXDeZt78HlVGw7XEms">
+                <span class="canvas__title" data-page-node-id="y0BU97pNsldkO9Lz9cop0v">本周流速</span>
+                <span class="chip mono" data-page-node-id="tRv2R7lcXTgWG7lBLhN0tK">LIVE</span>
+                <span class="chip mono" data-page-node-id="023AkLJ6DnzisrbqER5seH">过去 7 天</span>
+              </div>
+
+              <div class="chartbox" data-page-node-id="N8GwGZIimjkl9P7dm8bEaL">
+                <svg class="chart" viewBox="0 0 420 140" preserveAspectRatio="none" aria-hidden="true" data-page-node-id="ZLv20T546V0D1n9rRR7Q95">
+                  <defs data-page-node-id="7uHKjR7HW43aoeeYaEHz55">
+                    <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1" data-page-node-id="L0GBrltyJNV8f4ETFHyw5E">
+                      <stop offset="0%" stop-color="#7C3AED" stop-opacity=".42" data-page-node-id="WR6P5eF7sbSJuRqKEL20N7"/>
+                      <stop offset="52%" stop-color="#EC4899" stop-opacity=".16" data-page-node-id="ciWJGa7A2Ca2I5AB6kBFMk"/>
+                      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0" data-page-node-id="WVpgYAbhwzhLkgLHqssrfC"/>
+                    </linearGradient>
+                    <linearGradient id="lineG" x1="0" y1="0" x2="1" y2="0" data-page-node-id="fCUyEYQ0sm53OLwdXq6aB6">
+                      <stop offset="0%" stop-color="#7C3AED" data-page-node-id="Ix2DdSfl9dwzYNAS6SxJ5G"/>
+                      <stop offset="58%" stop-color="#EC4899" data-page-node-id="RSKzUTh2DPe8a4k5EMeAtd"/>
+                      <stop offset="100%" stop-color="#06B6D4" data-page-node-id="rWqus7X7D4ljTqRgozmNUV"/>
+                    </linearGradient>
+                  </defs>
+                  <line class="gridline" x1="0" y1="34" x2="420" y2="34" data-page-node-id="00gkFDbVszDikKcKZtrEc4"/>
+                  <line class="gridline" x1="0" y1="70" x2="420" y2="70" data-page-node-id="s7RoOp2YGWV60vk4TJUwgQ"/>
+                  <line class="gridline" x1="0" y1="106" x2="420" y2="106" data-page-node-id="X9FgFqPRs18QAUO6h57n3C"/>
+                  <path class="area" d="M0,110 C30,98 48,62 78,68 C108,74 122,106 152,98 C182,90 196,46 226,42 C256,38 268,76 298,72 C328,68 344,28 374,24 L420,18 L420,140 L0,140 Z" fill="url(#areaG)" data-page-node-id="jiKci0Z15lYLGAD79A5eP7"/>
+                  <path class="line" d="M0,110 C30,98 48,62 78,68 C108,74 122,106 152,98 C182,90 196,46 226,42 C256,38 268,76 298,72 C328,68 344,28 374,24 L420,18" fill="none" stroke="url(#lineG)" stroke-width="2.4" stroke-linecap="round" data-page-node-id="xutO8mJuo2YitHAxgemvLc"/>
+                </svg>
+                <span class="chartbox__peak mono" data-page-node-id="0zAvkq5YFfY94MUtFmbn03">峰值 2.4×</span>
+              </div>
+
+              <div class="rows" data-page-node-id="7Y4mNeagjlS1HMfuEnH71B">
+                <div class="row" data-page-node-id="ToL1rlCdhZAH2GW4AZ4oZH">
+                  <span class="row__tick row__tick--v" data-page-node-id="28zd09gLvR7GNjoUmU8tL6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="kMwLME0Z3eNLlsBI6S4ino"><path d="M20 6 9 17l-5-5" data-page-node-id="zo0LsMOGXq8ksOoemaQcDV"/></svg></span>
+                  设计评审已归档
+                  <span class="row__time mono" data-page-node-id="wrOWAaLacv07aO2UpgtngD">2m</span>
+                </div>
+                <div class="row" data-page-node-id="FGkg6DmN6y7CWKQmaJnesz">
+                  <span class="row__tick row__tick--p" data-page-node-id="saAwAAwkGnnYxLbW6IxksI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="QwgGfEz4RrDOCYGt4djgJd"><path d="M20 6 9 17l-5-5" data-page-node-id="CLJIZvisjIYFSJ5kWUElmJ"/></svg></span>
+                  自动化流程「周报汇总」执行完成
+                  <span class="row__time mono" data-page-node-id="l8VpS2EyigaiIO5e5NtGeW">12m</span>
+                </div>
+                <div class="row" data-page-node-id="hXrMOAORcMe0K5ryKQ7w6n">
+                  <span class="row__tick row__tick--c" data-page-node-id="bjv88QBD0fIpmHtaMOfoyb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="XiHjUNahgvLxyz0lemJuQS"><path d="M20 6 9 17l-5-5" data-page-node-id="H5YxnCfONtit9DzhXWMvEx"/></svg></span>
+                  AI 摘要已生成 · 覆盖 3 份会议记录
+                  <span class="row__time mono" data-page-node-id="vrxiIIyCzwvDJjtt5OBnOI">28m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="float float--a" data-page-node-id="kQF0sfFgfkErKwDdH6V2Ae">
+          <div class="float__label mono" data-page-node-id="hG3IoIjuHSk2mMrJLCywFa">AI 摘要</div>
+          <div class="float__value" data-page-node-id="OQFie3DWt82EJrlBLzzxCx">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="NE30QUYw2FZDbUGI5GJMhA"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" data-page-node-id="20ZPdhK4vUzhkCSKPo9Bcz"/><path d="M19 15.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" data-page-node-id="Gg1KdPhhp6FN6hZx1yzcLi"/></svg>
+            已压缩至 1 页
+          </div>
+          <div class="float__bar" data-page-node-id="RTiG5nxwufcEsnKw7Ey3yX"><i data-page-node-id="zE7NnZbZ9ourgoEL0t0rN8"></i></div>
+        </div>
+
+        <div class="float float--b" data-page-node-id="ywBu5Q0YLT4ApBRVLJluZh">
+          <div class="float__label mono" data-page-node-id="i8FVgiHVdCC13oNus3N76k">同步状态</div>
+          <div class="float__value" data-page-node-id="Ydx3GZcx1sAXtQ7RxoqxNd">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="EagK1wtm5XwLUb8KfWyrC4"><path d="M21 12a9 9 0 1 1-2.6-6.4" data-page-node-id="QHvOGZEqufD7MEyFWzAPaC"/><path d="M21 4v5h-5" data-page-node-id="Wpjea7RLrIMA0WzUbVSmet"/></svg>
+            40ms · 全端一致
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 信任条 ===== -->
+<div class="shell" data-page-node-id="kBbqprfXGVIxqXoh5y2OsR">
+  <div class="strip reveal" data-page-node-id="PqKrjd6cNQLiyulFcoFoTr">
+    <div class="stat" data-page-node-id="hQSpvOai2p8mMvIFEE9Xbl">
+      <div class="stat__num grad-text mono" data-page-node-id="fmo5KY5Cg4ioEncCwZB7OL">12,400+</div>
+      <div class="stat__lab" data-page-node-id="41GrmJT2M7uXlPgS5H3GbY">团队正在使用</div>
+    </div>
+    <div class="stat" data-page-node-id="SmM33woCh9HqCdPLoJqAdb">
+      <div class="stat__num mono" data-page-node-id="vOTlTp5tsqHCqvAcM2xo1a">99.98%</div>
+      <div class="stat__lab" data-page-node-id="jJbQdeTWbCUry8VwADHCuo">过去一年可用性</div>
+    </div>
+    <div class="stat" data-page-node-id="HSix479FKyE0Kmrk2d97Ac">
+      <div class="stat__num mono" data-page-node-id="XjmPCXMrBxsqzJYR5GWh5L">40ms</div>
+      <div class="stat__lab" data-page-node-id="qp2Q4fQU81azodRDpYTYw4">协同操作延迟</div>
+    </div>
+    <div class="stat" data-page-node-id="b760EZ7QtDhKTAziSHFVA2">
+      <div class="stat__num mono" data-page-node-id="D3kt7VoPxUPb5rLGZRh8f4">0</div>
+      <div class="stat__lab" data-page-node-id="gxFECyouUELSzyhLsqRooI">内容用于训练</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 特性 3×3 ===== -->
+<section class="section" id="features" data-page-node-id="rJMBDL8eOEIVNJBTrzBMtV">
+  <div class="shell" data-page-node-id="j60wSOt15OYRc6KUU3TLW4">
+    <div class="section__head section__head--center reveal" data-page-node-id="kCciakfMIBx3sIBD2rOQwI">
+      <span class="eyebrow" data-page-node-id="efIt0fQ8ZgvCWO8wB3CQ1z"><i class="eyebrow__dot" data-page-node-id="z3A7W8CDpeX0gjEwQf21gL"></i>Capabilities</span>
+      <h2 class="h-section" style="margin-top:18px" data-page-node-id="ajUhwxIIBjWHh2Rr8GP5j1">九个模块，<span class="grad-text" data-page-node-id="S10hhwLtOZw4oEJ7lmIk3p">一套工作方式</span></h2>
+      <p data-page-node-id="4KscRcVGre3UWU7A7lAKXV">没有插件拼装，也没有格式转换。Prism 把日常协作需要的每一种能力，做成同一套底层模型上的原生模块。</p>
+    </div>
+
+    <div class="features" data-page-node-id="rkyEYxyzj2GbapBM58s1SK">
+      <!-- 01 -->
+      <article class="feat feat--v reveal" data-page-node-id="RL0GIJf1ru57Dht8MNMa8J">
+        <span class="feat__num mono" data-page-node-id="4FnXWQSxRpSZF1jmYxmFIo">01</span>
+        <div class="feat__icon" data-page-node-id="L5fd0wZY7BEV7cZsKFUYOB">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="SJ8BCqAVaMLXPjv8CIHyiK"><rect x="3" y="3" width="7" height="9" rx="1.6" data-page-node-id="qgxZH1RsBsFBNo8rZf11lE"/><rect x="14" y="3" width="7" height="5" rx="1.6" data-page-node-id="Db3cvUcx1CFSI4HfdJF5yg"/><rect x="14" y="12" width="7" height="9" rx="1.6" data-page-node-id="OVQ9USlFzjaVLjI9SdiGSD"/><rect x="3" y="16" width="7" height="5" rx="1.6" data-page-node-id="WWpny3JvCTobDPLLVc3GhS"/></svg>
+        </div>
+        <h3 data-page-node-id="iRBSl85rubRaqclDJPjJXn">统一工作台</h3>
+        <p data-page-node-id="CFTE7n2Wl32IA7AUulADBP">文档、任务、看板与数据表在同一个空间里流转。拖一次就换形态，上下文不会在格式转换中丢失。</p>
+      </article>
+
+      <!-- 02 -->
+      <article class="feat feat--p reveal" data-page-node-id="VtXEL6zNQCztmDIvkPIMiw">
+        <span class="feat__num mono" data-page-node-id="c8170chGWP99qUNdbwsX57">02</span>
+        <div class="feat__icon" data-page-node-id="xYfx0dlrm1lYfWsQe3zioF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="GAmQOIcehGGbI5FFfBUb7n"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" data-page-node-id="S7RbyGn2ISvd7QyBQEj8ST"/><circle cx="9" cy="7" r="4" data-page-node-id="RvUlYRRmEa9cteNLv6XXdv"/><path d="M22 21v-2a4 4 0 0 0-3-3.9" data-page-node-id="5lvv4vqCN2ESVELfQStddq"/><path d="M16 3.1a4 4 0 0 1 0 7.8" data-page-node-id="KgaGbdFz5dFoH5BRsOuCfy"/></svg>
+        </div>
+        <h3 data-page-node-id="jXCTfVb8Z05U1I3ediKQ90">实时协同</h3>
+        <p data-page-node-id="FaZZSImcCYTgzzHfoEJdFv">多人光标、行内评论与版本历史毫秒级同步。两个人改同一段文字，Prism 自动合并，不弹冲突对话框。</p>
+      </article>
+
+      <!-- 03 -->
+      <article class="feat feat--c reveal" data-page-node-id="oCNaAwSxZXF85SEwmpdZBU">
+        <span class="feat__num mono" data-page-node-id="9JhY5owVA77E3F7IG9lzHJ">03</span>
+        <div class="feat__icon" data-page-node-id="malruqpEmtlMYrAr4ZvZ7a">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="SEWof3Y5C5C2uMFLMuELtO"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" data-page-node-id="0E4eLl9w8YegcWCBMp5Q1z"/><path d="M19 15.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" data-page-node-id="ITIHpGYEdGSpqbvJHHU0Fq"/></svg>
+        </div>
+        <h3 data-page-node-id="1NnGOwjxEAo61IR8BhOKHm">AI 智能摘要</h3>
+        <p data-page-node-id="7VB8aLQxITtmDSbcr7tHBz">长文档与会议记录压缩成一页结论，每条判断都能一键跳回原文位置，结论永远可追溯。</p>
+      </article>
+
+      <!-- 04 -->
+      <article class="feat feat--v reveal" data-page-node-id="Ja4JSGvMwDo8RarBN8QNCf">
+        <span class="feat__num mono" data-page-node-id="VSsGPXTubR4GDLoTwKs6oS">04</span>
+        <div class="feat__icon" data-page-node-id="0Ud3JDYsSwBLjrsXoJEPUl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="zi5GsBnM7nqozz3A8YfEDc"><rect x="3" y="3" width="8" height="8" rx="2.2" data-page-node-id="oLfDfx6x1GuN7X4b9QqCX1"/><path d="M7 11v3.5a2 2 0 0 0 2 2h4" data-page-node-id="g37BsOTwFCn3UHCn6kXB1L"/><rect x="13" y="13" width="8" height="8" rx="2.2" data-page-node-id="uI0uoYw15uTekZUxxtHQQk"/></svg>
+        </div>
+        <h3 data-page-node-id="tV2lNMBh54lR10Dwh3WnPB">自动化流程</h3>
+        <p data-page-node-id="Fej0w6HXO0iB6kT1KOtrlc">用可视化连线把重复动作串成流程——触发器、条件、动作三段式，不写一行代码也能跑起来。</p>
+      </article>
+
+      <!-- 05 -->
+      <article class="feat feat--p reveal" data-page-node-id="b2VAZgGd8F4MT3wLfUe1jV">
+        <span class="feat__num mono" data-page-node-id="gNl7AftQSQZUgYkAflDCQE">05</span>
+        <div class="feat__icon" data-page-node-id="jVIY58JB5AXWndVQuSlDDR">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="34Gz4npBmTibdszf7BvT8O"><path d="M12 22s8-4 8-10V5.5L12 2.5 4 5.5V12c0 6 8 10 8 10z" data-page-node-id="5fOdCWojIDsX74hes1OGfZ"/><path d="M9 12l2 2 4-4" data-page-node-id="EDXpNNGOOilQtaOQL1Tr98"/></svg>
+        </div>
+        <h3 data-page-node-id="Zwfmhcj8vvdJA4RKKqqsWE">端到端加密</h3>
+        <p data-page-node-id="6MGfF66WsQaxwwpeXMd86y">密钥只在你的设备上。存储与传输全程加密，服务端看不到明文，也没人能用你的内容训练模型。</p>
+      </article>
+
+      <!-- 06 -->
+      <article class="feat feat--c reveal" data-page-node-id="9eDKijciLFcqTduIBFyLp1">
+        <span class="feat__num mono" data-page-node-id="l6bISpG0ig84yFGfEzhxEe">06</span>
+        <div class="feat__icon" data-page-node-id="ZpmDAwo0sMazpyNHHrkczB">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="5IEdzTu5Q2t4gyLNz4vyv8"><path d="M3 3v16a2 2 0 0 0 2 2h16" data-page-node-id="E6oZKhfX6b2bTG885npaOB"/><path d="M7 16v3" data-page-node-id="JJ8rTUIBcIKZlC2nF6mKIx"/><path d="M12.5 11v8" data-page-node-id="JeXWCDozPNZmUzkSo9t9No"/><path d="M18 5v14" data-page-node-id="SREUTYiBuVbdYnITeHMcml"/></svg>
+        </div>
+        <h3 data-page-node-id="XeHV7TcQBSC9KqSGcbvmab">洞察分析</h3>
+        <p data-page-node-id="gTJgvLfQO7jppDsr0YOIQe">把协作行为本身变成可读的趋势。瓶颈在哪一天、哪一个人、哪一个环节出现，一眼看得见。</p>
+      </article>
+
+      <!-- 07 -->
+      <article class="feat feat--v reveal" data-page-node-id="b0002vqXWlwoo0vLBPZJce">
+        <span class="feat__num mono" data-page-node-id="aERP50JrnDfzRG67fmnmI6">07</span>
+        <div class="feat__icon" data-page-node-id="gpuNUsvDZhSYlXkaHVCK7H">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="QKkt09xzoZO6WtAMxLUicL"><path d="M22.6 16.4A4.5 4.5 0 0 0 18 11h-1.3A7 7 0 0 0 6.6 7.6" data-page-node-id="yKhlUYSvNFXYKtg3LRD1Jx"/><path d="M5.6 5.6A7 7 0 0 0 6 19h11a4.5 4.5 0 0 0 3-1" data-page-node-id="5fmMPyH4djNRsfD2MgauS3"/><path d="M2 2l20 20" data-page-node-id="xj0uTTxypgu4FBNl7HYYFu"/></svg>
+        </div>
+        <h3 data-page-node-id="p6ds8DupnvqfGm4XEYVkSJ">离线优先</h3>
+        <p data-page-node-id="OOWrRkrBeRNZYJqwqOUL8J">断网照常编辑，本地先行。回到线上自动做增量同步，一次改动都不会丢，也不会重复。</p>
+      </article>
+
+      <!-- 08 -->
+      <article class="feat feat--p reveal" data-page-node-id="P6F8VEq5gsdyVur6Sneoxj">
+        <span class="feat__num mono" data-page-node-id="C9nTqgwxZAnWehSDWRdnzn">08</span>
+        <div class="feat__icon" data-page-node-id="alCana7xsyeoNlcbbKNDsi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="YOrWG6Jb2S8z9vLhirzgZF"><path d="M4 17l6-5-6-5" data-page-node-id="2Vmeqz8N5oJ4Nc27Ltwyhr"/><path d="M12 19h8" data-page-node-id="N0GJzknLy0eBfP38ut7zFm"/></svg>
+        </div>
+        <h3 data-page-node-id="VqIIlollg2q1K1eqwGFGbO">开放 API</h3>
+        <p data-page-node-id="0d60T3gTdUPn7SqBrKWAlp">界面能做的事，接口都能做。REST 与 Webhook、五种语言 SDK、一个 CLI，能力不做阉割。</p>
+      </article>
+
+      <!-- 09 -->
+      <article class="feat feat--c reveal" data-page-node-id="v5KPywyO2ckqkUMVpKmXXH">
+        <span class="feat__num mono" data-page-node-id="XnrKBvlcozwDwc2VPkQJ4f">09</span>
+        <div class="feat__icon" data-page-node-id="MDlfQ1cCgR3CBIRPaGymEB">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="5dzMcGzzPCWn8EOrKTFM37"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" data-page-node-id="Xs5Dn83ERx9M0Vmiwu73lC"/></svg>
+        </div>
+        <h3 data-page-node-id="lSbV5OHrCVixeeydPe2ZFk">全局指令</h3>
+        <p data-page-node-id="2mld4FySATg6ADFI9ZAGC3">一个快捷键直达任何页面、动作与数据。搜索、创建、跳转、执行，手指不必离开键盘。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 评价轮播 ===== -->
+<section class="section" id="quotes" style="padding-top:0" data-page-node-id="Lnq2x9OplC0XfLWmwDXJID">
+  <div class="shell" data-page-node-id="ILRWm6yIM0PThWy9B4gJID">
+    <div class="section__head section__head--center reveal" data-page-node-id="e1vLoQ7TgJUKzWvcQUza8v">
+      <span class="eyebrow" data-page-node-id="ld69p3S5kIpeNiHoy7H9AM"><i class="eyebrow__dot" data-page-node-id="Dky3FUoXwOSfARPXEudSNb"></i>Testimonials</span>
+      <h2 class="h-section" style="margin-top:18px" data-page-node-id="IlMeFBQkHVBwaZrkaWGeV9">他们在用 Prism <span class="grad-text" data-page-node-id="mP8KYT8eROIuar7UHNGBcB">推进真实的事</span></h2>
+    </div>
+
+    <div class="quotes reveal" id="quotesRoot" role="region" aria-label="用户评价轮播（左右方向键切换）" data-page-node-id="DlfmOL3d6dhqcJAOmhTDvz">
+      <div class="quotes__viewport" data-page-node-id="Lanb2fkblbLqUtxDWjYtGf">
+        <div class="quotes__track" id="quotesTrack" role="group" aria-roledescription="轮播" aria-label="用户评价" data-page-node-id="CQRwcKwpnI17gzrwxlvBRW">
+
+          <article class="slide" role="group" aria-roledescription="幻灯片" aria-label="1 / 4" data-page-node-id="0avCdO5Wll7enoBOICBN1G">
+            <svg class="quote__mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="hCd0PT2bpf2TS3N2IhpdOf"><path d="M9.5 5C6.4 6.5 4.5 9.4 4.5 12.8V19h6.2v-6.2H7.9c0-2 .9-3.6 2.7-4.5L9.5 5zm10 0c-3.1 1.5-5 4.4-5 7.8V19h6.2v-6.2h-2.8c0-2 .9-3.6 2.7-4.5L19.5 5z" data-page-node-id="P36dmanT4mBSe27BZQdJuI"/></svg>
+            <p class="quote__text" data-page-node-id="hObEaPZSkRABSlUNEiZbpC">团队的工作方式在两周内被改写了。以前每周要花半天对齐进度，现在打开 Prism 就是同一份事实，讨论直接从事该怎么做开始。</p>
+            <div class="quote__foot" data-page-node-id="GK8GvPHNApRHpnqtaWv65G">
+              <span class="avatar avatar--1" aria-hidden="true" data-page-node-id="ExzVOeP2oJYKhW33Od9m5h">林</span>
+              <div class="quote__who" data-page-node-id="Z1iIdIpArNNaOK8sCdMEcA">
+                <div class="quote__name" data-page-node-id="khHQZ4hVhwqjhFIdqYUioi">林知远</div>
+                <div class="quote__role" data-page-node-id="wiNrvBsnY44JzBB2EDF24M">产品负责人 · 星野科技</div>
+              </div>
+              <div class="stars" role="img" aria-label="评分 5 分，满分 5 分" data-page-node-id="sEH803DzD3ELR2rjnv9422">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="UFKHAogWm5vhqUHCG6SA2a"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="e5lAPbeCuyxcEtlMgxsMHO"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="YYoSZ4Ui3wO8oHE9cW21LI"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="ADs9HDF4shiUGvEH56ZWCy"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="e8T0HMTKNHyaGweLbbO7V0"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="zzBZBlDPxqN6emyAUYTZn1"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="ExNtrCx3NGmAMKktBd8NaG"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="czjcCofSOQS2vrtbQ8HObc"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="3tAtwniwV8dYPHFxjJ2vse"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="H6akfoRVR7v14CfGB3J84I"/></svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="slide" role="group" aria-roledescription="幻灯片" aria-label="2 / 4" data-page-node-id="ulGHLaKhVAgBsu6Wr8E2vH">
+            <svg class="quote__mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="6m5w2EdFCSPMgMRR0XJBJG"><path d="M9.5 5C6.4 6.5 4.5 9.4 4.5 12.8V19h6.2v-6.2H7.9c0-2 .9-3.6 2.7-4.5L9.5 5zm10 0c-3.1 1.5-5 4.4-5 7.8V19h6.2v-6.2h-2.8c0-2 .9-3.6 2.7-4.5L19.5 5z" data-page-node-id="e6CxswDf2UsTB0DVYv6QRB"/></svg>
+            <p class="quote__text" data-page-node-id="13Dd0yNeUgNAwG9JFpc53k">我们把 11 个内部工具迁到了 Prism。合并请求、发布记录和事故复盘终于长在同一棵树上，新人第一周就能自己找到答案。</p>
+            <div class="quote__foot" data-page-node-id="d61JCND4fx2gIlK2APrsxz">
+              <span class="avatar avatar--2" aria-hidden="true" data-page-node-id="lGLWsgxlfGIgCW53sDz2mi">SM</span>
+              <div class="quote__who" data-page-node-id="LiCeiHNRH3OFTrXdAMhfYO">
+                <div class="quote__name" data-page-node-id="AND4qm7hKWPAqj3vOCW6tk">Sophia Meyer</div>
+                <div class="quote__role" data-page-node-id="JcDhwb6KLSdqM3SllT8bjY">Engineering Lead · Northwind</div>
+              </div>
+              <div class="stars" role="img" aria-label="评分 5 分，满分 5 分" data-page-node-id="UsOFfbUOHsB2wDSSGlbJO2">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="kQkyuXYOdFxDJPTuNeDCCt"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="2qFiyPanLWdjBtGhc2YHEq"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="AAnUunM6XGNEgMAkhaOf95"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="92PnuT4ETWXxsw05JUKDCx"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="j1oN8TqdK9ok1gk0YWJZ6w"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="fkfRR0wKj7Q0nCtMaf9l2C"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="S1HU00SzBNKP1bgK9HBbWw"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="Bq46KcNno7R05Y9MdOUBY2"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="uwOXym1w0Fxxcy9y0CEY1K"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="L5tlKaDiD9Imq7DliIP2pG"/></svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="slide" role="group" aria-roledescription="幻灯片" aria-label="3 / 4" data-page-node-id="hGXNSms0kTLns3nqft2ksW">
+            <svg class="quote__mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="SSk6ttWU0J3owGjNXEHGYn"><path d="M9.5 5C6.4 6.5 4.5 9.4 4.5 12.8V19h6.2v-6.2H7.9c0-2 .9-3.6 2.7-4.5L9.5 5zm10 0c-3.1 1.5-5 4.4-5 7.8V19h6.2v-6.2h-2.8c0-2 .9-3.6 2.7-4.5L19.5 5z" data-page-node-id="vrNNdME5tFm1hmIR36TiYI"/></svg>
+            <p class="quote__text" data-page-node-id="F62H8fSQFpxjtbavnRhdRb">一个人做产品最怕工具打断思路。Prism 的离线模式让我在高铁上照样写方案，落地连上网，所有改动自己就位了。</p>
+            <div class="quote__foot" data-page-node-id="AYqomA6LaUl03QpfveH0Jr">
+              <span class="avatar avatar--3" aria-hidden="true" data-page-node-id="UcCBbZCRm1tZ4gbxiVa9lA">陈</span>
+              <div class="quote__who" data-page-node-id="1I2CbnMOMFnweCYiF3qHE1">
+                <div class="quote__name" data-page-node-id="sg5G3okL2lbsAUCcBB33Vh">陈默</div>
+                <div class="quote__role" data-page-node-id="X261lYOnbgJwAemtqv2V3s">独立开发者</div>
+              </div>
+              <div class="stars" role="img" aria-label="评分 5 分，满分 5 分" data-page-node-id="q9m71ot6gYFDGThUJsLqYn">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="OYBivXFXVXCbZtu1eQqhjr"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="IEQ28KKbID1XrBIMG2pHuC"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="mxd3az6fBvR5xEDw4SxPRS"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="R5IAF4ftnAc0dDTT0QeMkF"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="k3h2iGdJiHfSOASnyAofy3"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="fnuMQA1IMZMrk2m75NB1qJ"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="egNbCrdnNym8sKlYexzkcR"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="MeGHahUEWoxOaJ8fFmsa20"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="FLCKfF81blaJzWRlh3bTeF"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="bemDUGb8oWpzAvU0ND3RLr"/></svg>
+              </div>
+            </div>
+          </article>
+
+          <article class="slide" role="group" aria-roledescription="幻灯片" aria-label="4 / 4" data-page-node-id="bgn6TRCTNKlfxiNoYqnudQ">
+            <svg class="quote__mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="TwqZKTjgmSJVPNoEGkhFAH"><path d="M9.5 5C6.4 6.5 4.5 9.4 4.5 12.8V19h6.2v-6.2H7.9c0-2 .9-3.6 2.7-4.5L9.5 5zm10 0c-3.1 1.5-5 4.4-5 7.8V19h6.2v-6.2h-2.8c0-2 .9-3.6 2.7-4.5L19.5 5z" data-page-node-id="RLsWutrFYz953HRUCRIOku"/></svg>
+            <p class="quote__text" data-page-node-id="m7b90n0ugNLYmFRzs8w3Sb">迁移那天我做好了丢数据的准备，结果导入器把三年的活动记录连评论一起搬了过来。运营终于不用在两个系统之间来回截图了。</p>
+            <div class="quote__foot" data-page-node-id="MR6xDx8zOX10GHUREp7D8j">
+              <span class="avatar avatar--4" aria-hidden="true" data-page-node-id="1Q4uuGh2y8oqcNqS5AGqmd">周</span>
+              <div class="quote__who" data-page-node-id="ZZ9fxKjBGMSSGizNTEqA8h">
+                <div class="quote__name" data-page-node-id="mGw0bQQ2CamXWLtHWb6ap4">周与安</div>
+                <div class="quote__role" data-page-node-id="laKFok8mYs6SOvkH6i787G">运营总监 · 明室文化</div>
+              </div>
+              <div class="stars" role="img" aria-label="评分 5 分，满分 5 分" data-page-node-id="cWpUIUhtPByPF5JdPuHknZ">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="E7PDnb88AyC8LZVd7nrrO0"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="YdEVEQEQBvw6kzY9ZYajN6"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="0lHnwtzaXZ0CzTFWBi5Q6w"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="M9XgX4sYfcWtUHC2F3lo7g"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="MSlPstAEvc6u7wmSQUJ7w7"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="QqQW1z3R6gupGSEtYvyarA"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="JXALT76N2m0P4b64Kc9EL7"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="kPIIH9p6ZaK9PwG4Q4wqqO"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-page-node-id="RuRDmhxTu6POTb7bYp97dl"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z" data-page-node-id="LFEysX3RTZP4NEDodCbE5V"/></svg>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+
+      <div class="quotes__bar" data-page-node-id="rwpjbwB1FIFTrJyLeGiuzq">
+        <div class="quotes__dots" id="quotesDots" role="tablist" aria-label="选择评价" data-page-node-id="vAY3hESMkkKrEuLbfIBJlM"></div>
+        <span class="quotes__hint mono" data-page-node-id="yqULhN47Z5mfxV3LW80Knv">左右拖动切换</span>
+        <div class="quotes__arrows" data-page-node-id="Ahp30zlF3PrfgyWFp9rsJw">
+          <button class="arrow" id="qPrev" type="button" aria-label="上一条评价" data-page-node-id="1CHyLZ013ytxi8CSeVMmkM">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="7RsbDUTwUB3UziiBtHHcGa"><path d="M15 6l-6 6 6 6" data-page-node-id="JoY9QUi0KSCc6SvrQIorSZ"/></svg>
+          </button>
+          <button class="arrow" id="qNext" type="button" aria-label="下一条评价" data-page-node-id="cSnRg2zf7lA4XOmx5TnRQG">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="zMzBNonIhcWusBd1etJezd"><path d="M9 6l6 6-6 6" data-page-node-id="DgqrfbxCtT5cxZYvPvHkJH"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="section" id="faq" style="padding-top:0" data-page-node-id="0HQZy1nQoPUO3zXoFfYZUl">
+  <div class="shell" data-page-node-id="CTR38JoB6z3G7LNAERdKiu">
+    <div class="section__head section__head--center reveal" data-page-node-id="PhGYrHjT9GKp5VoJAf8LU5">
+      <span class="eyebrow" data-page-node-id="hPXuIAv2uGRVA3tVH92v4v"><i class="eyebrow__dot" data-page-node-id="TqS3d7KUnHbwVCsNkEGhLb"></i>FAQ</span>
+      <h2 class="h-section" style="margin-top:18px" data-page-node-id="DNOIqemBPuSU0dLJkgRuBH">还有疑问？<span class="grad-text" data-page-node-id="VIvId05hE0SNsvTsTQ7kY3">这里大概有答案</span></h2>
+      <p data-page-node-id="j1iO2Vmi28nTTVkyl72wSU">没找到想问的，写信给我们 —— 工作日内两小时必回。</p>
+    </div>
+
+    <div class="faq" id="faq" data-page-node-id="HFbb27KdkC0BWEX8P8VXTW">
+      <div class="faq__item is-open reveal" data-page-node-id="Muyf8mlDutTUsae3HDMUU7">
+        <button class="faq__q" type="button" aria-expanded="true" data-page-node-id="ej15eNPQ7rMaAITm6gjFmA">
+          <span data-page-node-id="6JTCLDN22g0wK22kd95mEv">Prism 支持哪些平台？</span>
+          <i class="faq__chev" aria-hidden="true" data-page-node-id="qgsTNOkDZSNy8XJeWjZBXP"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="O3yVNtAFO3dZshTHBzVrJB"><path d="M6 9l6 6 6-6" data-page-node-id="fREEHNsXuNQ9KfkLo8uLy4"/></svg></i>
+        </button>
+        <div class="faq__a" data-page-node-id="oMEe1ISz2WYucqWwZkvcGQ"><div data-page-node-id="ad9gWRZAS0KdRDhlEFRuLN"><p data-page-node-id="jAIHDjvWg7ggytdqrSVoC4">Web 端开箱即用；macOS、Windows、Linux 提供原生客户端，支持离线缓存与全局快捷键；iOS 与 Android 功能完整，不是查看器。所有端共享同一份数据模型，40 毫秒内保持一致。</p></div></div>
+      </div>
+
+      <div class="faq__item reveal" data-page-node-id="qYrHuqWsAHtgQMmQiFT8a5">
+        <button class="faq__q" type="button" aria-expanded="false" data-page-node-id="wLq94nAhDR1wCxPYvGoHw8">
+          <span data-page-node-id="B8ZuXzbImABUA9z9pMWByH">我的内容会被用来训练模型吗？</span>
+          <i class="faq__chev" aria-hidden="true" data-page-node-id="0klQfHtDfCcyla8rkF0TUF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="MtEMJLNbjiuFCrhRWhjpKt"><path d="M6 9l6 6 6-6" data-page-node-id="p7QuUh6dF1hlGFKhrPi4Jn"/></svg></i>
+        </button>
+        <div class="faq__a" data-page-node-id="P60rjhuCRZQ5MpYeHasgC0"><div data-page-node-id="CDaJNsdbqGJO2362yYMOf9"><p data-page-node-id="aV3RKFPwkApfUxETsbHjb0">不会，任何套餐都不会。AI 功能在租用的隔离推理环境中运行，请求不落盘、不回流训练集。团队版还可以选择完全私有化部署，模型跑在你自己的服务器上。</p></div></div>
+      </div>
+
+      <div class="faq__item reveal" data-page-node-id="azazBf623j9ARJBpSnbaZD">
+        <button class="faq__q" type="button" aria-expanded="false" data-page-node-id="iFsbYekB6g5fuYV7XOJkUc">
+          <span data-page-node-id="tycG5Mt7NmLKPFmynmg53c">免费版有哪些限制？</span>
+          <i class="faq__chev" aria-hidden="true" data-page-node-id="ZzCDWNl7vdIldJmWPHjLYC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="UCyU6RkkCvUXHesu45BAtc"><path d="M6 9l6 6 6-6" data-page-node-id="H90zj5nBeqcVO2eZRFn3u7"/></svg></i>
+        </button>
+        <div class="faq__a" data-page-node-id="g17D8JTBEuxv3X0vZPSbqv"><div data-page-node-id="cuuNVE5WeuT92vEvBNlWwL"><p data-page-node-id="H0BtZkBvc4hvNBHBzspe9r">免费版包含无限页面、无限成员、5GB 附件空间与每月 200 次 AI 调用，日常记录与协作完全够用。Pro 解锁无限历史版本、自动化流程、洞察分析与团队权限管理。</p></div></div>
+      </div>
+
+      <div class="faq__item reveal" data-page-node-id="77F94ygFznJj3FA03uWuL8">
+        <button class="faq__q" type="button" aria-expanded="false" data-page-node-id="z3dFja4iJVPDTPDKm0QWSq">
+          <span data-page-node-id="JKrNnc3Qp8rfy60tU2l5lt">能从 Notion、飞书或 Jira 迁移过来吗？</span>
+          <i class="faq__chev" aria-hidden="true" data-page-node-id="UseSQR8EuMXYuHtrG41YUM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="IQxwVSP3I98h7hmDQOLaXO"><path d="M6 9l6 6 6-6" data-page-node-id="9swCclarM2aYyKM2Hbn5PZ"/></svg></i>
+        </button>
+        <div class="faq__a" data-page-node-id="WeMbhKiLudtdYn6lgUwgN3"><div data-page-node-id="pEEoolxx0QpRUgZRA4OBdR"><p data-page-node-id="QFeaAMdcBAszgrUGCABzLS">可以，官方导入器支持 Notion、飞书、Confluence、Jira、Trello 与 Markdown 目录。层级、附件、评论与作者信息都会一并保留，10 万条记录通常在 20 分钟内完成，导入过程可随时中断与回滚。</p></div></div>
+      </div>
+
+      <div class="faq__item reveal" data-page-node-id="fnodKohgCRJBCYrzeeeZRm">
+        <button class="faq__q" type="button" aria-expanded="false" data-page-node-id="84CeD8sSKtBbpOcd7E23lA">
+          <span data-page-node-id="63Zk5xqXkBUVIuNDPLo1Is">团队版如何计费？可以随时取消吗？</span>
+          <i class="faq__chev" aria-hidden="true" data-page-node-id="7HYArbLAZCbUlrwLSwHCA5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="ojUuJ33KMhxV2Zy761440Z"><path d="M6 9l6 6 6-6" data-page-node-id="wkekM3WUhV2LCTCne8ibYS"/></svg></i>
+        </button>
+        <div class="faq__a" data-page-node-id="tTMwrmLgQLogzRXraoXBkV"><div data-page-node-id="sWVTqGQlQvHVVESKXDH9DR"><p data-page-node-id="2C3eorhuAIWwGDKwcb6Z9X">按「月度活跃成员」计费，只看当月实际登录过的人。查看者与访客始终免费。升级、降级、取消都在设置里一次点击完成，剩余天数按比例退款，数据导出通道永久开放。</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== 页脚 ===== -->
+<footer class="footer" id="subscribe" data-page-node-id="16rklO10FylBv4zTtKOQ6c">
+  <div class="shell" data-page-node-id="3QHV3CGvHiTBgWTOLnGspt">
+    <div class="subscribe reveal" style="margin-top:clamp(24px,4vw,48px)" data-page-node-id="s3p3dKdkbp08arTe2T9h8F">
+      <div class="subscribe__grid" data-page-node-id="envHbFhiG8EXhmDaakYkMS">
+        <div data-page-node-id="j1OgkjOOAdJRKHdF8AOZDr">
+          <span class="eyebrow" data-page-node-id="63EXVdfVidQnGktSNqA6FL"><i class="eyebrow__dot" data-page-node-id="q4aZLfQlEVxMfiRc1Ad9ON"></i>Newsletter</span>
+          <h2 style="margin-top:16px" data-page-node-id="IZEe4lNWDhjqtPMIo91Dqn">保持同步，<span class="grad-text" data-page-node-id="Uk2pQqDiuGxtRZfAEGMw6a">每月一封</span></h2>
+          <p data-page-node-id="qw5KpLLZGc5BXde6hkdfKu">产品更新、工程笔记与发布会邀请。只写有价值的内容，不写营销废话，任何时候一键退订。</p>
+        </div>
+
+        <form class="form" id="subForm" novalidate data-page-node-id="6b5oRgdjGdHrBxiBE4AgXB">
+          <div class="form__row" id="formRow" data-page-node-id="vab7duBWde7janfwu9CP9y">
+            <label class="sr" for="email" data-page-node-id="hwwVBqI069bP0yruMW4b01">邮箱地址</label>
+            <input class="form__input" id="email" type="email" name="email" placeholder="you@company.com" autocomplete="email" inputmode="email" required data-page-node-id="TLdjwyo20ACt0Mn9v2ZiHu">
+            <button class="form__btn" id="subBtn" type="submit" data-page-node-id="WoTB8NAbkjG2yzNTtdvh8u">
+              <span id="subLabel" data-page-node-id="dKhpCxLZ1aYtHmt9aBfPPZ">订阅</span>
+              <svg id="subIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-page-node-id="8XKqgF9Ks1uODPXMDspSjm"><path d="M5 12h14M13 6l6 6-6 6" data-page-node-id="g4kWu9exKOos9gWEHChdQi"/></svg>
+            </button>
+          </div>
+          <p class="form__note" id="formNote" data-page-node-id="ZNjvJNbQlx2eBSNtpMh9D2">我们只发产品相关邮件，绝不共享你的地址。</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="footer__bottom" data-page-node-id="BVFneZIFSbAJmwb3RFWQIs">
+      <div class="footer__brand" data-page-node-id="fk6DsJSKh5D7N79kSEuuRO">
+        <a class="brand" href="#top" data-page-node-id="6FWA86uPYJ0bpG1Wam2KrF">
+          <svg class="brand__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" data-page-node-id="1TteFDg9EX0Ih6l8RMVs1E">
+            <defs data-page-node-id="iqfSSFAUsr9gFR5WQbFyqY">
+              <linearGradient id="bg2" x1="4" y1="26" x2="28" y2="6" gradientUnits="userSpaceOnUse" data-page-node-id="MpI9SqeX5mFZTtYmhpy3wK">
+                <stop stop-color="#7C3AED" data-page-node-id="SxGTOna9Eun1dveovDEACT"/><stop offset=".55" stop-color="#EC4899" data-page-node-id="5L7p7dB6zDD6HyEbKWzWGa"/><stop offset="1" stop-color="#06B6D4" data-page-node-id="E11OQwFZrMkUgbeleErXuu"/>
+              </linearGradient>
+            </defs>
+            <path d="M16 3.6 29 26.4H3L16 3.6Z" stroke="url(#bg2)" stroke-width="1.7" stroke-linejoin="round" data-page-node-id="GKDHCgtrjPtMw9WX87H1M1"/>
+            <path d="M8.6 24.2 16 10.4l7.4 13.8" stroke="url(#bg2)" stroke-width="1.3" stroke-linejoin="round" opacity=".55" data-page-node-id="8GGClEkqc2JaRHnoLUlCLN"/>
+            <path d="M16 12.5v11" stroke="url(#bg2)" stroke-width="1.3" stroke-linecap="round" opacity=".8" data-page-node-id="YLEulGJ6JNc6X7ZhSB2DYK"/>
+          </svg>
+          <span data-page-node-id="esgf8sDY06Zw2AOrxDKkZo">Prism</span>
+        </a>
+        <p data-page-node-id="KoCcjdB64rZDTfgkcr7dYd">把散落的工作流折射成一道清晰的光。为认真做事的人，做一件安静而强大的工具。</p>
+      </div>
+
+      <div class="footer__col" data-page-node-id="NZSDdzEInLC9WI83YU1sAm">
+        <h4 data-page-node-id="0D3vhArAbB4QvpdTcCPP2F">产品</h4>
+        <ul data-page-node-id="w19AG0IXTHlukFk4T491t6">
+          <li data-page-node-id="NpZKvVCeEhWFie1Vt8S3YD"><a href="#features" data-page-node-id="LFw9JFPTfr8QPpLwLTAL0g">功能总览</a></li>
+          <li data-page-node-id="DSfhGRkVBhyRUJz1PpQpTu"><a href="#features" data-page-node-id="U1t8At8y2e3XJzFAxHdIoi">定价方案</a></li>
+          <li data-page-node-id="m8KxdlgfpnoMwamDIfm7nK"><a href="#features" data-page-node-id="6kty4IuWC2fdqPawFZ9z6x">更新日志</a></li>
+          <li data-page-node-id="pohWw2Ez49NXr2P821lFpV"><a href="#features" data-page-node-id="SwIFeEsz73EewX4Cd8Xp2C">桌面客户端</a></li>
+        </ul>
+      </div>
+
+      <div class="footer__col" data-page-node-id="t9eDarB9vBoPSdRKgNwWlZ">
+        <h4 data-page-node-id="yvO54wEhjfD51rJ67i5rJz">资源</h4>
+        <ul data-page-node-id="QuJal8pEqDHv2758Sfr4nQ">
+          <li data-page-node-id="rq90VBf1hFOt3ZLJG6PQr7"><a href="#faq" data-page-node-id="JypsZ7yUCLQRQClTHCqWtD">帮助中心</a></li>
+          <li data-page-node-id="PuhTMbT9jvlejiWA2o4mS0"><a href="#features" data-page-node-id="UVNx4HJBidO8Fq9EJYpjCn">开发者文档</a></li>
+          <li data-page-node-id="rJ8fEKaRk7dcZThTU0jgzY"><a href="#features" data-page-node-id="MGrFRk81HQTJcV7DpBPMf6">API 参考</a></li>
+          <li data-page-node-id="cFnDYCL78d3CRGqPIt88ib"><a href="#faq" data-page-node-id="OGZHB34XkbfHEl4A2uguRq">系统状态</a></li>
+        </ul>
+      </div>
+
+      <div class="footer__col" data-page-node-id="xhy7HtqpKPK4cM9iWFUZ9t">
+        <h4 data-page-node-id="RARstrJGKwLjrpALy0xvIw">公司</h4>
+        <ul data-page-node-id="KE9EdWTKjwjJJAGokBzKuV">
+          <li data-page-node-id="Hls2ePM1ImNHiwbZqXyKaR"><a href="#quotes" data-page-node-id="u1nKNcj4aLNytB5aQHggoC">关于我们</a></li>
+          <li data-page-node-id="E3OXBUliMSDPbHqP9zwi19"><a href="#quotes" data-page-node-id="m79hJaf8OGHrGeb1UDDCId">客户案例</a></li>
+          <li data-page-node-id="9NjHEQRe6B464HPx51lNyg"><a href="#faq" data-page-node-id="sPEDoV1G4QM3TZv3DSkNMU">加入我们</a></li>
+          <li data-page-node-id="Kumg9Bt5gHGmYlyRfyJFpD"><a href="#faq" data-page-node-id="0DTn9Xg6oczl8WHnrgGPgT">联系我们</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer__legal" data-page-node-id="Ek0fecNti4IHv6ScPTbZbo">
+      <span class="mono" data-page-node-id="iGOVDzLdFwMFgcgkePB9V4">© 2026 PRISM LABS</span>
+      <span data-page-node-id="V2KXYv9FV4jN0byEL1S3DJ">保留所有权利</span>
+      <span class="spacer" data-page-node-id="jGTmspTUFNBODAmQASP4jQ"></span>
+      <a href="#top" data-page-node-id="LgPJCOjxKpgDDD7upLoY8W">隐私政策</a>
+      <a href="#top" data-page-node-id="lXZlpaDYSofy9MDZNSccHz">服务条款</a>
+      <a href="#top" data-page-node-id="7MdgdzwUgtghVc3J831W0F">Cookie 设置</a>
+    </div>
+  </div>
+</footer>
+
+<!-- Toast 容器 -->
+<div class="toasts" id="toasts" role="region" aria-label="通知" aria-live="polite" data-page-node-id="AtXd5cDOgBrDy1AOJyi2bC"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 1. 主题切换 ---------- */
+  var root = document.documentElement;
+  var toggle = document.getElementById('themeToggle');
+
+  function syncToggle() {
+    var isLight = root.getAttribute('data-theme') === 'light';
+    toggle.setAttribute('aria-pressed', String(isLight));
+    toggle.setAttribute('aria-label', isLight ? '切换到深色主题' : '切换到浅色主题');
+  }
+  syncToggle();
+
+  toggle.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('prism-theme', next); } catch (e) {}
+    syncToggle();
+  });
+
+  /* ---------- 2. 滚动：进度条 / 导航吸顶 / 当前章节 ---------- */
+  var nav = document.getElementById('nav');
+  var progress = document.getElementById('progress');
+  var ticking = false;
+
+  function onScroll() {
+    var y = window.scrollY || document.documentElement.scrollTop;
+    nav.classList.toggle('is-stuck', y > 12);
+
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.transform = 'scaleX(' + (h > 0 ? Math.min(y / h, 1) : 0) + ')';
+    ticking = false;
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(onScroll); }
+  }, { passive: true });
+  onScroll();
+
+  // 章节高亮
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav__link'));
+  var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if ('IntersectionObserver' in window && sections.length) {
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) {
+          a.classList.toggle('is-active', a.getAttribute('href') === '#' + en.target.id);
+        });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    sections.forEach(function (s) { spy.observe(s); });
+  }
+
+  /* ---------- 3. 移动端菜单 ---------- */
+  var burger = document.getElementById('burger');
+  var sheet = document.getElementById('sheet');
+
+  function closeSheet() {
+    sheet.classList.remove('is-open');
+    burger.setAttribute('aria-expanded', 'false');
+  }
+  burger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = sheet.classList.toggle('is-open');
+    burger.setAttribute('aria-expanded', String(open));
+  });
+  sheet.addEventListener('click', function (e) { if (e.target.closest('a')) closeSheet(); });
+  document.addEventListener('click', function (e) {
+    if (!sheet.classList.contains('is-open')) return;
+    if (!sheet.contains(e.target) && !burger.contains(e.target)) closeSheet();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+
+  /* ---------- 4. 入场动效（含 stagger 延迟） ---------- */
+  var reveals = document.querySelectorAll('.reveal');
+
+  // 网格 / 列表内自动错峰入场
+  var groups = document.querySelectorAll('.features, .faq');
+  Array.prototype.forEach.call(groups, function (g) {
+    Array.prototype.forEach.call(g.children, function (child, i) {
+      child.style.setProperty('--d', (i * 70) + 'ms');
+    });
+  });
+
+  if ('IntersectionObserver' in window && !REDUCED) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          en.target.classList.add('is-in');
+          io.unobserve(en.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.03 });
+
+    Array.prototype.forEach.call(reveals, function (el) { io.observe(el); });
+
+    // 兜底：观察盒底部有 8% 内缩，若元素已有任何部分落在视口内，
+    // 它会被判定为"未进入"，结果就是用户看着一片空白。这里立即补入场。
+    // （错峰靠 transition-delay 保留，不影响观感）
+    function catchVisible() {
+      Array.prototype.forEach.call(reveals, function (el) {
+        if (el.classList.contains('is-in')) return;
+        var r = el.getBoundingClientRect();
+        if (r.top < window.innerHeight && r.bottom > 0) {
+          el.classList.add('is-in');
+          io.unobserve(el);
+        }
+      });
+    }
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(catchVisible);
+    });
+    window.addEventListener('load', catchVisible);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(catchVisible).catch(function () {});
+    }
+  } else {
+    Array.prototype.forEach.call(reveals, function (el) { el.classList.add('is-in'); });
+  }
+
+  /* ---------- 5. Hero 3D 视差 ---------- */
+  var stage = document.getElementById('stage');
+  var pointers = { x: 0, y: 0 }, stageTicking = false;
+
+  if (stage && !REDUCED && window.matchMedia('(hover: hover)').matches && window.innerWidth > 900) {
+    window.addEventListener('pointermove', function (e) {
+      pointers.x = (e.clientX / window.innerWidth - 0.5) * 2;
+      pointers.y = (e.clientY / window.innerHeight - 0.5) * 2;
+      if (stageTicking) return;
+      stageTicking = true;
+      window.requestAnimationFrame(function () {
+        stage.classList.add('is-live');
+        stage.querySelector('.stage__inner').style.setProperty('--ry', (pointers.x * 7).toFixed(2) + 'deg');
+        stage.querySelector('.stage__inner').style.setProperty('--rx', (14 - pointers.y * 5).toFixed(2) + 'deg');
+        stageTicking = false;
+      });
+    }, { passive: true });
+  }
+
+  /* ---------- 6. 卡片聚光（feature / 主按钮） ---------- */
+  var spotTargets = document.querySelectorAll('.feat, .btn--primary');
+  Array.prototype.forEach.call(spotTargets, function (el) {
+    el.addEventListener('pointermove', function (e) {
+      var r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+      el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+    }, { passive: true });
+  });
+
+  /* ---------- 7. 评价轮播 ---------- */
+  var track = document.getElementById('quotesTrack');
+  var rootEl = document.getElementById('quotesRoot');
+  var dotsBox = document.getElementById('quotesDots');
+
+  if (track && rootEl) {
+    var slides = track.children.length;
+    var index = 0;
+    var timer = null;
+    var AUTOPLAY = 5500;
+
+    for (var i = 0; i < slides; i++) {
+      var d = document.createElement('button');
+      d.type = 'button';
+      d.className = 'dot' + (i === 0 ? ' is-on' : '');
+      d.setAttribute('role', 'tab');
+      d.setAttribute('aria-label', '第 ' + (i + 1) + ' 条评价');
+      d.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      d.dataset.i = i;
+      dotsBox.appendChild(d);
+    }
+    var dots = Array.prototype.slice.call(dotsBox.children);
+
+    function paint(offsetPx) {
+      var off = offsetPx || 0;
+      track.style.transform = 'translate3d(calc(' + (-index * 100) + '% + ' + off + 'px), 0, 0)';
+      dots.forEach(function (dot, k) {
+        dot.classList.toggle('is-on', k === index);
+        dot.setAttribute('aria-selected', k === index ? 'true' : 'false');
+      });
+    }
+
+    function go(n, user) {
+      index = (n + slides) % slides;
+      paint(0);
+      if (user) restart();
+    }
+    function next(user) { go(index + 1, user); }
+    function prev(user) { go(index - 1, user); }
+
+    function start() {
+      if (REDUCED || timer) return;
+      timer = window.setInterval(function () { next(false); }, AUTOPLAY);
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    function restart() { stop(); start(); }
+
+    dots.forEach(function (dot) {
+      dot.addEventListener('click', function () { go(Number(dot.dataset.i), true); });
+    });
+    document.getElementById('qNext').addEventListener('click', function () { next(true); });
+    document.getElementById('qPrev').addEventListener('click', function () { prev(true); });
+
+    // 悬停 / 聚焦暂停
+    rootEl.addEventListener('pointerenter', stop);
+    rootEl.addEventListener('pointerleave', start);
+    rootEl.addEventListener('focusin', stop);
+    rootEl.addEventListener('focusout', start);
+    document.addEventListener('visibilitychange', function () {
+      document.hidden ? stop() : start();
+    });
+
+    // 键盘
+    rootEl.tabIndex = 0;
+    rootEl.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { e.preventDefault(); next(true); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prev(true); }
+    });
+
+    // 拖拽
+    var dragging = false, startX = 0, lastDx = 0, suppressClick = false, pid = null;
+
+    track.addEventListener('pointerdown', function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      dragging = true; startX = e.clientX; lastDx = 0;
+      track.classList.add('is-drag');
+      stop();
+      if (track.setPointerCapture && e.pointerId !== undefined) {
+        pid = e.pointerId;
+        try { track.setPointerCapture(pid); } catch (err) {}
+      }
+    });
+
+    track.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - startX;
+      // 边界阻尼
+      if ((index === 0 && dx > 0) || (index === slides - 1 && dx < 0)) dx *= 0.34;
+      lastDx = dx;
+      track.style.transform = 'translate3d(calc(' + (-index * 100) + '% + ' + dx + 'px), 0, 0)';
+    });
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      track.classList.remove('is-drag');
+      suppressClick = Math.abs(lastDx) > 6;   // 供随后的 click 事件判定
+      if (lastDx < -56) { next(false); }
+      else if (lastDx > 56) { prev(false); }
+      else { paint(0); }
+      lastDx = 0;
+      start();
+    }
+    track.addEventListener('pointerup', endDrag);
+    track.addEventListener('pointercancel', endDrag);
+    track.addEventListener('lostpointercapture', endDrag);
+
+    // 拖拽后抑制误触
+    track.addEventListener('click', function (e) {
+      if (suppressClick) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+    window.setTimeout(function () {
+      document.addEventListener('pointerdown', function () { suppressClick = false; }, true);
+    }, 0);
+
+    paint(0);
+    start();
+  }
+
+  /* ---------- 8. FAQ 手风琴 ---------- */
+  var faqItems = Array.prototype.slice.call(document.querySelectorAll('.faq__item'));
+  faqItems.forEach(function (item) {
+    var btn = item.querySelector('.faq__q');
+    btn.addEventListener('click', function () {
+      var willOpen = !item.classList.contains('is-open');
+      faqItems.forEach(function (other) {
+        other.classList.remove('is-open');
+        other.querySelector('.faq__q').setAttribute('aria-expanded', 'false');
+      });
+      if (willOpen) {
+        item.classList.add('is-open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  /* ---------- 9. Toast ---------- */
+  var toastBox = document.getElementById('toasts');
+  var ICONS = {
+    ok:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    err: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg>'
+  };
+
+  function toast(kind, title, sub) {
+    var el = document.createElement('div');
+    el.className = 'toast toast--' + kind;
+    el.innerHTML =
+      '<span class="toast__ico">' + (ICONS[kind] || ICONS.ok) + '</span>' +
+      '<span>' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span>';
+    toastBox.appendChild(el);
+
+    window.requestAnimationFrame(function () { el.classList.add('is-in'); });
+
+    var kill = window.setTimeout(close, 4200);
+    function close() {
+      clearTimeout(kill);
+      el.classList.remove('is-in');
+      window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 500);
+    }
+    el.addEventListener('click', close);
+  }
+
+  /* ---------- 10. 订阅表单 ---------- */
+  var form = document.getElementById('subForm');
+  var row = document.getElementById('formRow');
+  var input = document.getElementById('email');
+  var btn = document.getElementById('subBtn');
+  var label = document.getElementById('subLabel');
+  var icon = document.getElementById('subIcon');
+  var note = document.getElementById('formNote');
+  var NOTE_DEFAULT = note.textContent;
+  var busy = false;
+
+  input.addEventListener('focus', function () { row.classList.add('is-focus'); });
+  input.addEventListener('blur', function () { row.classList.remove('is-focus'); });
+  input.addEventListener('input', function () {
+    row.classList.remove('is-error');
+    note.classList.remove('is-error');
+    note.textContent = NOTE_DEFAULT;
+  });
+
+  function validEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+  }
+
+  function fail(msg) {
+    row.classList.remove('is-error');
+    void row.offsetWidth;      // 重启动画
+    row.classList.add('is-error');
+    note.textContent = msg;
+    note.classList.add('is-error');
+    input.focus();
+    toast('err', '订阅未完成', msg);
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (busy) return;
+
+    var v = input.value.trim();
+    if (!v) { fail('请先填写邮箱地址。'); return; }
+    if (!validEmail(v)) { fail('邮箱格式看起来不太对，请检查一下。'); return; }
+
+    busy = true;
+    btn.disabled = true;
+    row.classList.remove('is-error');
+    label.textContent = '发送中';
+    icon.outerHTML = '<span class="spinner" id="subIcon" aria-hidden="true"></span>';
+
+    window.setTimeout(function () {
+      busy = false;
+      btn.disabled = false;
+      btn.classList.add('is-done');
+      label.textContent = '已订阅';
+      var sp = document.getElementById('subIcon');
+      sp.outerHTML = '<svg id="subIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+      input.value = '';
+      input.blur();
+      note.textContent = '确认邮件已发出，点开链接即完成订阅。';
+      note.classList.remove('is-error');
+      toast('ok', '订阅成功', '确认邮件已发送至 ' + v);
+    }, 1400);
+  });
+
+})();
+</script>
+</body>
+</html>

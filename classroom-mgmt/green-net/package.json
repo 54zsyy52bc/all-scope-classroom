@@ -1,0 +1,55 @@
+{
+  "name": "green-net-browser",
+  "version": "1.0.0",
+  "description": "绿网 · 物联网实践学生专用浏览器（Chromium 内核 / Electron）",
+  "private": true,
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "kiosk": "electron . --kiosk",
+    "test": "node test/run-all.js",
+    "itest": "node test/qy-mqtt.integration.js",
+    "qy-itest": "node scripts/qy-integration.js",
+    "verify": "node test/run-all.js && node scripts/smoke.js",
+    "verify:all": "node test/run-all.js && node scripts/smoke.js && node test/qy-mqtt.integration.js && node scripts/qy-integration.js",
+    "smoke": "node scripts/smoke.js",
+    "teach": "node scripts/teach-sim.js",
+    "postinstall": "node scripts/copy-shared.js",
+    "pack": "node scripts/prepack.js --win dir",
+    "dist": "node scripts/prepack.js --win nsis"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "mqtt": "^5.15.2"
+  },
+  "devDependencies": {
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.kct.greennet",
+    "productName": "绿网",
+    "asar": false,
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "app-config.json",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "dir"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "绿网"
+    }
+  }
+}

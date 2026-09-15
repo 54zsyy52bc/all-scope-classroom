@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>课堂锁定中</title>
+  <link rel="stylesheet" href="./assets/pages.css" />
+</head>
+<body>
+  <div class="center-page">
+    <div class="center-card tone-lock" style="max-width:600px">
+      <div class="emoji">🔒</div>
+      <h1>课堂锁定中</h1>
+      <p>现在还不能上网，请听老师安排。</p>
+      <p id="phase-line" class="muted" style="margin-top:6px"></p>
+      <p id="countdown" style="font-size:15px;color:#7f1d1d;font-weight:600"></p>
+      <div class="actions">
+        <button class="btn big" id="btn-qy">查看课堂状态</button>
+        <button class="btn big" id="btn-ip">看本机 IP</button>
+      </div>
+      <p class="muted" style="margin-top:20px;font-size:12px">
+        取消锁定由老师在教师大屏上操作，浏览器里没有办法自己解除。
+      </p>
+    </div>
+  </div>
+  <script src="./assets/common.js"></script>
+  <script src="./locked.js"></script>
+</body>
+</html>
