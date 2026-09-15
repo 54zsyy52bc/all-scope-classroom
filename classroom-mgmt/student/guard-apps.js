@@ -13,6 +13,17 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { execFile } = require('node:child_process');
 
+// 启动窗口内新出现的进程里，这些是系统/宿主噪声，绝不能算成「课堂应用的进程」。
+// 否则悬浮坞会显示「运行中 5 进程」这类离谱状态（进程显示异常的元凶之一）。
+const NOISE = new Set(['conhost.exe', 'cmd.exe', 'powershell.exe', 'wscript.exe', 'cscript.exe',
+  'svchost.exe', 'dllhost.exe', 'runtimebroker.exe', 'applicationframehost.exe',
+  'startmenuexperiencehost.exe', 'shellexperiencehost.exe', 'searchhost.exe', 'searchapp.exe',
+  'textinputhost.exe', 'ctfmon.exe', 'taskhostw.exe', 'wmiprvse.exe', 'wudfhost.exe',
+  'spoolsv.exe', 'explorer.exe', 'werfault.exe', 'backgroundtaskhost.exe', 'systemsettings.exe',
+  'sihost.exe', 'userinit.exe', 'dwm.exe', 'winlogon.exe', 'fontdrvhost.exe', 'audiodg.exe',
+  'msedgewebview2.exe', 'elevation_service.exe', 'sihclient.exe', 'trustedinstaller.exe',
+  'tiworker.exe', 'compattelrunner.exe', 'musnotificationux.exe', 'useroobebroker.exe']);
+
 module.exports = function createAppRegistry({ onRunningChange, log }) {
   let apps = []; // {id,name,path,exe,observedExes:Set,running,procNames:[]}
 
@@ -75,7 +86,11 @@ module.exports = function createAppRegistry({ onRunningChange, log }) {
             const cur = new Set();
             const re = /"([^"]+\.exe)"/gi; let m;
             while ((m = re.exec(out))) { if (m[1]) cur.add(m[1].toLowerCase()); }
-            const added = [...cur].filter((x) => !before.has(x));
+            // 过滤噪声：不能用「所有新进程」当该应用的进程，否则系统弹个宿主就会被算进去。
+            // 另外要排除已被别的课堂应用认领的进程，避免一个进程挂在两个应用名下。
+            const claimed = new Set();
+            for (const o of apps) if (o !== a) for (const oe of o.observedExes) claimed.add(oe);
+            const added = [...cur].filter((x) => !before.has(x) && !NOISE.has(x) && !claimed.has(x));
             if (!added.length) return;
             let changed = false;
             added.forEach((x) => { if (!a.observedExes.has(x)) { a.observedExes.add(x); changed = true; doLog('bindLaunch ' + a.id + ' 新增进程 ' + x); } });

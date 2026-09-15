@@ -80,11 +80,28 @@
     applyPos();
   }
 
-  function onRow(id) {
+  // 悬浮坞是独立 IIFE，没有 desktop.js 的 toast()，这里自建一个轻量浮层提示
+  function floatMsg(text, err) {
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.cssText = 'position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:'
+      + (err ? '#c42b1c' : '#107c10') + ';color:#fff;padding:8px 16px;z-index:60;font-size:13px;'
+      + 'font-family:inherit;max-width:80vw;';
+    document.body.appendChild(el);
+    setTimeout(() => { if (el && el.parentNode) el.parentNode.removeChild(el); }, 3000);
+  }
+
+  async function onRow(id) {
     const a = (state.apps || []).find((x) => x.id === id);
     if (!a) return;
-    if (a.running) { if (bb.focusApp) bb.focusApp(id); }
-    else { if (bb.launchApp) bb.launchApp(id); }
+    // 悬浮坞同样要把主进程的失败原因说出来，否则点了没反应没人知道为什么
+    if (a.running) {
+      if (bb.focusApp) bb.focusApp(id);
+    } else if (bb.launchApp) {
+      let r = null;
+      try { r = await bb.launchApp(id); } catch (_e) { r = null; }
+      if (r && r.ok === false) floatMsg((r.err || '启动失败') + '，请先保存设置', true);
+    }
     setTimeout(refresh, 300); // 启动/切前台后稍等再刷新一次状态
   }
 

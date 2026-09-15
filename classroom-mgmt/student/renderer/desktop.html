@@ -32,13 +32,18 @@
     .tile, .d-app { position:relative; display:block; background:transparent; border:0; padding:0;
       cursor:pointer; font-family:inherit; transform-style:preserve-3d; perspective:800px; }
     .tile { min-height:132px; }
-    .tile-inner { position:relative; width:100%; min-height:132px; transform-style:preserve-3d;
+    /* [必须] display:block 不可省：.tile-inner 是 <span>（行内元素），
+       行内元素上 width/ min-height 不生效 —— 缺它时双面层会塌成 0 宽 0 高，
+       .tile-front/.tile-back 的 inset:0 撑在空盒子上，导致图标挤压、应用名不显示。 */
+    .tile-inner { display:block; position:relative; width:100%; min-height:132px; transform-style:preserve-3d;
       transition: transform .52s cubic-bezier(.2,.8,.2,1); }
     .tile-front, .tile-back { position:absolute; inset:0; display:flex; flex-direction:column;
       align-items:center; justify-content:center; gap:8px; padding:12px;
       backface-visibility:hidden; -webkit-backface-visibility:hidden; }
-    .tile-front { background:#eaf4fd; border:1px solid #cfe4f7; color:#005a9e; }
-    .tile-back { background:var(--accent); color:#fff; transform:rotateY(180deg); }
+    .tile-front { background:#eaf4fd; border:1px solid #cfe4f7; color:#005a9e; z-index:2; }
+    /* z-index 兜底：3D（preserve-3d）生效时按 3D 位置排序、z-index 不参与，无副作用；
+       万一 preserve-3d 被扁平化，正面仍能压住背面，保证「默认显示正面」不退化。 */
+    .tile-back { background:var(--accent); color:#fff; transform:rotateY(180deg); z-index:1; }
     .tile-back .bk-nm { font-size:14px; font-weight:700; }
     .tile-back .bk-tip { font-size:12px; opacity:.9; }
     .tile:hover .tile-front { background:#d9edfb; }
@@ -114,7 +119,10 @@
     /* 磁贴入场：错落淡入 + 轻微缩放（animation-delay 在 JS 中按序号设置；
        backwards 使首帧（透明）在延迟期间生效，结束后交还普通样式，悬停微抬才不会被覆盖） */
     @keyframes tileIn { from { opacity:0; transform:translateY(14px) scale(.94); } to { opacity:1; transform:none; } }
-    .tile, .d-app { animation: tileIn .32s cubic-bezier(.2,.8,.2,1) backwards; will-change:transform,opacity; }
+    /* 不写 will-change：动画只有 0.32s 一次性，而常驻 will-change 会让每个磁贴长期占一个合成层
+       （84 台机器、每屏十几个磁贴，纯内存浪费）；更关键的是 will-change 含 opacity 时
+       规范会把 transform-style 的 used value 强制成 flat，3D 翻转会失效。 */
+    .tile, .d-app { animation: tileIn .32s cubic-bezier(.2,.8,.2,1) backwards; }
 
     /* 悬停：Win8 微抬 + 阴影（官方应用磁贴质感） */
     .tile, .d-app { transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, background .14s ease; }

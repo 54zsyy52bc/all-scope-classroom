@@ -101,13 +101,19 @@
     // 错落入场：抽屉内应用按序号延时（含上课登记 / 设置两个系统项）
     body.querySelectorAll('.d-app').forEach((el, i) => { el.style.animationDelay = (i * 30) + 'ms'; });
   }
-  function openApp(id) {
+  async function openApp(id) {
     audit('app-open', id);
     const a = apps().find((x) => x.id === id);
-    if (!a) return;
+    if (!a) { toast('应用不存在，请重新打开设置', true); return; }
     if (!a.path) { toast('应用路径缺失，请在设置中重新添加', true); return; }
     const bb = b();
-    if (bb && bb.launchApp) bb.launchApp(id);
+    if (!bb || !bb.launchApp) { toast('当前环境不支持启动应用', true); return; }
+    let r = null;
+    try { r = await bb.launchApp(id); } catch (e) { r = null; }
+    // 主进程现在回传失败原因（未注册 / 路径缺失）。以前 launch 静默 return false，
+    // 表现就是「点了磁贴毫无反应」，老师既不知道没保存也不知道路径丢了。
+    if (r && r.ok === false) toast((r.err || '启动失败') + '，请先保存设置', true);
+    else if (!r) toast('启动失败：未收到主进程回应', true);
   }
   function enterClass() { audit('open-class', ''); if (b() && b().openClass) b().openClass(); }
   function openDrawer() { renderDrawer(); $('drawer').hidden = false; $('drawer-mask').hidden = false; }

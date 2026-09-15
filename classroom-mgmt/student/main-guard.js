@@ -17,6 +17,7 @@ module.exports = function registerGuard(deps) {
   let minimizeOthers = true;
   let timer = null;
   let busy = false;
+  let lastLaunchAt = 0; const LAUNCH_GRACE_MS = 8000; // 启动宽限：新应用进 allow 前不最小化（见 tick）
   const isKiosk = !process.argv.includes('--no-kiosk') && !process.argv.includes('--dev');
   const DESKTOP_FILE = path.join(__dirname, 'desktop-config.json');
   const GUARD_PS = path.join(__dirname, 'guard-window.ps1');
@@ -72,7 +73,9 @@ module.exports = function registerGuard(deps) {
       const names = await procList();
       registry.observe(names);
       if (denyList.length) for (const p of new Set(names)) if (denyList.includes(p)) killProc(p);
-      if (minimizeOthers) {
+      // 启动宽限：刚点开的应用还没被 bindLaunch 记进 allow（.lnk 异步解析/启动器要几秒），
+      // 此时 sweep 会把它最小化，现场就是「点磁贴窗口一闪就没」。宽限期内只观察、不最小化。
+      if (minimizeOthers && Date.now() - lastLaunchAt > LAUNCH_GRACE_MS) {
         const allow = registry.allowExeList();
         allow.push(path.basename(process.execPath).toLowerCase()); // 自己（kiosk）必须进 allow，否则被自己最小化
         winGuard.sweep(allow, false);
@@ -134,9 +137,12 @@ module.exports = function registerGuard(deps) {
   }
   function launch(appId) {
     const a = allowMap[appId];
-    if (!a || !a.path) return false;
+    // 以前静默 return false：渲染层拿不到原因，「点了磁贴毫无反应」且无从排查 —— 现回传结构化结果。
+    if (!a) return { ok: false, err: '应用未注册（保存设置后即可打开）' };
+    if (!a.path) return { ok: false, err: '应用路径缺失' };
+    lastLaunchAt = Date.now();
     procList().then((names) => { try { registry.bindLaunch(appId, names); } catch (_e) {} }).catch(() => {});
-    if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return true; } // 快捷方式必须走 shell
+    if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return { ok: true }; } // 快捷方式必须走 shell
     const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });
     child.on('error', () => {
       detectElevated().then((elev) => {
@@ -146,7 +152,7 @@ module.exports = function registerGuard(deps) {
       });
     });
     child.unref();
-    return true;
+    return { ok: true };
   }
 
   // ---- 运行态上报（PowerShell 助手每行 JSON 回传）----
@@ -198,8 +204,8 @@ module.exports = function registerGuard(deps) {
       winGuard.focus(ex); // 前台锁可能拦，返回 focused:0 属正常，渲染层容错
       return { ok: true, focused: true };
     }
-    const launched = launch(id); // launch 内部已 bindLaunch
-    return { ok: !!launched, launched: !!launched };
+    const r = launch(id); // launch 内部已 bindLaunch
+    return { ok: !!(r && r.ok), launched: !!(r && r.ok), err: (r && r.err) || '' };
   });
   ipcMain.handle('shell:get-state', async () => {
     const cfg = readConfig();
@@ -251,7 +257,9 @@ module.exports = function registerGuard(deps) {
         denyExe: (Array.isArray(patch.guard.denyExe) ? patch.guard.denyExe : []).map((x) => String(x).toLowerCase().slice(0, 40)).filter(Boolean),
         minimizeOthers: patch.guard.minimizeOthers !== false }; // 缺省视为 true
     }
-    try { dWrite(d); } catch (_e) { err.push('写入桌面配置失败'); }
+    // 必须重装备守卫：allowMap/registry 是启动时的快照，不刷新则刚添加的应用点不开
+    // （launch 里 allowMap[appId] 为 undefined），悬浮坞进程状态也停在旧列表。
+    try { dWrite(d); start(dRead()); } catch (_e) { err.push('写入桌面配置失败'); }
     return { ok: !err.length, err: err.join('；') };
   });
   ipcMain.handle('desktop:pick-app', async () => {
@@ -276,7 +284,7 @@ module.exports = function registerGuard(deps) {
       const d = dRead();
       if (obj.course) d.course = Object.assign(d.course, obj.course);
       if (obj.guard) d.guard = Object.assign(d.guard, obj.guard);
-      dWrite(d);
+      dWrite(d); start(dRead()); // 同 desktop:set：导入后必须重装备守卫，否则新应用点不开
       return { ok: true };
     } catch (e) { return { ok: false, err: '导入失败：' + (e.message || e) }; }
   });

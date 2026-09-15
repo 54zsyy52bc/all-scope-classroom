@@ -114,6 +114,7 @@ run_case "渲染层流程 renderer.dom"  "$STUDENT" "$NODE" test/renderer.dom.te
 run_case "关机原子化 shutdown-atomic" "$STUDENT" "$NODE" test/shutdown-atomic.test.js
 run_case "渲染层 设置口令闸门 settings-gate" "$STUDENT" "$NODE" test/settings-gate.test.js
 run_case "渲染层 设置弹窗-空列表回归 desktop-settings-empty" "$STUDENT" "$NODE" test/desktop-settings-empty-list.test.js
+run_case "桌面磁贴双面结构+启动链路 desktop-tile-and-launch" "$STUDENT" "$NODE" test/desktop-tile-and-launch.test.js
 run_case "交付包 母盘配置门禁 delivery-image" "$STUDENT" "$NODE" test/delivery-image.test.js
 
 # ---------------------------------------------------------------------------
