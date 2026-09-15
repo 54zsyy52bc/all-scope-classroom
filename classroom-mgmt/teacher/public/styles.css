@@ -538,3 +538,65 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
   font-size: 17px; font-weight: 700; text-align: center; padding: 10px; animation: db-pop 0.5s ease; }
 @keyframes db-pop { from { transform: translateY(-8px); opacity: 0; } }
 .group-badge.b-complete { background: #107c10; color: #fff; }
+
+/* =============================================================================
+   Win8 / Metro 动效（2026-09-15）：与学生端 desktop.html 同一套动效语言。
+   本页同时是「教室大屏（投影/电视，无鼠标）」和「教师操作界面」，动效分工不同：
+   - 会随每次 SSE 快照整块 innerHTML 重渲染的区域（.groups / .group / .seat / .stat）
+     只加 transition，不加 animation。transition 仅在值变化时触发；若加 animation，
+     每秒重渲染都会重播一次，大屏会持续闪动，反而干扰课堂。
+   - 静态框架（.topbar / .side / .manage）用 animation 做一次性入场。
+   - 教师会用鼠标点的东西（.btn / .mini-btn / .card / .list-item）做 3D 倾斜 + 按下回弹。
+   ============================================================================= */
+
+/* ---- 静态框架：入场（一次性） ---- */
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.topbar { animation: pageIn .30s ease both; }
+.side   { animation: pageIn .34s .06s ease both; }
+.manage { animation: pageIn .30s .10s ease both; }
+
+/* ---- 重渲染区域：状态变化用过渡（登记完成 / 在线 / 求助 变色时平滑过渡） ---- */
+.seat {
+  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1),
+              border-color 200ms cubic-bezier(0.2, 0, 0, 1),
+              color 200ms cubic-bezier(0.2, 0, 0, 1),
+              transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.group { transition: border-color 200ms cubic-bezier(0.2, 0, 0, 1),
+                     background-color 200ms cubic-bezier(0.2, 0, 0, 1); }
+.stat  { transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1); }
+.activity-bar { transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+                            transform 220ms cubic-bezier(0.2, 0, 0, 1); }
+
+/* ---- 鼠标交互：3D 微倾斜 + 微抬 + 按下回弹 ---- */
+.btn, .mini-btn {
+  transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .16s ease, background .14s ease;
+}
+.btn:hover, .mini-btn:hover {
+  transform: perspective(600px) rotateX(6deg) rotateY(-2deg) translateY(-3px) scale(1.04);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .20);
+}
+.btn:active, .mini-btn:active { transform: scale(.94); transition-duration: .06s; }
+
+.card, .list-item, .tpl-chip {
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s ease;
+}
+.card:hover, .list-item:hover, .tpl-chip:hover {
+  transform: perspective(700px) rotateX(6deg) rotateY(-2deg) translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .18) !important; /* 覆盖 Metro 平面化的 box-shadow:none!important */
+}
+
+/* ---- 弹层 / 提示：遮罩淡入 + 弹窗缩放 ---- */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalIn { from { opacity: 0; transform: scale(.94) translateY(10px); } to { opacity: 1; transform: none; } }
+.overlay { animation: fadeIn .18s ease both; }
+.modal-card { animation: modalIn .26s cubic-bezier(.2, .9, .25, 1) both; transform-origin: center; }
+.toast { animation: fadeIn .22s ease both; }
+
+/* ---- 降级：尊重无障碍「减少动态」 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .topbar, .side, .manage, .overlay, .modal-card, .toast { animation: none !important; transition: none !important; }
+  .btn, .mini-btn, .card, .list-item, .tpl-chip,
+  .seat, .group, .stat, .activity-bar { transition: none !important; }
+  .btn:hover, .mini-btn:hover, .card:hover, .list-item:hover, .tpl-chip:hover { transform: none !important; }
+}

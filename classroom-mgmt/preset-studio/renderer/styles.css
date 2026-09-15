@@ -237,3 +237,57 @@ body { background: var(--bg); color: var(--text); }
 .modal-card, .editor-card, .row-card { box-shadow: none !important; border-radius: 0 !important; }
 .btn, input, select, textarea, .chip, .tile, .seat-tile, .stat-tile { border-radius: 0 !important; }
 button, .btn { box-shadow: none; }
+
+/* =============================================================================
+   Win8 / Metro 动效（2026-09-15）：与学生端 desktop.html 同一套动效语言。
+   本端是教师用鼠标操作的编辑器，完整的鼠标交互动效都适用（无大屏无鼠标的约束）。
+   注意：本文件顶部有 Metro 平面化块对 .card/.modal-card 等设了
+   box-shadow:none!important，故悬停投影需用 !important 覆盖。
+   ============================================================================= */
+
+/* ---- 静态框架与会话面板：入场（一次性） ---- */
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+.topbar { animation: pageIn .30s ease both; }
+.tabs { animation: pageIn .30s .05s ease both; }
+.session-card { animation: rowIn .28s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* 标签页切换：面板淡入（仅在用户点击切换时播放，不涉及后台重渲染） */
+.tab-panel.active { animation: rowIn .22s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* ---- 鼠标交互：3D 微倾斜 + 微抬 + 投影 ---- */
+.card, .list-item, .tpl-row, .eq-row, .group-row, .tpl-chip {
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s ease;
+}
+.card:hover, .list-item:hover, .tpl-row:hover, .eq-row:hover, .group-row:hover, .tpl-chip:hover {
+  transform: perspective(700px) rotateX(6deg) rotateY(-2deg) translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .18) !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* ---- 按钮 / 标签：按下回弹 ---- */
+.btn, .mini-btn, .tab {
+  transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .16s ease,
+              background .14s ease, color .14s ease;
+}
+.btn:hover, .mini-btn:hover, .tab:hover {
+  transform: perspective(600px) rotateX(6deg) rotateY(-2deg) translateY(-3px) scale(1.04);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .20);
+}
+.btn:active, .mini-btn:active, .tab:active { transform: scale(.94); transition-duration: .06s; }
+
+/* ---- 弹层 / 提示：遮罩淡入 + 弹窗缩放 + toast 淡入 ---- */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalIn { from { opacity: 0; transform: scale(.94) translateY(10px); } to { opacity: 1; transform: none; } }
+.overlay { animation: fadeIn .18s ease both; }
+.modal-card { animation: modalIn .26s cubic-bezier(.2, .9, .25, 1) both; transform-origin: center; }
+.toast { animation: fadeIn .22s ease both; }
+
+/* ---- 降级：尊重无障碍「减少动态」 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .topbar, .tabs, .session-card, .tab-panel.active, .overlay, .modal-card, .toast { animation: none !important; }
+  .btn, .mini-btn, .tab, .card, .list-item, .tpl-row, .eq-row, .group-row, .tpl-chip { transition: none !important; }
+  .btn:hover, .mini-btn:hover, .tab:hover,
+  .card:hover, .list-item:hover, .tpl-row:hover, .eq-row:hover, .group-row:hover, .tpl-chip:hover { transform: none !important; }
+}
