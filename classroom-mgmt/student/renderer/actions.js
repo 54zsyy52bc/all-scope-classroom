@@ -200,7 +200,10 @@
       else if (state.phase === 'return' && !state.returnDone) submitReturn();
     }
 
-    return { onStageClick, onStageKeydown, resetEquipQty, submitCheckin, submitReturn };
+    // submitTaskStatus 必须在这里导出：活动状态浮窗（activity-panel）的状态三按钮经 app.js 调它，
+    // 漏导出会在学生点「进行中/已完成/求助」时抛 "actions.submitTaskStatus is not a function"，
+    // 而且只有真点到那一行才炸（静态检查与既有测试都看不见）。见 activity-panel 测试 W 段契约门禁。
+    return { onStageClick, onStageKeydown, resetEquipQty, submitCheckin, submitReturn, submitTaskStatus };
   }
 
   global.Actions = { create };

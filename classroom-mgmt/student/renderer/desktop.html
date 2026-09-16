@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="ugOtxeOumEpeJetWwvhthN" />
   <title>全域 · 桌面</title>
   <link rel="icon" type="image/png" href="logo-mark.png" data-page-node-id="8mEA0mx6u378T6yg1VvrnN" />
+  <!-- 磁贴/首页样式与课堂页共用一份 styles.css（学生端渲染层改造）：桌面页内联段只保留桌面专属 chrome，
+       磁贴规则已搬走，避免两页漂移。link 放在内联 <style> 之前，使桌面专属变量(内联 :root)能覆盖通用 Token。 -->
+  <link rel="stylesheet" href="styles.css" />
   <style>
     :root { --bg:#ffffff; --panel:#f5f5f5; --text:#1b1b1b; --muted:#6f6f6f; --line:#e0e0e0;
       --accent:#0078d7; --accent-dark:#006cc1; --ok:#107c10; --warn:#c42b1c; }
@@ -22,36 +25,9 @@
     .chip.guard-on { color:var(--ok); border-color:#bfe5bf; background:#f0faf0; }
     .link { font-size:13px; color:var(--accent); background:none; border:0; cursor:pointer; padding:4px 6px; }
     .link:hover{text-decoration:underline}
-    /* 主屏 */
+    /* 主屏容器（桌面 chrome）：磁贴/首页(.welcome/.home-grid/.tile*/.d-app*/.empty-guide)
+       样式已统一收进 styles.css，课堂页与桌面页共用一份，避免两页漂移。 */
     main { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:16px 24px 0; }
-    .welcome h1 { font-size:22px; }
-    .welcome p { color:var(--muted); font-size:13px; margin-top:2px; }
-    .home-grid { flex:1; overflow-y:auto; padding:18px 0; display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:18px; align-content:start; }
-    /* 磁贴：3D 舞台（perspective + preserve-3d），hover 时 inner 翻转露出背面 */
-    .tile, .d-app { position:relative; display:block; background:transparent; border:0; padding:0;
-      cursor:pointer; font-family:inherit; transform-style:preserve-3d; perspective:800px; }
-    .tile { min-height:132px; }
-    /* [必须] display:block 不可省：.tile-inner 是 <span>（行内元素），
-       行内元素上 width/ min-height 不生效 —— 缺它时双面层会塌成 0 宽 0 高，
-       .tile-front/.tile-back 的 inset:0 撑在空盒子上，导致图标挤压、应用名不显示。 */
-    .tile-inner { display:block; position:relative; width:100%; min-height:132px; transform-style:preserve-3d;
-      transition: transform .52s cubic-bezier(.2,.8,.2,1); }
-    .tile-front, .tile-back { position:absolute; inset:0; display:flex; flex-direction:column;
-      align-items:center; justify-content:center; gap:8px; padding:12px;
-      backface-visibility:hidden; -webkit-backface-visibility:hidden; }
-    .tile-front { background:#eaf4fd; border:1px solid #cfe4f7; color:#005a9e; z-index:2; }
-    /* z-index 兜底：3D（preserve-3d）生效时按 3D 位置排序、z-index 不参与，无副作用；
-       万一 preserve-3d 被扁平化，正面仍能压住背面，保证「默认显示正面」不退化。 */
-    .tile-back { background:var(--accent); color:#fff; transform:rotateY(180deg); z-index:1; }
-    .tile-back .bk-nm { font-size:14px; font-weight:700; }
-    .tile-back .bk-tip { font-size:12px; opacity:.9; }
-    .tile:hover .tile-front { background:#d9edfb; }
-    .tile .ico { width:40px; height:40px; background:var(--accent); color:#fff; font-size:20px;
-      display:flex; align-items:center; justify-content:center; font-weight:700; }
-    .tile .nm { font-size:14px; font-weight:600; color:var(--text); max-width:100%; overflow:hidden;
-      text-overflow:ellipsis; white-space:nowrap; }
-    .empty-guide { grid-column:1/-1; color:var(--muted); text-align:center; padding:30px 0; font-size:14px; }
     /* 底部 Dock */
     .dock { display:flex; align-items:center; justify-content:space-between; padding:10px 24px 14px;
       border-top:1px solid var(--line); background:#fff; }
@@ -70,21 +46,7 @@
     .drawer-head h2 { font-size:17px; }
     .drawer-body { overflow-y:auto; padding:14px 18px 22px; display:grid;
       grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:14px; }
-    .d-app { min-height:96px; }
-    .d-app .tile-inner { min-height:96px; }
-    .d-app .tile-front { background:var(--panel); border:1px solid var(--line,#e0e0e0); color:var(--text); }
-    .d-app:hover .tile-front { background:#e8eef6; }
-    .d-app .tile-back { background:var(--accent); }
-    .d-app .tile-back .bk-nm { font-size:12px; }
-    .d-app .ico{ width:44px; height:44px; background:var(--accent); color:#fff; display:flex; align-items:center;
-      justify-content:center; font-size:19px; font-weight:700; }
-    /* 系统项（上课登记/设置）无 tile-inner，保持平面磁贴观感 */
-    .d-app.sys { background:var(--panel); border:1px solid var(--line,#e0e0e0); padding:14px 6px;
-      display:flex; flex-direction:column; align-items:center; gap:8px; }
-    .d-app.sys:hover { background:#e8eef6; }
-    .d-app.sys .ico{ background:#666; }
-    .d-app .nm { font-size:12px; color:var(--text); max-width:100%; overflow:hidden;
-      text-overflow:ellipsis; white-space:nowrap; }
+    /* 抽屉内 .d-app 小磁贴样式已收进 styles.css（与首页磁贴同源） */
     /* 弹层 */
     .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:flex;
       align-items:center; justify-content:center; }
@@ -109,30 +71,11 @@
     .big-btn.ghost { background:#fff; color:var(--text); border:1px solid var(--line); }
     .clock { font-size:15px; font-weight:600; }
 
-    /* ===== Win8 / Metro 动效 ===== */
-    /* 页面入场：状态条 / 底栏 / 主区 轻微上滑淡入（仅加载时一次） */
+    /* ===== 页面入场动效（仅桌面 chrome：状态条/底栏/主区；磁贴动效已收进 styles.css）===== */
     @keyframes pageIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
     .statusbar { animation: pageIn .30s ease both; }
     .dock { animation: pageIn .30s .06s ease both; }
     main { animation: pageIn .34s .10s ease both; }
-
-    /* 磁贴入场：错落淡入 + 轻微缩放（animation-delay 在 JS 中按序号设置；
-       backwards 使首帧（透明）在延迟期间生效，结束后交还普通样式，悬停微抬才不会被覆盖） */
-    @keyframes tileIn { from { opacity:0; transform:translateY(14px) scale(.94); } to { opacity:1; transform:none; } }
-    /* 不写 will-change：动画只有 0.32s 一次性，而常驻 will-change 会让每个磁贴长期占一个合成层
-       （84 台机器、每屏十几个磁贴，纯内存浪费）；更关键的是 will-change 含 opacity 时
-       规范会把 transform-style 的 used value 强制成 flat，3D 翻转会失效。 */
-    .tile, .d-app { animation: tileIn .32s cubic-bezier(.2,.8,.2,1) backwards; }
-
-    /* 悬停：Win8 微抬 + 阴影（官方应用磁贴质感） */
-    .tile, .d-app { transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, background .14s ease; }
-    /* 悬停：Win8 官方磁贴标志性 3D 微倾斜 + 微抬 + 投影 */
-    .tile:hover, .d-app:hover { transform: perspective(600px) rotateX(8deg) rotateY(-3deg) translateY(-6px) scale(1.04);
-      box-shadow: 0 16px 30px rgba(0,0,0,.22); z-index:2; }
-    /* 悬停：磁贴翻转，露出背面（应用名 / 状态提示） */
-    .tile:hover .tile-inner, .d-app:hover .tile-inner { transform: rotateY(180deg); }
-    /* 按下：快速回弹 */
-    .tile:active, .d-app:active { transform: scale(.94); transition-duration:.06s; }
 
     /* 抽屉滑入 + 遮罩淡入 */
     @keyframes drawerUp { from { transform:translateY(100%); } to { transform:none; } }
@@ -215,6 +158,7 @@
   </div>
 
   <div id="app-dock" data-page-node-id="R9y01mnlFDJUCx71lSDIZb"></div>
+  <script src="../shared/tiles.js"></script>
   <script src="desktop.js"></script>
   <script src="app-dock.js"></script>
 </body>

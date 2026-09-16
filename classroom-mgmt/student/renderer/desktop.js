@@ -66,24 +66,13 @@
     $('sb-guard').textContent = dcfg.guard && dcfg.guard.enabled ? '防护中' : '防护未启用';
   }
   function apps() { return (dcfg.course && dcfg.course.apps) || []; }
-  function tileHtml(a, big) {
-    const initial = String(a.name || '?').slice(0, 1).toUpperCase();
-    const cls = big ? 'tile' : 'd-app';
-    const tip = big ? '点击打开' : '课程应用';
-    // 双面结构：front 显示图标+名称，hover 时 inner 翻转露出 back（名称+状态提示）
-    return '<button type="button" class="' + cls + '" data-id="' + esc(a.id) + '" title="' + esc(a.name) + '">'
-      + '<span class="tile-inner">'
-      + '<span class="tile-front"><span class="ico">' + esc(initial) + '</span><span class="nm">' + esc(a.name) + '</span></span>'
-      + '<span class="tile-back"><span class="bk-nm">' + esc(a.name) + '</span><span class="bk-tip">' + tip + '</span></span>'
-      + '</span></button>';
-  }
+  // 磁贴生成已抽到 shared/tiles.js（window.Tiles），桌面页与课堂页共用一份，防止漂移。
+  // 注意：抽屉里的小磁贴仍用 window.Tiles.tileHtml(a, false)，gridHtml 只负责首页网格。
   function renderHome() {
     const grid = $('home-grid');
     const list = apps();
-    const home = list.filter((a) => (dcfg.course.homeApps || []).includes(a.id));
-    const shown = home.length ? home : list;
-    grid.innerHTML = list.length ? shown.map((a) => tileHtml(a, true)).join('')
-      : '<div class="empty-guide">还没有课程应用：点右上「设置」→ 添加应用（选 exe）<br/>或从 U 盘/教师机导入课程桌面包</div>';
+    grid.innerHTML = window.Tiles.gridHtml(list, (dcfg.course.homeApps || []),
+      '还没有课程应用：点右上「设置」→ 添加应用（选 exe）<br/>或从 U 盘/教师机导入课程桌面包');
     grid.querySelectorAll('[data-id]').forEach((el) => { el.onclick = () => openApp(el.dataset.id); });
     // 错落入场：磁贴按序号延时，呈现 Win8 应用逐一浮现的节奏
     grid.querySelectorAll('.tile').forEach((el, i) => { el.style.animationDelay = (i * 35) + 'ms'; });
@@ -91,7 +80,7 @@
   function renderDrawer() {
     const body = $('drawer-body');
     const list = apps();
-    body.innerHTML = list.map((a) => tileHtml(a, false)).join('')
+    body.innerHTML = list.map((a) => window.Tiles.tileHtml(a, false)).join('')
       + '<button type="button" class="d-app sys" data-sys="class"><span class="ico">课</span><span class="nm">上课登记</span></button>'
       + '<button type="button" class="d-app sys" data-sys="settings"><span class="ico">设</span><span class="nm">设置</span></button>';
     body.querySelectorAll('[data-id]').forEach((el) => { el.onclick = () => openApp(el.dataset.id); });

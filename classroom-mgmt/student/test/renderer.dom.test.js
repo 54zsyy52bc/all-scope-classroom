@@ -9,9 +9,11 @@
 // =============================================================================
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const SHR = path.join(__dirname, '..', '..', 'shared'); // classroom-mgmt/shared
 const R = (...p) => path.join(ROOT, ...p);
+const TILES_JS = fs.readFileSync(R('shared/tiles.js'), 'utf8'); // 共用磁贴模块（学生端渲染层改造）
 
 let pass = 0;
 let fail = 0;
@@ -83,6 +85,7 @@ function loadGlobal(p) { (0, eval)(fs.readFileSync(p, 'utf8')); }
 loadGlobal(path.join(SHR, 'topics.js'));
 loadGlobal(path.join(SHR, 'icons.js'));
 loadGlobal(R('renderer/equipment.js'));
+loadGlobal(R('shared/tiles.js')); // 磁贴主屏依赖：必须在 views.js/app.js 之前
 loadGlobal(R('renderer/net.js'));
 loadGlobal(R('renderer/views.js'));
 loadGlobal(R('renderer/downlink.js'));
@@ -249,6 +252,64 @@ async function main() {
   await sleep(10);
   check('sync：currentTask=null 清空本地活动卡',
     stage.innerHTML.includes('等待老师发布活动'), stage.innerHTML.slice(0, 80));
+
+  // 17) 学生端磁贴主屏接入回归（2026-09-16）：共用 tiles.js + 浮窗降级
+  const Tiles = globalThis.Tiles;
+  check('tiles.js 暴露 Tiles.tileHtml / gridHtml', Tiles && typeof Tiles.tileHtml === 'function' && typeof Tiles.gridHtml === 'function');
+
+  // task 阶段：ActivityPanel 未定义（本测试未加载 activity-panel.js）-> 降级 viewTask（含状态按钮，不白屏）
+  globalThis.ActivityPanel = undefined;
+  const htmlNoPanel = globalThis.Views.render({ phase: 'task', currentTask: { taskId: 'T-X', title: 'X', desc: 'd' }, taskStatus: 'doing', checkinDone: false, returnDone: false, seat: '07' });
+  check('task 无 ActivityPanel -> 降级 viewTask（含 data-act=task-status）', /data-act="task-status"/.test(htmlNoPanel), htmlNoPanel.slice(0, 60));
+  check('task 无 ActivityPanel -> 不渲染磁贴主屏（无 .home-grid）', !/class="home-grid"/.test(htmlNoPanel));
+
+  // task 阶段：ActivityPanel 存在 -> 渲染磁贴主屏（viewHome），含 .home-grid/.tile-inner/data-id
+  globalThis.ActivityPanel = { mount() {}, render() {}, setCollapsed() {}, isMounted() { return true; } };
+  globalThis.Views.setHomeContext({ courseName: '信息技术课', apps: [{ id: 'a1', name: '焊接' }, { id: 'a2', name: '画图' }], homeApps: ['a1'] });
+  const htmlWithPanel = globalThis.Views.render({ phase: 'task', currentTask: null, checkinDone: false, returnDone: false, seat: '07' });
+  check('task 有 ActivityPanel -> 渲染磁贴主屏 .home-grid', /class="home-grid"/.test(htmlWithPanel), htmlWithPanel.slice(0, 80));
+  check('磁贴主屏含 .tile-inner 双面层', /class="tile-inner"/.test(htmlWithPanel));
+  check('磁贴主屏磁贴带 data-id', /data-id="a1"/.test(htmlWithPanel));
+  check('磁贴主屏含欢迎语 .welcome', /class="welcome"/.test(htmlWithPanel));
+
+  // idle 阶段也走 viewHome（磁贴主屏）
+  const htmlIdle = globalThis.Views.render({ phase: 'idle', seat: '07' });
+  check('idle -> 渲染磁贴主屏 .home-grid', /class="home-grid"/.test(htmlIdle));
+
+  // viewHome 产出含 .home-grid 与 .tile-inner 且带 data-id（需求点名断言）
+  check('viewHome 产出 .home-grid + .tile-inner + data-id',
+    /class="home-grid"/.test(htmlWithPanel) && /class="tile-inner"/.test(htmlWithPanel) && /data-id="/.test(htmlWithPanel));
+
+  // 反向对照：把降级分支改掉（无面板也走 viewHome），断言必须翻转（独立 vm 加载变异版）
+  const VS = fs.readFileSync(R('renderer/views.js'), 'utf8');
+  const brokenVs = VS.replace("if (typeof window.ActivityPanel === 'undefined') return viewTask(state);",
+    "if (typeof window.ActivityPanel === 'undefined') return viewHome(state);");
+  check('反向·成功变异 views.js 降级分支', brokenVs !== VS);
+  const sb2 = { console, Promise, document: { createElement: () => ({}), getElementById: () => null }, Icons: { svg: () => '' }, EQUIPMENT: [] };
+  sb2.window = sb2; sb2.globalThis = sb2;
+  vm.createContext(sb2);
+  vm.runInContext(TILES_JS, sb2);
+  vm.runInContext(brokenVs, sb2);
+  sb2.window.ActivityPanel = undefined; // 模拟无浮窗
+  const brokenHtml = sb2.window.Views.render({ phase: 'task', currentTask: { taskId: 'T', title: 't', desc: '' }, taskStatus: 'doing', seat: '07' });
+  // 变异版无面板也走磁贴主屏 -> 原版「降级含 task-status」断言在此翻转（不含 task-status）
+  check('反向·变异版无面板也走磁贴主屏（降级断言翻转：原版会含 task-status）',
+    /class="home-grid"/.test(brokenHtml) && !/data-act="task-status"/.test(brokenHtml));
+
+  // 18) 门禁：app.js ≤300 行 + 新增文件零 emoji
+  const APP_JS = fs.readFileSync(R('renderer/app.js'), 'utf8');
+  const appLines = APP_JS.split('\n').length;
+  check('app.js 行数 ≤300', appLines <= 300, 'lines=' + appLines);
+  const within300 = (src) => src.split('\n').length <= 300;
+  // 变异成坏版本：在文件末尾追加 8 行注释，使其超过 300 行；
+  // 此时 !within300 必须为真，证明 ≤300 约束不是橡皮图章。
+  check('反向·坏版本(>300行)应被检出', !within300(APP_JS + '\n' + Array(8).fill('// padding').join('\n')));
+  // 仅真 emoji（星汉/变体选择符）算 emoji；箭头/几何符号（如 ↻）不算，避免误杀
+  const EMOJI = /[\u{1F000}-\u{1FAFF}\u{FE0F}\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}]/u;
+  const tilesSrc = fs.readFileSync(R('shared/tiles.js'), 'utf8');
+  const viewsSrc = fs.readFileSync(R('renderer/views.js'), 'utf8');
+  check('新增文件零 emoji：app.js / views.js / tiles.js',
+    !EMOJI.test(APP_JS) && !EMOJI.test(viewsSrc) && !EMOJI.test(tilesSrc));
 
   console.log('\n渲染层流程验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);

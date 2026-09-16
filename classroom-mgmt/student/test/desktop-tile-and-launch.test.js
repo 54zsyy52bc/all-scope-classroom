@@ -29,7 +29,9 @@ const Module = require('module');
 
 const ROOT = path.join(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'renderer', 'desktop.html'), 'utf8');
+const STYLES = fs.readFileSync(path.join(ROOT, 'renderer', 'styles.css'), 'utf8');
 const DESKTOP_JS = fs.readFileSync(path.join(ROOT, 'renderer', 'desktop.js'), 'utf8');
+const TILES_JS = fs.readFileSync(path.join(ROOT, 'shared', 'tiles.js'), 'utf8');
 const DOCK_JS = fs.readFileSync(path.join(ROOT, 'renderer', 'app-dock.js'), 'utf8');
 
 let pass = 0;
@@ -40,10 +42,20 @@ function check(name, cond, extra) {
 }
 
 // ---------------------------------------------------------------------------
-// A. 行为级：真正执行 tileHtml（vm 沙箱 + 桩 DOM）
+// A. 行为级：直接加载共用模块 shared/tiles.js，真正执行 window.Tiles.tileHtml
+//    （磁贴生成已抽到 shared/tiles.js，桌面页与课堂页共用一份，故不再 hook desktop.js 的私有函数）
 // ---------------------------------------------------------------------------
-const HOOK = "\n  globalThis.__exposed = { tileHtml: tileHtml };\n";
-function withHook(src) { return src.replace(/\n\}\)\(\);\s*$/m, HOOK + '})();\n'); }
+function loadTiles() {
+  const sandbox = { console, Promise,
+    document: { createElement: () => ({}), getElementById: () => null, addEventListener() {}, removeEventListener() {} },
+    addEventListener() {}, removeEventListener() {},
+  };
+  sandbox.window = sandbox; sandbox.globalThis = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(TILES_JS, sandbox);
+  return sandbox.window.Tiles;
+}
+const Tiles = loadTiles();
 
 function makeEl(id) {
   const el = {
@@ -75,26 +87,7 @@ const BRIDGE = {
   getAppsState: async () => ({ ok: true, apps: [] }), onApps() {}, onMinimize() {},
 };
 
-function tileOf(app) {
-  const elCache = {};
-  const documentStub = {
-    readyState: 'complete', body: makeEl('body'),
-    getElementById(id) { if (!elCache[id]) elCache[id] = makeEl(id); return elCache[id]; },
-    createElement(tag) { return makeEl(tag); },
-    addEventListener() {}, removeEventListener() {},
-  };
-  const sandbox = {
-    console, document: documentStub, setInterval: () => 0, setTimeout: () => 0,
-    fetch: () => Promise.reject(new Error('no-net')), Promise,
-    addEventListener() {}, removeEventListener() {},
-  };
-  sandbox.window = sandbox;
-  sandbox.globalThis = sandbox;
-  sandbox.classroom = BRIDGE;
-  vm.createContext(sandbox);
-  vm.runInContext(withHook(DESKTOP_JS), sandbox);
-  return sandbox.__exposed.tileHtml(app, true);
-}
+function tileOf(app) { return Tiles.tileHtml(app, true); }
 
 // ---------------------------------------------------------------------------
 // B. CSS 级：抽取 .tile-inner 规则块，校验 display
@@ -241,8 +234,22 @@ async function main() {
   check('A8 data-id 挂在 button 上（点击可拿到 id）',
     /<button[^>]*data-id="a1"/.test(html));
 
-  // --- B. CSS：display 必须显式且非 inline ---
-  const innerBlock = ruleBlock(HTML, '.tile-inner');
+  // --- A. 委托：desktop.js 必须调用 window.Tiles（防两页各写一份磁贴 HTML 而漂移）---
+  const delegates = /window\.Tiles\.tileHtml|window\.Tiles\.gridHtml/.test(DESKTOP_JS);
+  const noLocalTile = !/function tileHtml\s*\(/.test(DESKTOP_JS);
+  check('A9 desktop.js 委托 window.Tiles（无本地 tileHtml 定义）', delegates && noLocalTile);
+  // 反向对照：把委托改回本地实现后该断言必须翻转（证明不是橡皮图章）
+  const brokenDeleg = DESKTOP_JS.replace(
+    "  // 磁贴生成已抽到 shared/tiles.js（window.Tiles），桌面页与课堂页共用一份，防止漂移。",
+    "  // 磁贴生成已抽到 shared/tiles.js（window.Tiles），桌面页与课堂页共用一份，防止漂移。\n"
+      + "  function tileHtml(a, big) { return '<button class=\"tile\" data-id=\"' + a.id + '\"></button>'; }");
+  check('A10 反向·成功在 desktop.js 注回本地 tileHtml', brokenDeleg !== DESKTOP_JS);
+  const brokenDelegates = /window\.Tiles\.tileHtml|window\.Tiles\.gridHtml/.test(brokenDeleg)
+    && !/function tileHtml\s*\(/.test(brokenDeleg);
+  check('A11 反向·本地实现时委托断言翻转（证明不是橡皮图章）', !brokenDelegates);
+
+  // --- B. CSS：display 必须显式且非 inline（磁贴样式已收进 styles.css，单一真源）---
+  const innerBlock = ruleBlock(STYLES, '.tile-inner');
   check('B1 存在 .tile-inner 规则块', !!innerBlock);
   const disp = displayValue(innerBlock);
   check('B2 .tile-inner 显式声明 display（行内元素不声明会塌成 0x0）', disp !== null, 'display=' + disp);
@@ -250,16 +257,16 @@ async function main() {
   check('B4 .tile-inner 声明了 min-height（撑起双面层）', !!innerBlock && /min-height\s*:/.test(innerBlock));
   check('B5 .tile-inner 保持 preserve-3d', !!innerBlock && /transform-style\s*:\s*preserve-3d/.test(innerBlock));
 
-  const faceBlock = ruleBlock(HTML, '.tile-front, .tile-back');
+  const faceBlock = ruleBlock(STYLES, '.tile-front, .tile-back');
   check('B6 正反面 absolute + inset:0（贴满 tile-inner）',
     !!faceBlock && /position\s*:\s*absolute/.test(faceBlock) && /inset\s*:\s*0/.test(faceBlock));
   check('B7 正反面 backface-visibility:hidden（翻转不穿帮）',
     !!faceBlock && /backface-visibility\s*:\s*hidden/.test(faceBlock));
   check('B8 hover 时 inner 翻转 180deg',
-    /\.tile:hover\s+\.tile-inner[^{]*\{[^}]*rotateY\(180deg\)/.test(HTML));
+    /\.tile:hover\s+\.tile-inner[^{]*\{[^}]*rotateY\(180deg\)/.test(STYLES));
 
   // --- B 反向对照：去掉 display 声明后 B2/B3 必须翻转 ---
-  const broken = HTML.replace(/(^|\n)(\s*)\.tile-inner \{ display:block;/, '$1$2.tile-inner {');
+  const broken = STYLES.replace(/(^|\n)(\s*)\.tile-inner \{ display:block;/, '$1$2.tile-inner {');
   const brokeOk = broken !== HTML;
   check('B9 反向·成功移除 .tile-inner 的 display:block', brokeOk);
   if (brokeOk) {

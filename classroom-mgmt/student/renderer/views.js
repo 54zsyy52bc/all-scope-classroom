@@ -91,6 +91,32 @@
   // ---------------------------------------------------------------------------
   // 各阶段整页
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // 磁贴主屏（idle 待课 / task 课中共用）：与桌面页同款外观（欢迎语 + 磁贴网格）。
+  // 活动状态由浮窗 ActivityPanel 呈现，这里只放主屏。不设「设置」入口（设置只在桌面页有）；
+  // 无应用时引导文案指向老师，避免初中生自己去折腾设置。
+  // 课程名/磁贴数据来自 app.js 注入的 ctx（window.Views.setHomeContext）。
+  // ---------------------------------------------------------------------------
+  let _homeCtx = { courseName: '信息技术课', apps: [], homeApps: [] };
+  function setHomeContext(ctx) {
+    if (ctx && typeof ctx === 'object') {
+      _homeCtx = {
+        courseName: ctx.courseName || '信息技术课',
+        apps: ctx.apps || [],
+        homeApps: ctx.homeApps || [],
+      };
+    }
+  }
+  function viewHome(state) {
+    const tip = (state.phase === 'task')
+      ? '用右上角的应用坞打开课程应用 · 活动状态看左下角浮窗'
+      : '老师点【开始上课】后，这里会出现要做的活动';
+    const grid = global.Tiles.gridHtml(_homeCtx.apps, _homeCtx.homeApps, '还没有课程应用，请老师来设置');
+    return '<div class="home-screen">'
+      + '<div class="welcome"><h1>' + esc(_homeCtx.courseName) + '</h1><p>' + esc(tip) + '</p></div>'
+      + '<div class="home-grid">' + grid + '</div></div>';
+  }
+
   function viewIdle(state) {
     return '<section class="panel panel-center">'
       + '<span class="hero-icon">' + icon('monitor', 64) + '</span>'
@@ -230,13 +256,18 @@
     if (state.phase === 'checkin') {
       return state.checkinDone ? viewCheckinDone(state) : viewCheckin(state);
     }
-    if (state.phase === 'task') return viewTask(state);
+    // task 课中：浮窗已挂载时渲染磁贴主屏；浮窗缺失则降级原整屏状态屏，避免白屏
+    if (state.phase === 'task') {
+      if (typeof window.ActivityPanel === 'undefined') return viewTask(state);
+      return viewHome(state);
+    }
     if (state.phase === 'return') {
       return state.returnDone ? viewReturnDone(state) : viewReturn(state);
     }
     if (state.phase === 'closed') return viewClosed();
-    return viewIdle(state);
+    // idle 待课：磁贴主屏
+    return viewHome(state);
   }
 
-  global.Views = { render, equipList, returnList, esc, equipName };
+  global.Views = { render, equipList, returnList, esc, equipName, viewHome, setHomeContext };
 })(window);

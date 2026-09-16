@@ -73,7 +73,16 @@
       } catch (_e) { /* 音频不可用忽略 */ }
     }
 
-    // 本地倒计时：running 时每秒递减并重渲染任务卡（以教师端广播为最终校准）
+    // 本地倒计时：running 时每秒递减并刷新活动状态展示（教师端广播为最终校准）
+    // 课中每秒刷新：只喂浮窗，绝不整页重渲。
+    // 坑：.tile 带 tileIn 入场动画（styles.css:802），而 renderStage() 是 stage.innerHTML
+    // 整块替换，每秒调一次 = 整屏磁贴每秒重播一次入场动画（屏幕闪成一片）。
+    // 浮窗缺失时才降级整页（那条路径渲染的是 viewTask，本来就需要整页刷新）。
+    function refreshTaskOnly() {
+      if (global.ActivityPanel) global.ActivityPanel.render(state);
+      else renderStage();
+    }
+
     function startTicker() {
       if (tickTimer) return;
       tickTimer = setInterval(() => {
@@ -82,7 +91,7 @@
           t.remainingMs = Math.max(0, t.remainingMs - 1000);
           if (t.remainingMs <= 0) {
             t.timerState = 'expired'; // 本地兜底；教师端截止广播会校准
-            renderStage();
+            refreshTaskOnly();
             toast('活动已截止：' + (t.title || ''), 'error');
             beep();
             return;
@@ -93,7 +102,7 @@
             const mm = Math.floor(t.remainingMs / 60000).toString().padStart(2, '0');
             const ss = Math.floor((t.remainingMs % 60000) / 1000).toString().padStart(2, '0');
             tt.textContent = mm + ':' + ss;
-          } else if (state.phase === 'task') renderStage();
+          } else if (state.phase === 'task') refreshTaskOnly();
         }
       }, 1000);
     }

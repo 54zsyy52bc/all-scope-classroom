@@ -153,6 +153,25 @@ function walk(dir, base, out) {
 }
 const driftOf = (rows) => rows.filter((r) => norm(r.src) !== norm(r.deliv)).map((r) => r.rel);
 
+// 源码侧"应该被打进交付包"的运行时文件清单。
+// 交付包实际发布的只有这几个目录 + 顶层脚本；test/、scripts/、node_modules/ 等是本机开发用的。
+// 用"发布目录 + 顶层脚本后缀"而不是硬编码文件名，新增文件才能自动被这条门禁覆盖。
+const SHIPPED_DIRS = new Set(['renderer', 'shared', 'vendor']);
+const SHIPPED_TOP = /\.(js|ps1)$/;
+function sourceRuntimeRels() {
+  const out = [];
+  (function walkShipped(dir, base) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const rel = base ? base + '/' + e.name : e.name;
+      if (e.isDirectory()) {
+        if (base === '' && !SHIPPED_DIRS.has(e.name)) continue; // 顶层只下潜进发布目录
+        walkShipped(path.join(dir, e.name), rel);
+      } else if (base !== '' || SHIPPED_TOP.test(e.name)) out.push(rel);
+    }
+  }(SRC_DIR, ''));
+  return out;
+}
+
 if (!fs.existsSync(APP_DIR)) {
   console.log('[SKIP] 未找到交付包学生端 app 目录，跳过整目录同步门禁');
 } else {
@@ -165,6 +184,18 @@ if (!fs.existsSync(APP_DIR)) {
   check('l 交付包 app 全部代码文件与源码一致（共 ' + rels.length + ' 个）',
     missing.length === 0 && drift.length === 0,
     '源码缺=' + missing.join(',') + ' 内容漂移=' + drift.join(','));
+
+  // 反向方向：源码里新增/改名的运行时文件必须真的进了交付包。
+  // 只从交付包往源码查（上面那条 l）永远抓不到「源码有、交付包没有」——
+  // 而「新功能文件忘了同步」正是最典型的翻车方式（本次新增 activity-panel.js / tiles.js）。
+  const srcRuntime = sourceRuntimeRels();
+  const notShipped = srcRuntime.filter((rel) => !rels.includes(rel));
+  check('l2 源码里的运行时文件都已打进交付包（共 ' + srcRuntime.length + ' 个，防"新文件忘了同步"）',
+    notShipped.length === 0, '交付包缺=' + notShipped.join(','));
+  const dropped = rels.filter((r) => r !== 'renderer/activity-panel.js');
+  const notShipped2 = srcRuntime.filter((rel) => !dropped.includes(rel));
+  check('反向·模拟"新文件没同步进交付包"后断言 l2 翻转',
+    notShipped2.length === 1 && notShipped2[0] === 'renderer/activity-panel.js', notShipped2.join(','));
 
   const REPO_MAIN = path.join(SRC_DIR, 'main.js');
   const repo = fs.readFileSync(REPO_MAIN, 'utf8');
@@ -180,8 +211,10 @@ if (!fs.existsSync(APP_DIR)) {
       'hasApps || denyList.length');
     check('反向·成功把交付包侧门禁改回旧写法', ctrl !== mg.deliv);
     const drift2 = driftOf([{ rel: 'main-guard.js', src: mg.src, deliv: ctrl }]);
-    check('反向·模拟"交付包漏同步"后断言 l 翻转（证明不是橡皮图章）',
-      drift.length === 0 && drift2.length === 1 && drift2[0] === 'main-guard.js', drift2.join(','));
+    // 注意：这里**不能**再要求 drift.length === 0。反向对照要证明的是"检测器对这次变异有反应"，
+    // 把"当前交付包恰好是干净的"当前置条件，会让交付包一有未同步就假失败（这个坑踩过）。
+    check('反向·模拟"交付包漏同步"后断言 l 会检出该文件（证明不是橡皮图章）',
+      drift2.length === 1 && drift2[0] === 'main-guard.js', drift2.join(','));
   }
   const loud = rows.find((r) => r.rel === 'main-guard.js');
   check('o 交付包守卫门禁已含最小化触发项（母盘最小化配置真实生效）',

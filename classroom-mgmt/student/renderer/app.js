@@ -1,20 +1,7 @@
 'use strict';
-// =============================================================================
-// 学生端控制器：状态机 + MQTT 收发语义 + DOM 事件委托。
-//
-// 上行（siot/ict_up QoS1）：checkin / task / return / hello
-// 心跳（siot/ict_hb QoS0）：status  —— 教师端以此判定在线（15s 发、45s 判离线）
-// 下行（siot/ict_cmd）：cmd{start|task|end|shutdown|reset}   → Downlink（downlink.js）
-// 同步（siot/ict_sync）：sync{phase,currentTask,checkinDone,returnDone}
-//
-// 无 ACK 补偿：上行没有回执，因此提交后延迟 1.5s 补发 hello，靠 sync 回传的
-// checkinDone / returnDone 做服务端真值校正——教师端没写进去就回滚并提示学生。
-//
-// 职责划分：
-//   app.js      控制器装配：状态、渲染、上行、连接生命周期
-//   downlink.js 下行指令处理（cmd/sync 语义、阶段机、关机倒计时）
-//   actions.js  业务动作（登记/任务状态/归还、器材区块交互、事件委托）
-// =============================================================================
+// 学生端控制器：状态机 + MQTT 收发语义 + DOM 事件委托。上行 checkin/task/return/hello，
+// 心跳 status，下行 cmd/sync 由 Downlink 处理；上行无回执，靠 1.5s 后补发 hello + sync 回传校正。
+// idle/task 阶段由 views.viewHome 渲染磁贴主屏，活动状态浮窗由 ActivityPanel 呈现（见 wire）。
 (function () {
   const T = window.ClassroomTopics;
   const Views = window.Views;
@@ -38,63 +25,38 @@
   let toastTimer = null;
   let downlink = null;
   let actions = null;
+  let homeCtx = null; // 桌面配置：课程名 + 应用列表（viewHome 渲染磁贴主屏用）
+  let uiForce = null; // 浮窗跳转强制阶段（自清除，见 renderStage）
 
   // 审计：关键操作打 [audit]（stdout + userData/audit.log 落盘）
-  function audit(type, detail) {
-    try {
-      const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail));
-      console.log(line);
-      if (global.classroom && global.classroom.log) global.classroom.log(line);
-    } catch (_e) { /* 审计不阻断 */ }
-  }
+  function audit(type, detail) { try { const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail)); console.log(line); if (global.classroom && global.classroom.log) global.classroom.log(line); } catch (_e) { /* 审计不阻断 */ } }
 
-  function bridge() {
-    return window.classroom || null;
-  }
+  function bridge() { return window.classroom || null; }
 
-  function log(msg) {
-    // eslint-disable-next-line no-console
-    console.log('[student]', msg);
-    const b = bridge();
-    if (b && b.log) b.log(String(msg));
-  }
+  function log(msg) { console.log('[student]', msg); const b = bridge(); if (b && b.log) b.log(String(msg)); }
 
-  function pad2(v) {
-    const m = String(v == null ? '' : v).trim().match(/^\d{1,2}$/);
-    if (!m) return '';
-    const n = parseInt(m[0], 10);
-    return n >= 1 && n <= 99 ? String(n).padStart(2, '0') : '';
-  }
+  function pad2(v) { const m = String(v == null ? '' : v).trim().match(/^\d{1,2}$/); if (!m) return ''; const n = parseInt(m[0], 10); return n >= 1 && n <= 99 ? String(n).padStart(2, '0') : ''; }
 
   // ---------------------------------------------------------------------------
   // 本地会话快照：localStorage 尽力而为，失败不阻断主流程（座位/姓名另由主进程持久化）
   // ---------------------------------------------------------------------------
-  function saveLocal() {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        seat: state.seat, name: state.name, studentNo: state.studentNo,
-        borrowed: state.borrowed, taskStatus: state.taskStatus,
-        equipQty: state.equipQty, checkinDone: state.checkinDone,
-        returnDone: state.returnDone, returnChecked: state.returnChecked,
-      }));
-    } catch (_e) { /* 隐私模式/配额满，忽略 */ }
-  }
+  function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify({ seat: state.seat, name: state.name, studentNo: state.studentNo, borrowed: state.borrowed, taskStatus: state.taskStatus, equipQty: state.equipQty, checkinDone: state.checkinDone, returnDone: state.returnDone, returnChecked: state.returnChecked })); } catch (_e) { /* 隐私模式/配额满，忽略 */ } }
 
-  function loadLocal() {
-    try {
-      return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {};
-    } catch (_e) {
-      return {};
-    }
-  }
+  function loadLocal() { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (_e) { return {}; } }
 
   // ---------------------------------------------------------------------------
   // 渲染
   // ---------------------------------------------------------------------------
   function renderStage() {
-    els.stage.innerHTML = Views.render(state) + '<button type="button" class="sync-foot" data-act="sync-status">⟳ 同步状态（手动刷新）</button>';
+    // uiForce：浮窗跳转强制切到 checkin/return 整屏页一次；自清除，下一帧回归教师端指令驱动的 phase
+    // （setPhase 在 downlink.js 之外，故不跨文件清变量，自清除更可靠，且不影响教师端指令驱动切换）
+    const phase = uiForce || state.phase;
+    if (uiForce) uiForce = null;
+    els.stage.innerHTML = Views.render(Object.assign({}, state, { phase: phase }))
+      + '<button type="button" class="sync-foot" data-act="sync-status">↻ 同步状态（手动刷新）</button>';
     saveLocal();
-    if (global.StageFx) StageFx.onPhase(state.phase); // 仅 phase 切换时触发全屏擦除（见 fx.js）
+    if (global.StageFx) StageFx.onPhase(phase);
+    if (typeof window.ActivityPanel !== 'undefined') window.ActivityPanel.render(state); // 浮窗随状态刷新
   }
 
   function renderConn() {
@@ -194,7 +156,24 @@
   // 事件委托
   // ---------------------------------------------------------------------------
   function onStageClick(e) {
+    // 磁贴主屏：点磁贴启动应用（沿用 desktop.js 的 launchApp 语义，失败也要提示）。
+    // 用类选择器而不是 #home-grid：课堂页的磁贴网格由 views.viewHome 渲染，只有 class 没有 id，
+    // 写成 #home-grid 会永远不匹配 —— 症状是"点磁贴完全没反应"，且不报错，极难查。
+    const t = e.target.closest ? e.target.closest('.home-grid [data-id]') : null;
+    if (t) { launchApp(t.dataset.id); return; }
     if (actions) actions.onStageClick(e);
+  }
+
+  // 启动课程应用：复用主进程 bridge.launchApp，成功/失败都不静默（桌面端曾因静默 return 无反馈）
+  async function launchApp(id) {
+    const b = bridge();
+    if (!b || !b.launchApp) { toast('当前环境不支持启动应用', 'error'); return; }
+    let r = null;
+    try { r = await b.launchApp(id); } catch (_e) { r = null; }
+    const app = ((homeCtx && homeCtx.apps) || []).find((a) => a.id === id);
+    if (!r) toast('启动失败：未收到主进程回应', 'error');
+    else if (r.ok === false) toast((r.err || '启动失败') + '，请先保存设置', 'error');
+    else toast('已打开：' + (app ? app.name : id), 'info');
   }
 
   function onStageKeydown(e) {
@@ -257,6 +236,15 @@
       state, els, sendUp, sendHello, renderStage, renderMeta, bridge, log, pad2,
       saveLocal, toast,
     });
+    // 挂载活动状态浮窗（接口已冻结，只调用）：onStatus 复用 actions.submitTaskStatus 上行链路；
+    // onJump 仅把舞台切回 checkin/return 整屏页（见 onStageClick 同款语义），不影响教师端指令驱动切换。
+    if (typeof window.ActivityPanel !== 'undefined') {
+      window.ActivityPanel.mount({
+        icon: window.Icons.svg,
+        onStatus: (k) => { if (actions) actions.submitTaskStatus(k); },
+        onJump: (k) => { uiForce = (k === 'checkin' || k === 'return') ? k : null; renderStage(); },
+      });
+    }
     control.startTicker();
   }
   function connect() {
@@ -278,6 +266,16 @@
     const local = loadLocal();
     if (bridge()) {
       runtime = await bridge().getRuntime();
+      // 取一次桌面配置（课程名 + 应用列表）供 viewHome 渲染磁贴主屏；失败不阻断，用空主屏（引导文案）
+      try {
+        const d = await bridge().getDesktopConfig();
+        homeCtx = {
+          courseName: (d.course && d.course.name) || '信息技术课',
+          apps: (d.course && d.course.apps) || [],
+          homeApps: (d.course && d.course.homeApps) || [],
+        };
+        Views.setHomeContext(homeCtx);
+      } catch (_e) { /* 桌面配置不可得则空主屏 */ }
     } else {
       runtime = { machineId: 'M-WEBPREVIEW', siotIp: '127.0.0.1', siotWsPort: 1888, username: 'siot', password: 'dfrobot', shutdownDelaySec: 60 };
       log('未检测到 preload 桥接，以浏览器预览模式运行（不执行真实关机）');
