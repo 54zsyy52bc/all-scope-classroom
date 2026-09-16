@@ -86,10 +86,6 @@ console.log('    [反向对照] 断言 b: 原始=' + b0 + ' / 变异后=' + b1 +
 const INSTALL_CMD = pickFile([
   path.join(DELIV, '交付包_v4课堂管理系统', '5_部署工具', '一键安装学生端(右键以管理员运行).cmd'),
 ]);
-const DELIV_MAIN = pickFile([
-  path.join(DELIV, '交付包_v4课堂管理系统', '3_学生端', 'resources', 'app', 'main.js'),
-]);
-const REPO_MAIN = path.join(ROOT, 'student', 'main.js');
 
 // ---- 可复用判定函数（正向与反向对照共用同一实现，避免断言漂移）----
 function bufHasBOM(buf) { return buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF; }
@@ -137,15 +133,59 @@ if (!INSTALL_CMD) {
   }
 }
 
-if (!DELIV_MAIN) {
-  console.log('[SKIP] 未找到交付包 main.js，跳过源码同步门禁');
+// =============================================================================
+// 第三段：整目录代码同步（原只校验 main.js，不够）
+//   本次「覆盖了但没生效」的教训：任何一份主进程/渲染层代码漏同步，现场都表现为
+//   「改了没用」。故对 resources/app 下所有代码文件做逐字节比对，只放过两个
+//   配置类文件（app-config.json 出厂态 / desktop-config.json 母盘策略，单独断言）。
+// =============================================================================
+const APP_DIR = path.join(DELIV, '交付包_v4课堂管理系统', '3_学生端', 'resources', 'app');
+const SRC_DIR = path.join(ROOT, 'student');
+const EXCLUDE = new Set(['app-config.json', 'desktop-config.json']);
+
+function walk(dir, base, out) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const rel = base ? base + '/' + e.name : e.name;
+    if (e.isDirectory()) walk(path.join(dir, e.name), rel, out);
+    else out.push(rel);
+  }
+  return out;
+}
+const driftOf = (rows) => rows.filter((r) => norm(r.src) !== norm(r.deliv)).map((r) => r.rel);
+
+if (!fs.existsSync(APP_DIR)) {
+  console.log('[SKIP] 未找到交付包学生端 app 目录，跳过整目录同步门禁');
 } else {
+  const rels = walk(APP_DIR, '', []).filter((f) => !EXCLUDE.has(f));
+  const rows = rels.map((rel) => ({ rel, src: fs.existsSync(path.join(SRC_DIR, rel))
+    ? fs.readFileSync(path.join(SRC_DIR, rel), 'utf8') : null,
+  deliv: fs.readFileSync(path.join(APP_DIR, rel), 'utf8') }));
+  const missing = rows.filter((r) => r.src === null).map((r) => r.rel);
+  const drift = driftOf(rows);
+  check('l 交付包 app 全部代码文件与源码一致（共 ' + rels.length + ' 个）',
+    missing.length === 0 && drift.length === 0,
+    '源码缺=' + missing.join(',') + ' 内容漂移=' + drift.join(','));
+
+  const REPO_MAIN = path.join(SRC_DIR, 'main.js');
   const repo = fs.readFileSync(REPO_MAIN, 'utf8');
-  const deliv = fs.readFileSync(DELIV_MAIN, 'utf8');
-  check('l 交付包 main.js 与源码一致（防"改了源码忘了同步"）', norm(repo) === norm(deliv));
   check('m main.js 保留单实例锁的可见提示（不再静默 quit）', lockIsLoud(repo));
   check('n main.js 仍在 300 行门禁内', repo.split('\n').length <= 300);
   check('反向·删掉提示后断言 m 翻转', lockIsLoud(repo) && !lockIsLoud(repo.replace(/showErrorBox/g, 'noop')));
+
+  // 反向对照：在内存里把交付包侧的 main-guard.js 回退成旧门禁，断言 l 必须翻转
+  const mg = rows.find((r) => r.rel === 'main-guard.js');
+  check('反向·交付包确实含本文件（否则反向对照无意义）', !!mg);
+  if (mg) {
+    const ctrl = mg.deliv.replace('hasApps || denyList.length || minimizeOthers',
+      'hasApps || denyList.length');
+    check('反向·成功把交付包侧门禁改回旧写法', ctrl !== mg.deliv);
+    const drift2 = driftOf([{ rel: 'main-guard.js', src: mg.src, deliv: ctrl }]);
+    check('反向·模拟"交付包漏同步"后断言 l 翻转（证明不是橡皮图章）',
+      drift.length === 0 && drift2.length === 1 && drift2[0] === 'main-guard.js', drift2.join(','));
+  }
+  const loud = rows.find((r) => r.rel === 'main-guard.js');
+  check('o 交付包守卫门禁已含最小化触发项（母盘最小化配置真实生效）',
+    !!loud && /denyList\.length \|\| minimizeOthers/.test(loud.deliv));
 }
 
 console.log('-- 交付包 母盘配置门禁 delivery-image 总结: ' + pass + ' pass / ' + fail + ' fail');

@@ -93,10 +93,10 @@ module.exports = function registerGuard(deps) {
     registry.setApps((desktop && desktop.course && desktop.course.apps) || []);
     if (timer) clearInterval(timer); timer = null;
     const hasApps = Object.keys(allowMap).length > 0;
-    // 有课堂应用（推运行态/最小化）或启用强杀才轮询；否则不轮询省资源
-    if (hasApps || denyList.length) {
-      // 只要开了「非课堂窗口自动最小化」就必须起助手进程 —— 曾经只在 hasApps 时起，
-      // 导致「班级还没配课程应用但开了最小化」时 sweep 静默发不出去（助手没起来）。
+    // 轮询三条件：有课堂应用 / 强杀启用 / 开了非课堂窗口最小化。第三项曾漏判
+    // （旧码 `hasApps || denyList.length`，母盘 apps:[] + denyExe:[] 两者皆假 → 整段跳过，
+    // 助手与 timer 都不起，最小化配置静默失效；回归见 test F1-F7）。开最小化必须起助手。
+    if (hasApps || denyList.length || minimizeOthers) {
       if (minimizeOthers) winGuard.start();
       timer = setInterval(tick, 3000); tick();
     }

@@ -9,7 +9,7 @@
 # 覆盖:
 #   教师端  selfcheck / routes / preset-pkg / dashboard.dom / export-sanitize / timer-restore / auth-cors / credential-gate / error-format / html-dedup / terminology / borrow-create
 #   Preset Studio  store（本地库）/ renderer.dom
-#   学生端  protocol / renderer.dom / shutdown-atomic
+#   学生端  protocol / renderer.dom / shutdown-atomic / settings-gate / desktop-settings-empty / desktop-tile-and-launch / delivery-image / guard-startup-integration
 #   门禁    单文件 <= 300 行 / P0 emoji 扫描 / 批处理纯 ASCII
 #   [--full] smoke(真实 broker 全链路 92 项) + net.broker(学生端真机联调)
 #
@@ -116,6 +116,7 @@ run_case "渲染层 设置口令闸门 settings-gate" "$STUDENT" "$NODE" test/se
 run_case "渲染层 设置弹窗-空列表回归 desktop-settings-empty" "$STUDENT" "$NODE" test/desktop-settings-empty-list.test.js
 run_case "桌面磁贴双面结构+启动链路 desktop-tile-and-launch" "$STUDENT" "$NODE" test/desktop-tile-and-launch.test.js
 run_case "交付包 母盘配置门禁 delivery-image" "$STUDENT" "$NODE" test/delivery-image.test.js
+run_case "守卫启动链路 guard-startup-integration" "$STUDENT" "$NODE" test/guard-startup-integration.test.js
 
 # ---------------------------------------------------------------------------
 # 3. 质量门禁：常规文件 <= 300 行；db 仓储/存储后端允许 <= 320（函数仓库）

@@ -18,6 +18,8 @@
 //   B. CSS 级：.tile-inner 规则必须显式声明非 inline 的 display（含反向对照）
 //   C. 行为级：真加载 main-guard.js，launch 未知 id 必须回传 {ok:false,err}
 //   D. 源码 tripwire：desktop:set / import-config 必须重装备守卫；bindLaunch 必须过滤噪声进程
+//   E. 行为级：悬浮坞点击失败路径（防调用本文件不存在的函数）
+//   F. 行为级：守卫启动门禁 —— 开「非课堂窗口自动最小化」但没配应用时助手也必须起来（含反向对照）
 // 仅内存改写源码，绝不写回仓库。
 // =============================================================================
 const fs = require('fs');
@@ -165,6 +167,64 @@ function loadGuard() {
 }
 
 // ---------------------------------------------------------------------------
+// F. 行为级：守卫启动门禁（真跑 start()，用桩替换 require 依赖，可 A/B 对照）
+//
+// 背景（真因，2026-09-16）：start() 外层门禁写成 `hasApps || denyList.length`，
+// 而母盘是 course.apps:[] + guard.enabled:true + denyExe:[] —— denyList 只有在
+// guard.enabled 为真时才填，denyExe 为空 => denyList 为空 => 两个条件皆假，
+// 整段被跳过：guard-window.ps1 助手不启动、tick 定时器不建立，
+// 于是「非课堂窗口自动最小化」这项配置在母盘默认态下完全失效，
+// 且现场没有任何异常可看（sweep 静默丢弃），排查时极易误判为"渲染层没开"。
+// ---------------------------------------------------------------------------
+function loadGuardFrom(src) {
+  const calls = { start: 0, stop: 0, sweep: 0, interval: 0 };
+  const moduleObj = { exports: {} };
+  const fakeRequire = (req) => {
+    if (req === 'electron') {
+      return { dialog: { showOpenDialog: async () => ({ canceled: true }), showErrorBox() {} },
+        app: { getAppPath: () => ROOT, setLoginItemSettings() {}, on() {} } };
+    }
+    if (req === './guard-win') {
+      return () => ({ start() { calls.start += 1; }, stop() { calls.stop += 1; },
+        sweep() { calls.sweep += 1; }, focus() {} });
+    }
+    if (req === './guard-apps') {
+      return () => ({ observe() {}, setApps() {}, state: () => [], allowExeList: () => [],
+        bindLaunch() {}, exeOf: () => '' });
+    }
+    // 绝不真起进程：procList() 的 execFile 直接走错误分支（当作 tasklist 无输出）
+    if (req === 'node:child_process') {
+      return { execFile: (f, a, o, cb) => { const done = typeof o === 'function' ? o : cb;
+          if (done) done(new Error('stub'), ''); },
+        spawn: () => ({ on() {}, unref() {} }) };
+    }
+    return require(req);
+  };
+  const wrapper = vm.runInThisContext(
+    '(function (require, module, exports, __dirname, __filename) {' + src + '\n})',
+    { filename: path.join(ROOT, 'main-guard.js') });
+  wrapper(fakeRequire, moduleObj, moduleObj.exports, ROOT, path.join(ROOT, 'main-guard.js'));
+  const obj = moduleObj.exports({ app: { getAppPath: () => ROOT, setLoginItemSettings() {}, on() {} },
+    ipcMain: { handle() {} }, readConfig: () => ({}), saveConfig: () => {} });
+  return { obj, calls };
+}
+
+// 起一次守卫，记录「助手是否启动」「轮询定时器是否建立」，期间不产生真实计时器/进程
+function bootGuard(src, desktop) {
+  const g = loadGuardFrom(src);
+  const savedSet = global.setInterval; const savedClear = global.clearInterval;
+  let timerOn = false; let timerMs = 0;
+  global.setInterval = (fn, ms) => { timerOn = true; timerMs = ms || 0; return 999; };
+  global.clearInterval = () => {};
+  try { g.obj.start(desktop); } finally { global.setInterval = savedSet; global.clearInterval = savedClear; }
+  return { calls: g.calls, timerOn, timerMs };
+}
+
+// 母盘出厂态：没有课程应用、强杀开着但 denyExe 为空、最小化开 —— 三条件里只有第三项为真
+const MD_EMPTY = { course: { id: 'c1', name: 'T', homeApps: [], apps: [] },
+  guard: { enabled: true, denyExe: [], minimizeOthers: true } };
+
+// ---------------------------------------------------------------------------
 async function main() {
   console.log('-- 学生桌面·磁贴双面结构 + 启动链路回归');
 
@@ -232,6 +292,32 @@ async function main() {
   check('D3 tick 有启动宽限（新应用未进 allow 前不最小化）', /lastLaunchAt/.test(MG) && /LAUNCH_GRACE_MS/.test(MG));
   check('D4 bindLaunch 过滤系统噪声进程', /NOISE\.has\(x\)/.test(GA));
   check('D5 bindLaunch 排除已被别的应用认领的进程', /claimed\.has\(x\)/.test(GA));
+
+  // --- F. 守卫启动门禁（真跑 start()）---
+  const md = bootGuard(MG, MD_EMPTY);
+  check('F1 母盘态（无应用+无强杀+开最小化）助手进程必须启动', md.calls.start === 1,
+    'start=' + md.calls.start);
+  check('F2 母盘态轮询定时器必须建立（否则运行态/最小化永不刷新）', md.timerOn, 'timer=' + md.timerOn);
+
+  const off = bootGuard(MG, { course: { id: 'c1', name: 'T', homeApps: [], apps: [] },
+    guard: { enabled: false, denyExe: ['chrome.exe'], minimizeOthers: false } });
+  check('F3 三项全关（无应用/强杀未启用/不开最小化）不轮询不启助手（保留省资源语义）',
+    off.calls.start === 0 && !off.timerOn, 'start=' + off.calls.start + ' timer=' + off.timerOn);
+
+  const apps = bootGuard(MG, { course: { id: 'c1', name: 'T', homeApps: [],
+    apps: [{ id: 'a1', name: '焊接', path: 'C:\\w.exe' }] },
+    guard: { enabled: false, denyExe: [], minimizeOthers: false } });
+  check('F4 有课堂应用仍轮询，但不启最小化助手（不破坏原行为）',
+    apps.timerOn && apps.calls.start === 0, 'start=' + apps.calls.start + ' timer=' + apps.timerOn);
+
+  // 反向对照：把门禁改回旧写法，F1/F2 必须翻转 —— 证明断言不是橡皮图章
+  const noMin = MG.replace('if (hasApps || denyList.length || minimizeOthers) {',
+    'if (hasApps || denyList.length) {');
+  check('F5 反向·成功移除 minimizeOthers 门禁项', noMin !== MG);
+  const bad = bootGuard(noMin, MD_EMPTY);
+  check('F6 反向·旧门禁下母盘态助手不启动、不定时器（复现本次修复的缺陷）',
+    bad.calls.start === 0 && !bad.timerOn, 'start=' + bad.calls.start + ' timer=' + bad.timerOn);
+  check('F7 反向特异性·同一场景固定版通过而旧版失败', md.timerOn && !bad.timerOn);
 
   // --- E. 悬浮坞点击失败路径（防 ReferenceError 这类「点了没反应还报错」）---
   let dockErr = null;
