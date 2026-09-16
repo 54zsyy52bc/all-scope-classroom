@@ -5,7 +5,7 @@ rem
 rem  Case list mirrors the quick mode of run-tests.sh - keep both sides in sync.
 rem  Full mode (real SIoT broker smoke + student real-machine test) needs Git Bash:
 rem      ./run-tests.sh --full
-rem  This script does NOT cover the two quality gates (line-count <= 300 / P0 emoji scan).
+rem  This script does NOT cover the two quality gates (line-count up to 300 / P0 emoji scan).
 rem  Run run-tests.sh (Git Bash) for those.
 rem
 rem  WARNING - this file must stay PURE ASCII (no CJK, no BOM).
@@ -75,7 +75,7 @@ if /i not "%~1"=="no-pause" pause
 exit /b %FAILED%
 
 rem ---------------------------------------------------------------------------
-rem  run_case <name> <dir> <node> <script> [db_path]
+rem  run_case: name, dir, node_bin, script, and an optional db_path argument
 rem ---------------------------------------------------------------------------
 :run_case
 set "NAME=%~1"

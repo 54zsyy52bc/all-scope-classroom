@@ -148,21 +148,33 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. 质量门禁：仓库内批处理必须「纯 ASCII」
-#    cmd.exe 会把批处理里的 UTF-8 中文按本地代码页解释，多字节序列可能配出假的
-#    ')' 或 '"'，破坏块/引号配对，整脚本直接报 "不是内部或外部命令" 而失效。
-#    实测：以「UTF-8 中文注释 + LF」写成的 .cmd 会在真机上完全无法执行。
-#    需要中文提示时，请改用 CRLF + chcp 65001（交付包内脚本即此格式）。
+# 5. 质量门禁：批处理必须「纯 ASCII / 不切码页 / rem 无元字符」
+#    坑 A（错位）：cmd.exe 按【字节偏移】续读脚本，而字节→字符的解释用的是当前码页。
+#      一旦文件里出现 chcp（运行中途切换码页），偏移与解码就对不上，cmd 会从半个
+#      多字节字符中间接着读，刷出满屏 'XXX 不是内部或外部命令'。
+#      2026-09-16 实测：UTF-8 中文 + chcp 65001 的脚本约 8% 概率中招
+#      （学生端安装脚本 1/12、教师机配置脚本 1/14）；同一份内容改 GBK(cp936) 无 chcp
+#      后 0/26。故：需要中文提示就用 GBK 无 BOM + CRLF，并【不要写 chcp】。
+#    坑 B（拆行）：rem 行里的 | & < > ^ 仍会被解析器当分隔符切开并执行 ——
+#      曾把一句注释拆成一条 find 命令，连带后面几行中文错位报错。
 # ---------------------------------------------------------------------------
-nonascii_bat=0
+bat_bad=0
 for bat in "$ROOT"/*.bat "$ROOT"/*.cmd; do
   [ -f "$bat" ] || continue
   if LC_ALL=C grep -qP '[^\x00-\x7F]' "$bat" 2>/dev/null; then
     echo "  ${RED}[非ASCII] ${bat#$ROOT/}（批处理里出现非 ASCII 字符）${RESET}"
-    nonascii_bat=1
+    bat_bad=1
+  fi
+  if grep -qiP '^[[:space:]]*chcp([[:space:]]|$)' "$bat" 2>/dev/null; then
+    echo "  ${RED}[chcp] ${bat#$ROOT/}（不得切码页：cmd 会按错误字节偏移续读）${RESET}"
+    bat_bad=1
+  fi
+  if grep -qP '^[[:space:]]*rem.*[|&<>^]' "$bat" 2>/dev/null; then
+    echo "  ${RED}[rem元字符] ${bat#$ROOT/}（rem 行里的 | & < > ^ 会被当分隔符执行）${RESET}"
+    bat_bad=1
   fi
 done
-if [ "$nonascii_bat" -eq 0 ]; then ok "批处理纯 ASCII 门禁"; else bad "批处理纯 ASCII 门禁"; fi
+if [ "$bat_bad" -eq 0 ]; then ok "批处理门禁（纯ASCII / 无chcp / rem无元字符）"; else bad "批处理门禁"; fi
 
 # ---------------------------------------------------------------------------
 # 5. 完整模式：真实 SIoT broker 全链路冒烟

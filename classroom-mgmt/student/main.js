@@ -7,7 +7,7 @@ const os = require('node:os');
 const crypto = require('node:crypto');
 const registerGuard = require('./main-guard');
 const { execFile } = require('node:child_process');
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const APP_ROOT = __dirname;
 const CONFIG_PATH = path.join(APP_ROOT, 'app-config.json');
 
@@ -259,7 +259,8 @@ function registerShellIpc() {
 }
 // 启动
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
+if (!gotLock) { // 静默 quit 的现场表现就是"双击没反应/软件打不开"，且不留任何日志——必须给可见提示（showErrorBox 允许在 ready 前调用）
+  try { dialog.showErrorBox('课堂学生端已在运行', '它的窗口可能已经不在了（上一轮异常退出或未正常关闭）。\n请打开任务管理器，结束所有 StudentClient.exe，然后重新双击桌面快捷方式。'); } catch (_e) { /* noop */ }
   app.quit();
 } else {
   app.on('second-instance', () => {
