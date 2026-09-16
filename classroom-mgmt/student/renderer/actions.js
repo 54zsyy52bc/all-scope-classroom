@@ -99,11 +99,22 @@
       toast('请下一位同学登记 · 座位 ' + state.seat);
     }
 
+    // 课中显示的是磁贴主屏（不是原来的整页活动卡），所以状态变化只需刷新浮窗：
+    // 整页重渲会让 .tile 的入场动画重播一次（点一下闪一下），与每秒闪屏同一个根因。
+    // 浮窗缺失时仍走整页（那条降级路径渲染的是 viewTask，本来就需要整体刷新）。
+    function refreshTaskUI() {
+      if (state.phase === 'task' && global.ActivityPanel && global.ActivityPanel.isMounted()) {
+        global.ActivityPanel.render(state);
+        return;
+      }
+      renderStage();
+    }
+
     function submitTaskStatus(status) {
       if (!state.currentTask || !state.currentTask.taskId) return;
       if (!sendUp('task', { taskId: state.currentTask.taskId, status })) return;
       state.taskStatus = status;
-      renderStage();
+      refreshTaskUI();
     }
 
     function submitReturn() {

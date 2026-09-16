@@ -352,5 +352,49 @@ function calledActions(appSrc) {
     /function submitTaskStatus\s*\(/.test(ACTIONS_SRC));
 }
 
+// ---- Q. 状态上报后的刷新链路：课中只刷浮窗（整页重渲同样会让磁贴入场动画重播）----
+// 行为级：真加载 actions.js 并调 submitTaskStatus，而不是只看源码有没有那行字。
+const ACTIONS_SRC = fs.readFileSync(path.join(ROOT, 'renderer', 'actions.js'), 'utf8');
+function runSubmitStatus(withPanel, src) {
+  const calls = { renderStage: 0, panelRender: 0, sent: [] };
+  const state = { phase: 'task', currentTask: { taskId: 't1' }, taskStatus: null };
+  const sandbox = {
+    console, Math, Date, document: { getElementById: () => null }, EQUIPMENT: [],
+    Views: { esc: (s) => String(s), equipList: () => '', returnList: () => '' },
+    ActivityPanel: withPanel
+      ? { isMounted: () => true, render: () => { calls.panelRender += 1; } }
+      : undefined,
+  };
+  sandbox.window = sandbox;
+  sandbox.globalThis = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(src || ACTIONS_SRC, sandbox, { filename: 'actions.js' });
+  const a = sandbox.Actions.create({
+    state, els: {}, sendUp: (t) => { calls.sent.push(t); return true; },
+    sendHello() {}, renderStage: () => { calls.renderStage += 1; }, renderMeta() {},
+    bridge: {}, log() {}, pad2: (n) => String(n), saveLocal() {}, toast() {},
+  });
+  a.submitTaskStatus('done');
+  return { state, calls };
+}
+{
+  const r = runSubmitStatus(true);
+  check('Q1 有浮窗时上报状态只刷浮窗，不整页重渲',
+    r.calls.panelRender === 1 && r.calls.renderStage === 0 && r.calls.sent[0] === 'task',
+    JSON.stringify(r.calls));
+  check('Q2 本地状态已更新（浮窗乐观态有依据）', r.state.taskStatus === 'done', String(r.state.taskStatus));
+  const r2 = runSubmitStatus(false);
+  check('Q3 浮窗缺失时降级整页刷新（不白屏）',
+    r2.calls.renderStage === 1 && r2.calls.panelRender === 0, JSON.stringify(r2.calls));
+  // 反向对照：把"只刷浮窗"的条件短路掉，Q1 必须翻转
+  const bad = ACTIONS_SRC.replace(
+    "if (state.phase === 'task' && global.ActivityPanel && global.ActivityPanel.isMounted())",
+    'if (false)');
+  check('Q4 反向·成功短路掉"只刷浮窗"分支', bad !== ACTIONS_SRC);
+  const rb = runSubmitStatus(true, bad);
+  check('Q5 反向·短路后点状态会整页重渲（磁贴入场动画重播一次）',
+    rb.calls.renderStage === 1 && rb.calls.panelRender === 0, JSON.stringify(rb.calls));
+}
+
 console.log('-- 学生端 活动状态浮窗 activity-panel 总结: ' + pass + ' pass / ' + fail + ' fail');
 process.exit(fail === 0 ? 0 : 1);
