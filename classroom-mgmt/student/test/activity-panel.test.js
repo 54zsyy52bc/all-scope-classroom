@@ -40,6 +40,7 @@ function makeEl(tag) {
   const el = {
     tagName: String(tag).toUpperCase(), children: [], dataset: {}, hidden: false,
     textContent: '', innerHTML: '', className: '', id: '', type: '', _lis: {}, _attrs: {},
+    style: {}, // render()/build() 用 root.style.display 控制整窗显隐（V 段契约）
     classList: {
       add(c) { set.add(c); }, remove(c) { set.delete(c); }, contains(c) { return set.has(c); },
       toggle(c, on) { if (on === undefined) { if (set.has(c)) set.delete(c); else set.add(c); } else if (on) set.add(c); else set.delete(c); },
@@ -394,6 +395,45 @@ function runSubmitStatus(withPanel, src) {
   const rb = runSubmitStatus(true, bad);
   check('Q5 反向·短路后点状态会整页重渲（磁贴入场动画重播一次）',
     rb.calls.renderStage === 1 && rb.calls.panelRender === 0, JSON.stringify(rb.calls));
+}
+
+// ---- V. 浮窗整窗显隐：只在课中（task）显示，登记/归还/待课/结束整页阶段必须隐藏 ----
+// 缺陷现场：浮窗 fixed 左下 320px 宽，在所有阶段都挂着 ——
+//   * 课中磁贴主屏：盖住最左列 2 个磁贴，点它们全被浮窗拦截 → "应用打不开"；
+//   * 登记页：盖住 1 个表单输入框，学生点不到。
+// 修法：render() 里按 phase 用 root.style.display 控制整窗显隐。
+{
+  const visibleOf = (state, src) => {
+    const r = renderWith(state, src);
+    return r.root.style.display;
+  };
+  check('V1 登记中隐藏后切回课中，浮窗要能重新显示（往返切换）', (() => {
+    const ctx = loadPanel(PANEL_SRC);
+    ctx.panel.mount({ icon: () => '', onStatus() {}, onJump() {} });
+    const root = ctx.body.children[0];
+    ctx.panel.render({ phase: 'checkin', checkinDone: false, currentTask: null });
+    const during = root.style.display;
+    ctx.panel.render(TASK_STATE);
+    return during === 'none' && root.style.display === '';
+  })(), '往返切换失败');
+  const mounted = loadPanel(PANEL_SRC);
+  mounted.panel.mount({ icon: () => '', onStatus() {}, onJump() {} });
+  check('V2 初始（mount 后、render 前）display=none，不挡登记页',
+    mounted.body.children[0].style.display === 'none', mounted.body.children[0].style.display);
+  check('V3 课中（task）浮窗显示',
+    visibleOf(TASK_STATE) === '', JSON.stringify(visibleOf(TASK_STATE)));
+  check('V4 登记中浮窗隐藏（不挡登记表单）',
+    visibleOf({ phase: 'checkin', checkinDone: false, currentTask: null }) === 'none');
+  check('V5 归还中浮窗隐藏（不挡归还表单）',
+    visibleOf({ phase: 'return', returnDone: false, currentTask: null }) === 'none');
+  check('V6 待课/已结束浮窗隐藏',
+    visibleOf({ phase: 'idle' }) === 'none' && visibleOf({ phase: 'closed' }) === 'none');
+  // 反向对照：把按阶段显隐改成常显，V4 必须翻转（复现"浮窗挡表单/磁贴"）
+  const bad = PANEL_SRC.replace("root.style.display = (phase === 'task') ? '' : 'none';",
+    "root.style.display = ''; // 常显（被回退的旧实现）");
+  check('V7 反向·成功把显隐逻辑改回常显', bad !== PANEL_SRC);
+  check('V8 反向·改回常显后登记页浮窗不再隐藏（复现缺陷）',
+    visibleOf({ phase: 'checkin', checkinDone: false, currentTask: null }, bad) === '');
 }
 
 console.log('-- 学生端 活动状态浮窗 activity-panel 总结: ' + pass + ' pass / ' + fail + ' fail');

@@ -756,6 +756,9 @@ button, .btn { box-shadow: none; }
 .welcome p { color:var(--muted); font-size:13px; margin-top:2px; }
 .home-grid { flex:1; overflow-y:auto; padding:18px 0; display:grid;
   grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:18px; align-content:start; }
+/* 课中浮窗（ActivityPanel，fixed 左下 320px 宽 + 18px 边距 = 右缘 338px）会盖住最左列磁贴，
+   点磁贴全被浮窗拦截 → "应用打不开"。有浮窗的页面（index.html，app.js 打 body 标）网格左侧预留其宽度。 */
+body.has-activity-panel .home-grid { padding-left:356px; }
 
 /* 磁贴：3D 舞台（perspective + preserve-3d），hover 时 inner 翻转露出背面 */
 .tile, .d-app { position:relative; display:block; background:transparent; border:0; padding:0;

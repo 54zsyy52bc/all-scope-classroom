@@ -109,7 +109,7 @@
   }
   function viewHome(state) {
     const tip = (state.phase === 'task')
-      ? '用右上角的应用坞打开课程应用 · 活动状态看左下角浮窗'
+      ? '点下面的应用磁贴打开课程应用 · 活动状态看左下角浮窗'
       : '老师点【开始上课】后，这里会出现要做的活动';
     const grid = global.Tiles.gridHtml(_homeCtx.apps, _homeCtx.homeApps, '还没有课程应用，请老师来设置');
     return '<div class="home-screen">'

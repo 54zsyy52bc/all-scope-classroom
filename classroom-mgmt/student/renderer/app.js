@@ -48,10 +48,8 @@
   // 渲染
   // ---------------------------------------------------------------------------
   function renderStage() {
-    // uiForce：浮窗跳转强制切到 checkin/return 整屏页一次；自清除，下一帧回归教师端指令驱动的 phase
-    // （setPhase 在 downlink.js 之外，故不跨文件清变量，自清除更可靠，且不影响教师端指令驱动切换）
-    const phase = uiForce || state.phase;
-    if (uiForce) uiForce = null;
+    // 登记/归还回归整屏独立页：阶段切换完全由教师端指令（sync/cmd）驱动，不再有浮窗强制跳转。
+    const phase = state.phase;
     els.stage.innerHTML = Views.render(Object.assign({}, state, { phase: phase }))
       + '<button type="button" class="sync-foot" data-act="sync-status">↻ 同步状态（手动刷新）</button>';
     saveLocal();

@@ -72,6 +72,9 @@
 
   function build() {
     root = el('div', 'activity-panel ap-enter'); root.id = 'activity-panel';
+    // 初始隐藏：登记/归还/待课/结束都是整屏独立页，浮窗只在课中（task）出现，
+    // 否则会盖住登记表单输入框（fixed 定位 z-index 45 压在表单上）。第一次 task render 时再显示。
+    root.style.display = 'none';
     var head = el('div', 'ap-head');
     els.phase = el('span', 'ap-phase');
     els.toggle = el('button', 'ap-toggle'); els.toggle.type = 'button'; els.toggle.textContent = '收起';
@@ -156,6 +159,10 @@
     lastState = state;
 
     var phase = state.phase || 'idle';
+    // 非课中阶段整窗隐藏（登记/归还/待课/结束都是整屏独立页，浮窗只会挡内容、
+    // 挡住磁贴和表单点击 —— 这是"应用打不开/表单点不到"的直接原因）。
+    // 用 style.display 而不是 hidden：display:none→显示会重播 ap-enter 入场动画，只在此阶段切换时发生一次，可接受。
+    root.style.display = (phase === 'task') ? '' : 'none';
     var t = state.currentTask;
     var timed = !!(t && t.timed);
     var tState = timerStateOf(t);
