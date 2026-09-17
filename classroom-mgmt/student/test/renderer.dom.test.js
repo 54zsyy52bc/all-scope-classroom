@@ -272,9 +272,10 @@ async function main() {
   check('磁贴主屏磁贴带 data-id', /data-id="a1"/.test(htmlWithPanel));
   check('磁贴主屏含欢迎语 .welcome', /class="welcome"/.test(htmlWithPanel));
 
-  // idle 阶段也走 viewHome（磁贴主屏）
+  // idle 阶段：回到原来的"等待老师开始上课"提示页（课前不渲磁贴，避免空网格"请老师来设置"）
   const htmlIdle = globalThis.Views.render({ phase: 'idle', seat: '07' });
-  check('idle -> 渲染磁贴主屏 .home-grid', /class="home-grid"/.test(htmlIdle));
+  check('idle -> 等待页 viewIdle（含"等待老师开始上课"，不含 .home-grid）',
+    /等待老师开始上课/.test(htmlIdle) && !/class="home-grid"/.test(htmlIdle), htmlIdle.slice(0, 80));
 
   // viewHome 产出含 .home-grid 与 .tile-inner 且带 data-id（需求点名断言）
   check('viewHome 产出 .home-grid + .tile-inner + data-id',

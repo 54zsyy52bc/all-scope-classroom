@@ -265,8 +265,10 @@
       return state.returnDone ? viewReturnDone(state) : viewReturn(state);
     }
     if (state.phase === 'closed') return viewClosed();
-    // idle 待课：磁贴主屏
-    return viewHome(state);
+    // idle 待课：原来的"等待老师开始上课"居中提示页（带连接状态提示）。
+    // 课前不渲磁贴——母盘默认没配课程应用，空网格"请老师来设置"会让学生误以为坏了；
+    // 课前也没必要让学生看到应用磁贴（避免开课前乱点）。磁贴主屏留给 task 课中。
+    return viewIdle(state);
   }
 
   global.Views = { render, equipList, returnList, esc, equipName, viewHome, setHomeContext };
