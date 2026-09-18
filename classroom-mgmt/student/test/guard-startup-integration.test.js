@@ -128,6 +128,24 @@ async function boot(src, desktop) {
   check('G8 反向特异性·同一场景固定版通过而旧版失败',
     fixed.sweeps.length > 0 && old.sweeps.length === 0);
 
+  // ---- H. GUI 应用启动禁止 windowsHide（"提示已打开却看不到窗口"的真凶）----
+  // spawn(a.path) 启动的是 GUI 应用：windowsHide:true 会设置 STARTUPINFO 的
+  // STARTF_USESHOWWINDOW+SW_HIDE，GUI 程序遵循该标志 → 进程活着、主窗口永远不显示。
+  // A/B 实测（notepad）：true→0 个可见窗口；false→正常显示。
+  // 控制台工具（tasklist/taskkill/cmd/powershell/net/shutdown）不受此影响，照常 hide。
+  {
+    const guiSpawn = /spawn\(a\.path[^)]*\)/.exec(MG_SRC);
+    check('H1 launch() 的 GUI 应用 spawn 调用存在', !!guiSpawn, '未找到 spawn(a.path');
+    check('H2 GUI spawn 不带 windowsHide（否则应用窗口被隐藏）',
+      !!guiSpawn && !/windowsHide/.test(guiSpawn[0]), guiSpawn && guiSpawn[0]);
+    const bad = MG_SRC.replace("const child = spawn(a.path, [], { detached: true, stdio: 'ignore' });",
+      "const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });");
+    check('H3 反向·成功把 windowsHide 加回 GUI spawn', bad !== MG_SRC);
+    const badSpawn = /spawn\(a\.path[^)]*\)/.exec(bad);
+    check('H4 反向·加回后必须检出 windowsHide（复现"窗口看不见"）',
+      !!badSpawn && /windowsHide/.test(badSpawn[0]));
+  }
+
   try { fs.rmSync(STUB_DIR, { recursive: true, force: true }); } catch (_e) { /* noop */ }
   console.log('-- 学生端 守卫启动链路 guard-startup-integration 总结: ' + pass + ' pass / ' + fail + ' fail');
   process.exit(fail === 0 ? 0 : 1);

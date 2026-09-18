@@ -143,7 +143,8 @@ module.exports = function registerGuard(deps) {
     lastLaunchAt = Date.now();
     procList().then((names) => { try { registry.bindLaunch(appId, names); } catch (_e) {} }).catch(() => {});
     if (/\.lnk$/i.test(a.path)) { shellStart(a.path); return { ok: true }; } // 快捷方式必须走 shell
-    const child = spawn(a.path, [], { detached: true, stdio: 'ignore', windowsHide: true });
+    // ⛔ 绝不能加 windowsHide:true：设 STARTUPINFO 的 SW_HIDE 后 GUI 应用进程活着但主窗口永不显示（A/B 实测真凶）
+    const child = spawn(a.path, [], { detached: true, stdio: 'ignore' });
     child.on('error', () => {
       detectElevated().then((elev) => {
         if (!elev) runAsAdmin(a.path);
