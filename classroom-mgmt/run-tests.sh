@@ -118,6 +118,7 @@ run_case "桌面磁贴双面结构+启动链路 desktop-tile-and-launch" "$STUDE
 run_case "活动状态浮窗 activity-panel" "$STUDENT" "$NODE" test/activity-panel.test.js
 run_case "交付包 母盘配置门禁 delivery-image" "$STUDENT" "$NODE" test/delivery-image.test.js
 run_case "守卫启动链路 guard-startup-integration" "$STUDENT" "$NODE" test/guard-startup-integration.test.js
+run_case "渲染层全局引用 renderer-global" "$STUDENT" "$NODE" test/renderer-global.test.js
 
 # ---------------------------------------------------------------------------
 # 3. 质量门禁：常规文件 <= 300 行；db 仓储/存储后端允许 <= 320（函数仓库）

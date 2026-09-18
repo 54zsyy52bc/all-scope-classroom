@@ -29,7 +29,7 @@
   let uiForce = null; // 浮窗跳转强制阶段（自清除，见 renderStage）
 
   // 审计：关键操作打 [audit]（stdout + userData/audit.log 落盘）
-  function audit(type, detail) { try { const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail)); console.log(line); if (global.classroom && global.classroom.log) global.classroom.log(line); } catch (_e) { /* 审计不阻断 */ } }
+  function audit(type, detail) { try { const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail)); console.log(line); if (window.classroom && window.classroom.log) window.classroom.log(line); } catch (_e) { /* 审计不阻断 */ } }
 
   function bridge() { return window.classroom || null; }
 
@@ -53,7 +53,10 @@
     els.stage.innerHTML = Views.render(Object.assign({}, state, { phase: phase }))
       + '<button type="button" class="sync-foot" data-act="sync-status">↻ 同步状态（手动刷新）</button>';
     saveLocal();
-    if (global.StageFx) StageFx.onPhase(phase);
+    // 必须用 window. 而不是裸 global：渲染层（contextIsolation）没有 global 变量，
+    // 裸引用在 renderStage 抛 ReferenceError 会中断 boot()，connect() 不再执行 → MQTT 永连不上，
+    // 教师端开课后学生端永远收不到切页指令（"课堂登记崩了"真凶，dbaf75b 引入）。
+    if (window.StageFx) window.StageFx.onPhase(phase);
     if (typeof window.ActivityPanel !== 'undefined') window.ActivityPanel.render(state); // 浮窗随状态刷新
   }
 

@@ -61,9 +61,13 @@
   <script src="app.js"></script>
   <script src="app-dock.js"></script>
   <script>
-    document.getElementById('brand-mark').innerHTML = Icons.svg('monitor', 20);
-    document.getElementById('shutdown-icon').innerHTML = Icons.svg('power', 32);
-    document.getElementById('lock-icon').innerHTML = Icons.svg('lock', 40);
+    // 品牌图标由 <img class="brand-mark" src="logo-mark.png"> 承担（此处曾误用 class 当 id 查询 → null 崩溃）
+    var _ic = function (id, name, size) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = Icons.svg(name, size);
+    };
+    _ic('shutdown-icon', 'power', 32);
+    _ic('lock-icon', 'lock', 40);
   </script>
 </body>
 </html>
