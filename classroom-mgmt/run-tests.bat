@@ -60,6 +60,7 @@ call :run_case "student desktop-tile-and-launch" "%ROOT%student" "%NODE%" test\d
 call :run_case "student activity-panel"   "%ROOT%student" "%NODE%" test\activity-panel.test.js
 call :run_case "student guard-startup"    "%ROOT%student" "%NODE%" test\guard-startup-integration.test.js
 call :run_case "student renderer-global"  "%ROOT%student" "%NODE%" test\renderer-global.test.js
+call :run_case "student downlink-partial"  "%ROOT%student" "%NODE%" test\downlink-partial-sync.test.js
 call :run_case "student delivery-image"  "%ROOT%student" "%NODE%" test\delivery-image.test.js
 
 del /q "%TMPDB%"* 2>nul

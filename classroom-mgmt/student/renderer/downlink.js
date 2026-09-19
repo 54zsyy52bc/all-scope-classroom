@@ -90,22 +90,29 @@
       if (p.equipment && typeof onEquipment === 'function') onEquipment({ equipment: p.equipment });
       // 锁定策略随 sync 下发：迟到/重连学生恢复锁定状态
       if (p.policy && typeof onPolicy === 'function') onPolicy(p.policy);
-      // 当前活动一律以服务端为权威：老师「结束活动」后 sync 回包的 currentTask 为 null，
-      // 必须据此清空本地活动卡，否则迟到/重连学生（条件赋值时代）会一直挂着已结束的活动。
-      const hasTask = !!(p.currentTask && p.currentTask.taskId);
-      state.currentTask = hasTask ? p.currentTask : null;
-      if (!hasTask) state.taskStatus = null;
-      // 计时活动状态随 sync 恢复（含计时字段）
-      if (hasTask && typeof onTimer === 'function') {
-        onTimer({ action: 'sync', taskId: p.currentTask.taskId, remainingMs: p.currentTask.remainingMs });
+      // 残缺 sync 容错：只应用报文里**明确存在**的字段（'字段' in p）。
+      // 现场事故：策略"双保险"曾下发仅 {policy} 的 sync，旧代码把缺省 phase 当 idle、
+      // 缺省 checkinDone 当 false —— 教师每切一次锁定策略，全班就被打回待课页、
+      // 登记被回滚（表现为"无法解锁、大屏操作集体失效"）。
+      // 契约：完整 sync 必须包含全部字段（无值可为 null）；字段不存在 = 不动对应状态。
+      if ('currentTask' in p) {
+        // 当前活动一律以服务端为权威：老师「结束活动」后 sync 回包的 currentTask 为 null，
+        // 必须据此清空本地活动卡，否则迟到/重连学生会一直挂着已结束的活动。
+        const hasTask = !!(p.currentTask && p.currentTask.taskId);
+        state.currentTask = hasTask ? p.currentTask : null;
+        if (!hasTask) state.taskStatus = null;
+        // 计时活动状态随 sync 恢复（含计时字段）
+        if (hasTask && typeof onTimer === 'function') {
+          onTimer({ action: 'sync', taskId: p.currentTask.taskId, remainingMs: p.currentTask.remainingMs });
+        }
       }
-      setPhase(p.phase || 'idle');
-      // 服务端真值校正：教师端没写进去的提交要回滚，避免学生以为成功了
-      if (state.checkinDone && !p.checkinDone) {
+      if ('phase' in p) setPhase(p.phase || 'idle');
+      // 服务端真值校正（仅在报文明确给出该字段时）：教师端没写进去的提交要回滚，避免学生以为成功了
+      if ('checkinDone' in p && state.checkinDone && !p.checkinDone) {
         state.checkinDone = false;
         toast('登记未被教师端接受：座位可能不在本课堂范围或已被占用，请向老师求助后重新提交', 'error');
       }
-      if (state.returnDone && !p.returnDone) {
+      if ('returnDone' in p && state.returnDone && !p.returnDone) {
         state.returnDone = false;
         toast('归还未被教师端确认，请重新点一次确认归还', 'error');
       }

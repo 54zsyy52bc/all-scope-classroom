@@ -5,7 +5,6 @@ const db = require('../db');
 const sse = require('../sse');
 const bridge = require('../mqtt/bridge');
 const commandSvc = require('../services/command.service');
-const taskSvc = require('../services/task.service');
 const dashboardSvc = require('../services/dashboard.service');
 const { seatNum, makeLogger } = require('../utils');
 // 主题常量取单一真源：classroom-mgmt/shared/topics.js（教师端/学生端共用，禁止各端复制）
@@ -216,36 +215,10 @@ async function handleHello(env) {
     }
     if (session) db.touchSeat(session.session_id, seat, env.ts || Date.now());
 
-    const sessionId = session ? session.session_id : null;
-    const phase = session ? session.phase : null;
-    let currentTask = null;
-    let checkinDone = false;
-    let returnDone = false;
-    let equipment = null;
-    let policy = null;
-    if (session) {
-      const tasks = db.listTasks(sessionId);
-      const openTasks = tasks.filter((x) => !x.close_time);
-      if (openTasks.length) {
-        const t = openTasks[openTasks.length - 1];
-        // 最近活动：带计时字段（迟到/重连学生据此恢复计时显示）
-        currentTask = {
-          taskId: t.task_id, title: t.title,
-          timed: !!t.timed, durationSec: t.duration_sec != null ? t.duration_sec : null,
-          timerState: t.timer_state || 'idle',
-          remainingMs: taskSvc.remainingMs(t),
-        };
-      }
-      const st = db.getStudent(sessionId, seat);
-      if (st) { checkinDone = st.checkin_status === 'done'; returnDone = st.return_status === 'done'; }
-      // 器材清单随 sync 下发：迟到/重连学生据此恢复登记页器材列表
-      if (session.equipment_json) {
-        try { equipment = JSON.parse(session.equipment_json); } catch (_e) { equipment = null; }
-      }
-      // 锁定策略随 sync 下发：迟到/重连学生恢复锁定状态
-      try { policy = require('../services/policy.service').computePolicy(session); } catch (_e) { policy = null; }
-    }
-    await bridge.publishSync(seat, { sessionId, phase, currentTask, checkinDone, returnDone, equipment, policy });
+    // sync 报文统一由 sync.service 构造（唯一真源）：hello 应答与策略双保险共用，
+    // 保证 payload 永远是全字段完整包（学生端按字段存在性应用，残缺包会被容错跳过）。
+    const payload = require('../services/sync.service').buildSyncPayload(session, seat);
+    await bridge.publishSync(seat, payload);
   } catch (e) {
     // hello 是异步处理，异常必须就地兜住，否则会变成 unhandledRejection 拖垮进程
     log.error('hello 处理失败:', e.message);
