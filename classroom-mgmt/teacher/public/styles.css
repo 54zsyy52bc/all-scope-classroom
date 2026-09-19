@@ -210,6 +210,9 @@ body[data-phase="closed"] [data-phase-vis]:not([data-phase-vis*="closed"]) { dis
 .seat.s-help { border-color: var(--help); background: rgba(234, 88, 12, 0.2); animation: pulse-help 1.6s ease infinite; }
 .seat.s-offline { opacity: 0.55; box-shadow: inset 3px 0 0 var(--offline); }
 .seat.s-conflict { outline: 2px dashed var(--offline); outline-offset: 1px; }
+/* 学生主动退出课堂：右上角角标 + 灰化（与 offline 区分：虚线边框） */
+.seat.s-exited { opacity: 0.5; border: 1px dashed var(--offline); position: relative; }
+.seat.s-exited::after { content: '已退出'; position: absolute; top: 2px; right: 3px; font-size: 10px; font-weight: 700; color: var(--offline); }
 @keyframes pulse-help {
   0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.35); }
   50% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); }

@@ -10,7 +10,7 @@
   'use strict';
 
   var root = null, styleDone = false, iconFn = function () { return ''; };
-  var opts = { onStatus: function () {}, onJump: function () {} };
+  var opts = { onStatus: function () {}, onJump: function () {}, alwaysVisible: false, decorate: null };
   var collapsed = false, lastState = null;
   var override = null, flashUntil = 0; // 乐观选中 + “已记下”瞬时反馈
 
@@ -162,7 +162,8 @@
     // 非课中阶段整窗隐藏（登记/归还/待课/结束都是整屏独立页，浮窗只会挡内容、
     // 挡住磁贴和表单点击 —— 这是"应用打不开/表单点不到"的直接原因）。
     // 用 style.display 而不是 hidden：display:none→显示会重播 ap-enter 入场动画，只在此阶段切换时发生一次，可接受。
-    root.style.display = (phase === 'task') ? '' : 'none';
+    // 独立置顶浮窗（alwaysVisible）是另一个 OS 窗口，不存在遮挡页面的问题，全程显示。
+    root.style.display = (phase === 'task' || opts.alwaysVisible) ? '' : 'none';
     var t = state.currentTask;
     var timed = !!(t && t.timed);
     var tState = timerStateOf(t);
@@ -235,8 +236,12 @@
       if (typeof o.icon === 'function') iconFn = o.icon;
       if (typeof o.onStatus === 'function') opts.onStatus = o.onStatus;
       if (typeof o.onJump === 'function') opts.onJump = o.onJump;
+      if (typeof o.alwaysVisible === 'boolean') opts.alwaysVisible = o.alwaysVisible;
       injectStyle();
       build();
+      // 扩展点：宿主（置顶浮窗）在面板 body 尾部注入自己的区块（如「退出课堂」）。
+      // 只传 root/body 引用，宿主自己管理 DOM 与事件；装饰失败不影响面板本体。
+      if (typeof o.decorate === 'function') { try { o.decorate({ root: root, body: els.body }); } catch (_e) { /* noop */ } }
       applyCollapse();
     },
     render: render,

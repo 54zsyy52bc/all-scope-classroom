@@ -162,6 +162,18 @@
       logEvent(esc(d.payload.seat) + ' 号归还器材');
       if (refreshSoonFn) refreshSoonFn();
     });
+    // 学生主动退出课堂（浮窗「退出课堂」按钮）→ 大屏座位标记「已退出」
+    es.addEventListener('student.exited', (e) => {
+      const d = JSON.parse(e.data);
+      logEvent(esc(d.payload.seat) + ' 号已退出课堂');
+      if (refreshSoonFn) refreshSoonFn();
+    });
+    // 曾退出的座位重新 hello/登记 → 自动回归
+    es.addEventListener('student.rejoined', (e) => {
+      const d = JSON.parse(e.data);
+      logEvent(esc(d.payload.seat) + ' 号回归课堂');
+      if (refreshSoonFn) refreshSoonFn();
+    });
     es.addEventListener('conflict.detected', (e) => {
       const d = JSON.parse(e.data);
       logEvent('冲突：' + esc(d.payload.seat) + ' 号多机器上报');

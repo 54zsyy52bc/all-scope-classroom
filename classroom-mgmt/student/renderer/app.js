@@ -53,9 +53,7 @@
     els.stage.innerHTML = Views.render(Object.assign({}, state, { phase: phase }))
       + '<button type="button" class="sync-foot" data-act="sync-status">↻ 同步状态（手动刷新）</button>';
     saveLocal();
-    // 必须用 window. 而不是裸 global：渲染层（contextIsolation）没有 global 变量，
-    // 裸引用在 renderStage 抛 ReferenceError 会中断 boot()，connect() 不再执行 → MQTT 永连不上，
-    // 教师端开课后学生端永远收不到切页指令（"课堂登记崩了"真凶，dbaf75b 引入）。
+    // 必须用 window. 而非裸 global（渲染层没有 global 变量，裸引用抛错会中断 boot → MQTT 永连不上）。
     if (window.StageFx) window.StageFx.onPhase(phase);
     if (typeof window.ActivityPanel !== 'undefined') window.ActivityPanel.render(state); // 浮窗随状态刷新
   }
@@ -237,14 +235,18 @@
       state, els, sendUp, sendHello, renderStage, renderMeta, bridge, log, pad2,
       saveLocal, toast,
     });
-    // 挂载活动状态浮窗（接口已冻结，只调用）：onStatus 复用 actions.submitTaskStatus 上行链路；
-    // onJump 仅把舞台切回 checkin/return 整屏页（见 onStageClick 同款语义），不影响教师端指令驱动切换。
-    if (typeof window.ActivityPanel !== 'undefined') {
-      window.ActivityPanel.mount({
-        icon: window.Icons.svg,
-        onStatus: (k) => { if (actions) actions.submitTaskStatus(k); },
+    // 置顶独立浮窗（float-window.js 创建的 BrowserWindow）：本页是 MQTT 真源，
+    // 状态快照经主进程转发；浮窗按钮动作回流 onAction（状态三键/跳转/退出课堂）。
+    // 口令校验在浮窗内走主进程 shell:verify-local，通过后才发 exit 动作。
+    if (typeof window.FloatLink !== 'undefined') {
+      floatLink = window.FloatLink.create({
+        state, els, toast, renderStage, saveLocal, sendUp, audit, bridge,
+        actions,
+        resetEquipQty: () => actions.resetEquipQty(),
         onJump: (k) => { uiForce = (k === 'checkin' || k === 'return') ? k : null; renderStage(); },
       });
+      const fb = bridge();
+      if (fb && fb.onFloatAction) fb.onFloatAction((p) => { if (floatLink) floatLink.onAction(p); });
     }
     control.startTicker();
   }

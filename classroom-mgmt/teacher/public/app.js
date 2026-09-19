@@ -124,6 +124,7 @@
         if (st.conflict) cls.push('s-conflict');
         if (!st.online) cls.push('s-offline');
         if (st.checkinStatus === 'pending') cls.push('s-pending');
+        if (st.exited) cls.push('s-exited');
         if (st.taskStatus) cls.push('s-' + st.taskStatus);
         if (st.role === 'leader') cls.push('s-leader');
         return '<div class="seat ' + cls.join(' ') + '" data-seat="' + esc(seatNo)
@@ -151,8 +152,7 @@
 
     // 全部组完成 → 绿色横幅提示老师可以发布任务
     const all = groups.length > 0 && groups.every((g) => g.complete);
-    const db = $('all-done-banner');
-    if (db) db.hidden = !all;
+    const db = $('all-done-banner'); if (db) db.hidden = !all;
   }
   function renderAlerts(conflicts) {
     const box = $('alerts');

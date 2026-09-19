@@ -45,6 +45,8 @@ call :run_case "teacher error-format"     "%ROOT%teacher" "%NODE%" test\error-fo
 call :run_case "teacher html-dedup"       "%ROOT%teacher" "%NODE%" test\html-dedup.test.js
 call :run_case "teacher terminology"      "%ROOT%teacher" "%NODE%" test\terminology.test.js
 call :run_case "teacher borrow-create"    "%ROOT%teacher" "%NODE%" test\borrow-create.test.js
+call :run_case "teacher policy-sync"      "%ROOT%teacher" "%NODE%" test\policy-sync.test.js
+call :run_case "teacher exit-sync"        "%ROOT%teacher" "%NODE%" test\exit-sync.test.js
 
 rem --- preset studio ---
 call :run_case "studio store"             "%ROOT%preset-studio" "%NODE%" test\store.test.js
@@ -61,6 +63,7 @@ call :run_case "student activity-panel"   "%ROOT%student" "%NODE%" test\activity
 call :run_case "student guard-startup"    "%ROOT%student" "%NODE%" test\guard-startup-integration.test.js
 call :run_case "student renderer-global"  "%ROOT%student" "%NODE%" test\renderer-global.test.js
 call :run_case "student downlink-partial"  "%ROOT%student" "%NODE%" test\downlink-partial-sync.test.js
+call :run_case "student float-exit"       "%ROOT%student" "%NODE%" test\float-exit.test.js
 call :run_case "student delivery-image"  "%ROOT%student" "%NODE%" test\delivery-image.test.js
 
 del /q "%TMPDB%"* 2>nul

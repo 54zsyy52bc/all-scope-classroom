@@ -103,6 +103,10 @@ contextBridge.exposeInMainWorld('classroom', {
   pickApp: () => ipcRenderer.invoke(CH.pickApp),
   importConfig: () => ipcRenderer.invoke(CH.importConfig),
 
+  // 置顶浮窗：状态快照单向推送（send，不等回执）；浮窗按钮动作经主进程回流
+  floatStatus: (p) => ipcRenderer.send(CH.floatStatus, cleanSnapshot(p)),
+  onFloatAction: (cb) => ipcRenderer.on('float:action', (_e, p) => { try { cb(p); } catch (_err) { /* noop */ } }),
+
   // S-3：请求关机（原子）。主进程内部先校验票据再做 HMAC + 60s 时间窗比对，
   // 通过后立即执行；渲染层只拿最终结果，无从"跳过校验直接执行"。
   // 返回 { verified, reason, executed, dryRun, delaySec }；dry-run 时只打日志。

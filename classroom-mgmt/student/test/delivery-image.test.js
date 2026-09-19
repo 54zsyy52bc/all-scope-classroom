@@ -200,7 +200,8 @@ if (!fs.existsSync(APP_DIR)) {
   const REPO_MAIN = path.join(SRC_DIR, 'main.js');
   const repo = fs.readFileSync(REPO_MAIN, 'utf8');
   check('m main.js 保留单实例锁的可见提示（不再静默 quit）', lockIsLoud(repo));
-  check('n main.js 仍在 300 行门禁内', repo.split('\n').length <= 300);
+  // 与 run-tests.sh 的 wc -l 口径一致（split('\n') 会把文件末尾换行多算一行，恰好 300 行时误报）
+  check('n main.js 仍在 300 行门禁内', repo.replace(/\n$/, '').split('\n').length <= 300);
   check('反向·删掉提示后断言 m 翻转', lockIsLoud(repo) && !lockIsLoud(repo.replace(/showErrorBox/g, 'noop')));
 
   // 反向对照：在内存里把交付包侧的 main-guard.js 回退成旧门禁，断言 l 必须翻转

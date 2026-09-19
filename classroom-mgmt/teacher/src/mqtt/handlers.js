@@ -44,6 +44,7 @@ function seatStateOf(sessionId, seat) {
   return {
     seat: s.seat, groupId: s.group_id, name: s.name || null, role: s.role || null,
     checkinStatus: s.checkin_status, taskStatus, returnStatus: s.return_status,
+    exited: !!s.exited, // 学生主动退出课堂（浮窗「退出课堂」），大屏据此显示徽标
     online, lastSeenAt: s.last_seen_at || null, conflict,
   };
 }
@@ -147,6 +148,9 @@ function handleTaskStatus(env, rawTopic) {
     });
     if (!ev.inserted) { dup = true; return; }
     db.upsertTaskStatus({ taskId, seat, groupId, status, ts: env.ts });
+    if (db.getStudent(sessionId, seat) && db.getStudent(sessionId, seat).exited) {
+      db.setStudentExited(sessionId, seat, false); // 上报任务状态 = 回归课堂
+    }
   });
   if (dup) { log.info('task 重复 msgId 忽略:', env.msgId); return; }
 
@@ -177,6 +181,30 @@ function handleReturn(env, rawTopic) {
 
   // 全部归还则自动关机（内部已兜底，不因异常打断消息流）
   commandSvc.autoShutdown().catch((e) => log.warn('autoShutdown 异常:', e.message));
+}
+
+// 学生「退出课堂」（浮窗按钮，口令/二次确认在学生端本地把关）：教师端只负责落库标记+大屏广播；
+// 本地状态由学生端自重置。该生 sync 一律回待课空态（见 sync.service）；重新登记/上报状态自动回归。
+function handleExit(env, rawTopic) {
+  const session = db.getCurrentSession();
+  if (!session) { log.warn('exit 忽略：无进行中会话'); return; }
+  const sessionId = session.session_id;
+  if (!guardSeat(session, env, 'exit')) return;
+  const seat = seatNum(env.seat);
+  const p = env.payload || {};
+  let dup = false;
+  db.transaction(() => {
+    const ev = db.insertEvent({
+      session_id: sessionId, ts: env.ts, type: 'exit', seat,
+      detail: JSON.stringify(p), msg_id: env.msgId, raw_topic: rawTopic, qos: 1,
+    });
+    if (!ev.inserted) { dup = true; return; }
+    db.setStudentExited(sessionId, seat, true);
+  });
+  if (dup) { log.info('exit 重复 msgId 忽略:', env.msgId); return; }
+  const state = seatStateOf(sessionId, seat);
+  sse.publish('student.exited', Object.assign({}, state, { stats: checkinStats(sessionId) }));
+  log.info(`exit 座位 ${seat} 已退出课堂`);
 }
 
 function handleStatus(env) {
@@ -213,7 +241,16 @@ async function handleHello(env) {
       const cf = db.upsertConflict({ seat, machineId, ts: env.ts || Date.now() });
       if (cf.isConflict) sse.publish('conflict.detected', cf);
     }
-    if (session) db.touchSeat(session.session_id, seat, env.ts || Date.now());
+    if (session) {
+      db.touchSeat(session.session_id, seat, env.ts || Date.now());
+      // hello = 学生机（重新）进入课堂页：曾退出的座位视为回归，清标记后按正常状态同步
+      const stu = db.getStudent(session.session_id, seat);
+      if (stu && stu.exited) {
+        db.setStudentExited(session.session_id, seat, false);
+        sse.publish('student.rejoined', { seat, ts: env.ts || Date.now() });
+        log.info(`hello 座位 ${seat} 回归课堂（清除退出标记）`);
+      }
+    }
 
     // sync 报文统一由 sync.service 构造（唯一真源）：hello 应答与策略双保险共用，
     // 保证 payload 永远是全字段完整包（学生端按字段存在性应用，残缺包会被容错跳过）。
@@ -251,6 +288,7 @@ function dispatch(topic, buf) {
     case 'task': return safeRun('task', () => handleTaskStatus(env, topic));
     case 'return': return safeRun('return', () => handleReturn(env, topic));
     case 'group_done': return safeRun('group_done', () => handleGroupDone(env));
+    case 'exit': return safeRun('exit', () => handleExit(env, topic));
     case 'status': return safeRun('status', () => handleStatus(env));
     case 'hello': return safeRun('hello', () => handleHello(env));
     case 'sync': return undefined; // 教师发出的 sync，学生不回

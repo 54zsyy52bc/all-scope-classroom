@@ -4,7 +4,7 @@
 
 const TABLES = {
   t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'policy_mode', 'terminal_count', 'group_members'],
-  t_student: ['stu_id', 'session_id', 'seat', 'group_id', 'name', 'student_no', 'checkin_time', 'checkin_status', 'machine_id', 'last_seen_at', 'return_status'],
+  t_student: ['stu_id', 'session_id', 'seat', 'group_id', 'name', 'student_no', 'checkin_time', 'checkin_status', 'machine_id', 'last_seen_at', 'return_status', 'exited'],
   t_equipment: ['eq_id', 'eq_name', 'category', 'total'],
   t_equipment_borrow: ['borrow_id', 'session_id', 'seat', 'group_id', 'eq_id', 'qty', 'borrow_time', 'return_time', 'status'],
   t_task: ['task_id', 'session_id', 'title', 'desc', 'publish_time', 'close_time', 'source', 'activity_preset_id', 'timed', 'duration_sec', 'timer_state', 'timer_started_at', 'timer_paused_at', 'timer_remaining_ms'],
@@ -200,7 +200,7 @@ class SqlStorage {
       ['t_class_preset', [['groups_json', 'TEXT'], ['equipment_json', 'TEXT']]],
       // v5 组机（全域学生桌面）：组终端参数 + 登记角色（组长 leader / 成员 member）
       ['t_session', [['terminal_count', 'INTEGER'], ['group_members', 'INTEGER']]],
-      ['t_student', [["role", "TEXT DEFAULT 'member'"]]],
+      ['t_student', [["role", "TEXT DEFAULT 'member'"], ["exited", "INTEGER DEFAULT 0"]]],
     ];
     for (const [table, cols] of RUNS) {
       for (const [name, type] of cols) {

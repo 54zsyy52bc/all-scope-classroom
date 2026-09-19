@@ -32,6 +32,7 @@ function toStudentDTO(row) {
     checkinStatus: row.checkin_status,
     machineId: row.machine_id || null,
     returnStatus: row.return_status,
+    exited: !!row.exited,
     online: computeOnline(row),
     lastSeenAt: row.last_seen_at || null,
   };

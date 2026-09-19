@@ -1,11 +1,11 @@
 'use strict';
-// 学生机 Electron 主进程：窗口生命周期+单实例锁；app-config/machineId；
-// 关机指令 HMAC 校验与实际执行（HMAC secret 只存在于主进程，渲染层不可信）。
+// 学生机 Electron 主进程：窗口生命周期+单实例锁+关机 HMAC 校验执行（secret 只在主进程）。
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const registerGuard = require('./main-guard');
+const createFloatWindow = require('./float-window');
 const { execFile } = require('node:child_process');
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const APP_ROOT = __dirname;
@@ -50,8 +50,7 @@ function writeConfig(patch) {
   return next;
 }
 
-// machineId：克隆镜像环境下也要尽量唯一（seat 冲突检测依赖它）
-// 取「主机名 + 首选物理网卡 MAC」做 sha256 前 8 位，碰撞概率可忽略。
+// machineId：克隆镜像环境也要唯一（取主机名+物理网卡 MAC 做 sha256 前 8 位，碰撞概率可忽略）。
 function pickMac() {
   const ifaces = os.networkInterfaces();
   const names = Object.keys(ifaces).sort();
@@ -105,8 +104,7 @@ function verifyShutdownToken(ticket) {
   }
   return { verified: true, reason: '', sessionId, ts };
 }
-// S-3：关机「校验 + 执行」在主进程内一气呵成（原子），渲染层只能发一次请求。
-// 旧实现把 verify/execute 拆成两个 IPC，决策点在渲染层：可绕过校验，且两步间隔存在 TOCTOU。
+// S-3：关机「校验 + 执行」在主进程内一气呵成（原子），渲染层只能发一次请求（防绕过/TOCTOU）。
 function requestShutdown(ticket) {
   const v = verifyShutdownToken(ticket);
   // 未通过校验绝不执行；delaySec 也只在主进程取，渲染层无从干预
@@ -214,8 +212,7 @@ function registerIpc(getMachineId) {
     return true;
   });
 }
-// 窗口
-let mainWindow = null;
+let mainWindow = null; // 窗口（kiosk 主窗 + 置顶浮窗见 float-window.js）
 let exitOk = false; // v5 全域桌面：自由创作/退出需先经口令验证置 true，否则 close 一律拦截
 const isKiosk = !process.argv.includes('--no-kiosk') && !process.argv.includes('--dev');
 function createWindow() {
@@ -281,7 +278,11 @@ if (!gotLock) { // 静默 quit 的现场表现就是"双击没反应/软件打�
         if (_ac.autoStart !== false) { writeConfig({ autoStart: true }); app.setLoginItemSettings({ openAtLogin: true }); }
       } catch (_e) { /* 自启失败忽略 */ }
       console.log(`[boot] machineId=${machineId} config=${CONFIG_PATH}`);
+      // 置顶独立浮窗：课堂页(index.html)期间常驻左下角 alwaysOnTop，中继通道在本模块注册
+      const float = createFloatWindow();
+      float.relay(() => mainWindow);
       createWindow();
+      mainWindow.webContents.on('did-navigate', (_e, url) => float.onMainNav(url));
       guard.setWindow(mainWindow);
       app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -97,6 +97,7 @@ function getSnapshot() {
       taskStatus: seatTaskStatus[s.seat] || null, returnStatus: s.returnStatus,
       online: s.online, lastSeenAt: s.lastSeenAt, conflict: conflictSeats.has(s.seat),
       role: s.role || null, // v5 组机：组长 leader / 成员 member
+      exited: !!s.exited, // 学生主动退出课堂（浮窗「退出课堂」）
     }));
 
   const groups = buildGroups(students, seatTaskStatus, conflictSeats, sessionId);

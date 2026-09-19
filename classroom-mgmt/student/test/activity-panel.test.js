@@ -338,15 +338,17 @@ function calledActions(appSrc) {
 }
 {
   const ACTIONS_SRC = fs.readFileSync(path.join(ROOT, 'renderer', 'actions.js'), 'utf8');
+  const FLINK_SRC = fs.readFileSync(path.join(ROOT, 'renderer', 'float-link.js'), 'utf8');
+  // 浮窗改独立窗口后，actions.submitTaskStatus 的调用点移到了 float-link.js，一并纳入扫描
   const names = exportedNames(ACTIONS_SRC);
-  const used = calledActions(APP_SRC);
+  const used = calledActions(APP_SRC + '\n' + FLINK_SRC);
   const missing = used.filter((n) => names.indexOf(n) < 0);
   check('W1 浮窗状态三按钮走的 actions 方法确实被导出（submitTaskStatus）',
     names.indexOf('submitTaskStatus') >= 0 && missing.length === 0,
     '导出=' + names.join(',') + ' 未导出=' + missing.join(','));
   // 反向对照：把导出列表砍成只剩 onStageClick，断言必须检出缺失
   const bad = ACTIONS_SRC.replace(/return \{[^}]*\};/, 'return { onStageClick };');
-  const missing2 = calledActions(APP_SRC).filter((n) => exportedNames(bad).indexOf(n) < 0);
+  const missing2 = calledActions(APP_SRC + '\n' + FLINK_SRC).filter((n) => exportedNames(bad).indexOf(n) < 0);
   check('W2 反向·导出列表被砍后必须检出缺失（证明 W1 不是橡皮图章）',
     missing2.indexOf('submitTaskStatus') >= 0, missing2.join(','));
   check('W3 兜底·actions.js 里确实定义了这个函数（不是凭空导出）',
@@ -429,11 +431,48 @@ function runSubmitStatus(withPanel, src) {
   check('V6 待课/已结束浮窗隐藏',
     visibleOf({ phase: 'idle' }) === 'none' && visibleOf({ phase: 'closed' }) === 'none');
   // 反向对照：把按阶段显隐改成常显，V4 必须翻转（复现"浮窗挡表单/磁贴"）
-  const bad = PANEL_SRC.replace("root.style.display = (phase === 'task') ? '' : 'none';",
+  const bad = PANEL_SRC.replace("root.style.display = (phase === 'task' || opts.alwaysVisible) ? '' : 'none';",
     "root.style.display = ''; // 常显（被回退的旧实现）");
   check('V7 反向·成功把显隐逻辑改回常显', bad !== PANEL_SRC);
   check('V8 反向·改回常显后登记页浮窗不再隐藏（复现缺陷）',
     visibleOf({ phase: 'checkin', checkinDone: false, currentTask: null }, bad) === '');
+}
+
+// ---- A. 独立置顶浮窗扩展点：alwaysVisible + decorate（float.html 宿主用）----
+// 面板被独立 alwaysOnTop BrowserWindow 复用后：OS 窗口不存在"遮挡页面"问题，
+// 所有阶段都要显示（退出课堂按钮全程可见）；宿主经 decorate 注入「退出课堂」区。
+{
+  const visOf = (state, mountOpts) => {
+    const ctx = loadPanel(PANEL_SRC);
+    ctx.panel.mount(Object.assign({ icon: () => '', onStatus() {}, onJump() {} }, mountOpts || {}));
+    ctx.panel.render(state);
+    return ctx.body.children[0].style.display;
+  };
+  check('A1 alwaysVisible=true 时待课阶段也显示（页内模式必须隐藏，两态共存）',
+    visOf({ phase: 'idle' }, { alwaysVisible: true }) === ''
+    && visOf({ phase: 'idle' }, null) === 'none');
+  check('A2 alwaysVisible=true 时登记阶段也显示',
+    visOf({ phase: 'checkin', checkinDone: false, currentTask: null }, { alwaysVisible: true }) === '');
+  check('A3 默认（页内模式）不改变旧契约：登记/归还仍隐藏',
+    visOf({ phase: 'return', returnDone: false, currentTask: null }, null) === 'none');
+  // decorate：宿主注入的 DOM 必须真的挂进面板 body；抛异常不得打断 mount
+  check('A4 decorate 拿到 root/body 引用且注入节点进面板', (() => {
+    let ref = null;
+    const ctx = loadPanel(PANEL_SRC);
+    ctx.panel.mount({ icon: () => '', onStatus() {}, onJump() {},
+      decorate: (r) => { ref = r; r.body.appendChild({ children: [], className: 'fe-bar', hidden: false }); } });
+    return !!ref && !!ref.root && !!ref.body
+      && walk(ctx.body.children[0], []).some((e) => String(e.className) === 'fe-bar');
+  })());
+  check('A5 decorate 抛异常不影响面板挂载（宿主装饰失败面板照常工作）', (() => {
+    try {
+      const ctx = loadPanel(PANEL_SRC);
+      ctx.panel.mount({ icon: () => '', onStatus() {}, onJump() {}, decorate: () => { throw new Error('boom'); } });
+      return ctx.panel.isMounted();
+    } catch (_e) { return false; }
+  })());
+  check('A6 反向·源码仍按 opts.alwaysVisible 判定（扩展点没被绕过）',
+    /phase === 'task' \|\| opts\.alwaysVisible/.test(PANEL_SRC));
 }
 
 console.log('-- 学生端 活动状态浮窗 activity-panel 总结: ' + pass + ' pass / ' + fail + ' fail');

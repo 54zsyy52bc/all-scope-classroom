@@ -36,6 +36,11 @@ function buildSyncPayload(session, seat) {
     }
     const st = db.getStudent(sessionId, seat);
     if (st) { checkinDone = st.checkin_status === 'done'; returnDone = st.return_status === 'done'; }
+    // 学生已退出课堂：sync 一律回「待课空态」——不推活动、不算已登记、锁定策略按 open
+    // （该机停在待课页等老师；重新登记或上报状态会自动清标记回归，见 handlers）
+    if (st && st.exited) {
+      return { sessionId, phase: 'idle', currentTask: null, checkinDone: false, returnDone: false, equipment, policy: 'open' };
+    }
     // 器材清单随 sync 下发：迟到/重连学生据此恢复登记页器材列表
     if (session.equipment_json) {
       try { equipment = JSON.parse(session.equipment_json); } catch (_e) { equipment = null; }

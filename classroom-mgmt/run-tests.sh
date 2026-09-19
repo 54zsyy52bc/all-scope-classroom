@@ -89,6 +89,7 @@ run_case "导出净化 export-sanitize"    "$TEACHER" "$NODE" test/export-saniti
 run_case "计时恢复 timer-restore"      "$TEACHER" "$NODE" test/timer-restore.test.js
 run_case "鉴权与CORS策略 auth-cors"    "$TEACHER" "$NODE" test/auth-cors.test.js
 run_case "锁定策略判定+sync完整性 policy-sync" "$TEACHER" "$NODE" test/policy-sync.test.js
+run_case "退出课堂同步 exit-sync" "$TEACHER" "$NODE" test/exit-sync.test.js
 run_case "凭据闸门 credential-gate"    "$TEACHER" "$NODE" test/credential-gate.test.js
 run_case "错误格式化 error-format"      "$TEACHER" "$NODE" test/error-format.test.js
 run_case "HTML单实例性 html-dedup"       "$TEACHER" "$NODE" test/html-dedup.test.js
@@ -121,6 +122,7 @@ run_case "交付包 母盘配置门禁 delivery-image" "$STUDENT" "$NODE" test/d
 run_case "守卫启动链路 guard-startup-integration" "$STUDENT" "$NODE" test/guard-startup-integration.test.js
 run_case "渲染层全局引用 renderer-global" "$STUDENT" "$NODE" test/renderer-global.test.js
 run_case "sync残缺包容错 downlink-partial" "$STUDENT" "$NODE" test/downlink-partial-sync.test.js
+run_case "置顶浮窗+退出课堂 float-exit" "$STUDENT" "$NODE" test/float-exit.test.js
 
 # ---------------------------------------------------------------------------
 # 3. 质量门禁：常规文件 <= 300 行；db 仓储/存储后端允许 <= 320（函数仓库）

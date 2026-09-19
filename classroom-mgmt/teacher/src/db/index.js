@@ -91,6 +91,10 @@ function getStudent(sessionId, seat) {
 function touchSeat(sessionId, seat, ts) {
   return S().update('t_student', { session_id: sessionId, seat }, { last_seen_at: ts });
 }
+// 学生「退出课堂」标记：置 1 后 sync 对该座位回待课空态（见 sync.service）；再次登记/上报状态即回归清 0
+function setStudentExited(sessionId, seat, exited) {
+  return upsertStudent({ sessionId, seat, patch: { exited: exited ? 1 : 0 } });
+}
 function recordCheckin({ sessionId, seat, groupId, name, studentNo, machineId, checkinTime, equipments, role }) {
   const student = upsertStudent({
     sessionId, seat, groupId,
@@ -98,6 +102,7 @@ function recordCheckin({ sessionId, seat, groupId, name, studentNo, machineId, c
       name: name || null, student_no: studentNo || null, machine_id: machineId || null,
       checkin_status: 'done', checkin_time: checkinTime, return_status: 'pending',
       role: role === 'leader' ? 'leader' : 'member',
+      exited: 0, // 重新登记 = 回归课堂，自动清除退出标记
     },
   });
   if (Array.isArray(equipments)) {
@@ -285,7 +290,7 @@ module.exports = {
   // session
   createSession, getSession, getCurrentSession, listSessions, updateSession, seedSeats, seedSeatsByGroups, admitSeatsTo,
   // student
-  upsertStudent, getStudent, recordCheckin, touchSeat, queryStudents,
+  upsertStudent, getStudent, recordCheckin, touchSeat, queryStudents, setStudentExited,
   // task
   createTask, getTask, listTasks, closeTask, upsertTaskStatus, listTaskStatuses, updateTaskTimer,
   // equipment
