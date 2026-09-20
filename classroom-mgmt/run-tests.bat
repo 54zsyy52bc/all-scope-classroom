@@ -64,6 +64,7 @@ call :run_case "student guard-startup"    "%ROOT%student" "%NODE%" test\guard-st
 call :run_case "student renderer-global"  "%ROOT%student" "%NODE%" test\renderer-global.test.js
 call :run_case "student downlink-partial"  "%ROOT%student" "%NODE%" test\downlink-partial-sync.test.js
 call :run_case "student float-exit"       "%ROOT%student" "%NODE%" test\float-exit.test.js
+call :run_case "student boot-smoke"       "%ROOT%student" "%NODE%" test\boot-smoke.test.js
 call :run_case "student delivery-image"  "%ROOT%student" "%NODE%" test\delivery-image.test.js
 
 del /q "%TMPDB%"* 2>nul

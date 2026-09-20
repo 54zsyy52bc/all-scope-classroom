@@ -122,6 +122,7 @@ run_case "交付包 母盘配置门禁 delivery-image" "$STUDENT" "$NODE" test/d
 run_case "守卫启动链路 guard-startup-integration" "$STUDENT" "$NODE" test/guard-startup-integration.test.js
 run_case "渲染层全局引用 renderer-global" "$STUDENT" "$NODE" test/renderer-global.test.js
 run_case "sync残缺包容错 downlink-partial" "$STUDENT" "$NODE" test/downlink-partial-sync.test.js
+run_case "课堂页boot冒烟 boot-smoke" "$STUDENT" "$NODE" test/boot-smoke.test.js
 run_case "置顶浮窗+退出课堂 float-exit" "$STUDENT" "$NODE" test/float-exit.test.js
 
 # ---------------------------------------------------------------------------

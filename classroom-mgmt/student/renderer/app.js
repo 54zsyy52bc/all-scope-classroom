@@ -1,7 +1,6 @@
 'use strict';
 // 学生端控制器：状态机 + MQTT 收发语义 + DOM 事件委托。上行 checkin/task/return/hello，
 // 心跳 status，下行 cmd/sync 由 Downlink 处理；上行无回执，靠 1.5s 后补发 hello + sync 回传校正。
-// idle/task 阶段由 views.viewHome 渲染磁贴主屏，活动状态浮窗由 ActivityPanel 呈现（见 wire）。
 (function () {
   const T = window.ClassroomTopics;
   const Views = window.Views;
@@ -27,6 +26,7 @@
   let actions = null;
   let homeCtx = null; // 桌面配置：课程名 + 应用列表（viewHome 渲染磁贴主屏用）
   let uiForce = null; // 浮窗跳转强制阶段（自清除，见 renderStage）
+  let floatLink = null; // 置顶独立浮窗联动（状态推送 + 动作接收，见 float-link.js）
 
   // 审计：关键操作打 [audit]（stdout + userData/audit.log 落盘）
   function audit(type, detail) { try { const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail)); console.log(line); if (window.classroom && window.classroom.log) window.classroom.log(line); } catch (_e) { /* 审计不阻断 */ } }
@@ -55,7 +55,7 @@
     saveLocal();
     // 必须用 window. 而非裸 global（渲染层没有 global 变量，裸引用抛错会中断 boot → MQTT 永连不上）。
     if (window.StageFx) window.StageFx.onPhase(phase);
-    if (typeof window.ActivityPanel !== 'undefined') window.ActivityPanel.render(state); // 浮窗随状态刷新
+    if (floatLink) floatLink.push(); // 状态快照推给置顶浮窗（独立 BrowserWindow，经主进程转发）
   }
 
   function renderConn() {
