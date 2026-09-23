@@ -28,6 +28,13 @@ router.post('/commands/admit-seat', asyncHandler(async (req, res) => {
   ok(res, result);
 }));
 
+// 教师通知：全体广播或定向提醒（浮窗/大屏通用）
+router.post('/commands/notice', asyncHandler(async (req, res) => {
+  const { message, seat } = req.body || {};
+  const result = await commandSvc.sendNotice({ message, seat });
+  ok(res, result);
+}));
+
 // 撤销关机：学生归还后仍需继续使用时，教师一键中止已下发的关机（学生端执行 shutdown /a）
 router.post('/commands/shutdown-cancel', asyncHandler(async (req, res) => {
   const result = await commandSvc.cancelShutdown();

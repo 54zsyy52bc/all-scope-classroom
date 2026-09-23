@@ -7,7 +7,7 @@
 #   ./run-tests.sh --full     # 完整模式：快速模式 + 真实 SIoT broker 全链路冒烟
 #
 # 覆盖:
-#   教师端  selfcheck / routes / preset-pkg / dashboard.dom / export-sanitize / timer-restore / auth-cors / credential-gate / error-format / html-dedup / terminology / borrow-create
+#   教师端  selfcheck / routes / preset-pkg / dashboard.dom / export-sanitize / timer-restore / auth-cors / credential-gate / error-format / html-dedup / terminology / borrow-create / command-notice
 #   Preset Studio  store（本地库）/ renderer.dom
 #   学生端  protocol / renderer.dom / shutdown-atomic / settings-gate / desktop-settings-empty / desktop-tile-and-launch / activity-panel / delivery-image / guard-startup-integration
 #   门禁    单文件 <= 300 行 / P0 emoji 扫描 / 批处理纯 ASCII
@@ -90,6 +90,7 @@ run_case "计时恢复 timer-restore"      "$TEACHER" "$NODE" test/timer-restore
 run_case "鉴权与CORS策略 auth-cors"    "$TEACHER" "$NODE" test/auth-cors.test.js
 run_case "锁定策略判定+sync完整性 policy-sync" "$TEACHER" "$NODE" test/policy-sync.test.js
 run_case "退出课堂同步 exit-sync" "$TEACHER" "$NODE" test/exit-sync.test.js
+run_case "通知指令 command-notice" "$TEACHER" "$NODE" test/command-notice.test.js
 run_case "凭据闸门 credential-gate"    "$TEACHER" "$NODE" test/credential-gate.test.js
 run_case "错误格式化 error-format"      "$TEACHER" "$NODE" test/error-format.test.js
 run_case "HTML单实例性 html-dedup"       "$TEACHER" "$NODE" test/html-dedup.test.js

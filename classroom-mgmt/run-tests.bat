@@ -47,6 +47,7 @@ call :run_case "teacher terminology"      "%ROOT%teacher" "%NODE%" test\terminol
 call :run_case "teacher borrow-create"    "%ROOT%teacher" "%NODE%" test\borrow-create.test.js
 call :run_case "teacher policy-sync"      "%ROOT%teacher" "%NODE%" test\policy-sync.test.js
 call :run_case "teacher exit-sync"        "%ROOT%teacher" "%NODE%" test\exit-sync.test.js
+call :run_case "teacher command-notice"   "%ROOT%teacher" "%NODE%" test\command-notice.test.js
 
 rem --- preset studio ---
 call :run_case "studio store"             "%ROOT%preset-studio" "%NODE%" test\store.test.js

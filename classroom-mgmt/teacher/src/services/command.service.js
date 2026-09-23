@@ -93,6 +93,28 @@ async function sendReset({ seat }) {
   return { seat: normSeat, broadcast };
 }
 
+// 教师通知：全体广播（seat 留空）或定向提醒（学生端 downlink applyNotice 弹 toast）。
+// 任何阶段可用（课中提醒为主）；教师机置顶浮窗「发通知」按钮走这里。
+async function sendNotice({ message = '', seat = '' } = {}) {
+  const msg = String(message == null ? '' : message).trim().slice(0, 200);
+  if (!msg) fail('E-VAL-01', '通知内容不能为空');
+  let target = null;
+  if (seat != null && String(seat).trim() !== '') {
+    // seatNum 对非数字原样返回（truthy），必须先显式校验格式（与 sendReset 一致）
+    if (!/^\d{1,2}$/.test(String(seat).trim())) fail('E-VAL-01', '座位号无效（应为 1-99 的数字）');
+    target = seatNum(String(seat).trim());
+  }
+  const payload = target ? { message: msg, seat: target } : { message: msg };
+  const broadcast = await bridge.publishCommand('notice', payload);
+  sse.publish('command.sent', {
+    action: 'notice', seat: target,
+    msgId: broadcast && broadcast.msgId, delivered: !!(broadcast && broadcast.delivered !== false),
+    topic: bridge.CMD_BROADCAST,
+  });
+  log.info(`notice 通知下发（seat=${target || '全体'}）: ${msg.slice(0, 50)}`);
+  return { message: msg, seat: target, broadcast };
+}
+
 // 全部归还后自动关机（由 return handler 触发）
 async function autoShutdown() {
   try {
@@ -150,4 +172,4 @@ function cfg_secret() { return require('../config').HMAC_SECRET; }
 function cfg_shutdownDelay() { return require('../config').SHUTDOWN_DELAY_SEC; }
 function cfg_groupSize() { return require('../config').GROUP_SIZE || 5; }
 
-module.exports = { sendShutdown, sendReset, autoShutdown, sendAdmit, cancelShutdown };
+module.exports = { sendShutdown, sendReset, autoShutdown, sendAdmit, cancelShutdown, sendNotice };
