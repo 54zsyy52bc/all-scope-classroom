@@ -94,6 +94,24 @@ console.log('-- 教师端 通知指令 command-notice');
   check('F5 浮窗脚本调用结束活动与锁定策略接口',
     /activities\/\$\(\$script:currentTaskId\)\/end/.test(floatSrc) && /\/policy/.test(floatSrc));
   check('F6 apiFail 为错误构造器（防误改名）', typeof apiFail === 'function');
+  // v2 增量：发活动 / 回大屏 / 贴边竖条
+  check('F7 发活动：拉取预设清单 /presets/activities', /\/presets\/activities/.test(floatSrc));
+  check('F8 发活动：走发布接口 sessions/:sid/activities', /\/sessions\/\$\(\$script:sessionId\)\/activities"/.test(floatSrc));
+  check('F9 发活动：快捷计时不限时/15/30/45/60',
+    /'不限时', '0'/.test(floatSrc) && /'15分', '900'/.test(floatSrc) && /'30分', '1800'/.test(floatSrc)
+      && /'45分', '2700'/.test(floatSrc) && /'60分', '3600'/.test(floatSrc));
+  check('F10 发活动：预设名 XML 转义（SecurityElement.Escape）', /SecurityElement\]::Escape/.test(floatSrc));
+  check('F11 回大屏：打开站点根（Start-Process siteRoot）', /siteRoot = \$BaseUrl -replace/.test(floatSrc) && /Start-Process \$script:siteRoot/.test(floatSrc));
+  check('F12 贴边竖条：Strip 形态 + 收起/展开 + 松手吸附右缘',
+    /x:Name="Strip"/.test(floatSrc) && /Set-Collapsed/.test(floatSrc) && /\$wa\.Right - \$script:win\.Width/.test(floatSrc));
+  check('F13 竖条关键数字：登记/求助(>0 红)/活动状态',
+    /SReg'\]\.Text = "登 /.test(floatSrc) && /taskHelp -gt 0/.test(floatSrc) && /SAct/.test(floatSrc));
+  check('F14 发活动与现有快捷操作共用二次确认（Request-Confirm）',
+    (floatSrc.match(/Request-Confirm/g) || []).length >= 5);
+  { // 反向：删掉预设拉取后 F7 断言翻转（非橡皮图章）
+    const broken = floatSrc.replace(/\/presets\/activities/g, '/removed-x');
+    check('F15 反向·移除预设拉取被检出', !/\/presets\/activities/.test(broken) && broken !== floatSrc);
+  }
 
   try { fs.rmSync(DBP, { force: true }); fs.rmSync(DBP + '-wal', { force: true }); fs.rmSync(DBP + '-shm', { force: true }); } catch (_e) { /* noop */ }
   console.log('-- 通知指令 command-notice 总结: ' + pass + ' pass / ' + fail + ' fail');
