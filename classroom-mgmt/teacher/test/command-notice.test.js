@@ -102,12 +102,23 @@ console.log('-- 教师端 通知指令 command-notice');
       && /'45分', '2700'/.test(floatSrc) && /'60分', '3600'/.test(floatSrc));
   check('F10 发活动：预设名 XML 转义（SecurityElement.Escape）', /SecurityElement\]::Escape/.test(floatSrc));
   check('F11 回大屏：打开站点根（Start-Process siteRoot）', /siteRoot = \$BaseUrl -replace/.test(floatSrc) && /Start-Process \$script:siteRoot/.test(floatSrc));
-  check('F12 贴边竖条：Strip 形态 + 收起/展开 + 松手吸附右缘',
-    /x:Name="Strip"/.test(floatSrc) && /Set-Collapsed/.test(floatSrc) && /\$wa\.Right - \$script:win\.Width/.test(floatSrc));
+  check('F12 三形态：Panel/Strip/Ball + Set-Form + 竖条吸附右缘',
+    /x:Name="Strip"/.test(floatSrc) && /x:Name="Ball"/.test(floatSrc) && /function Set-Form/.test(floatSrc)
+      && /\$wa\.Right - \$script:win\.Width/.test(floatSrc));
   check('F13 竖条关键数字：登记/求助(>0 红)/活动状态',
     /SReg'\]\.Text = "登 /.test(floatSrc) && /taskHelp -gt 0/.test(floatSrc) && /SAct/.test(floatSrc));
   check('F14 发活动与现有快捷操作共用二次确认（Request-Confirm）',
     (floatSrc.match(/Request-Confirm/g) || []).length >= 5);
+  check('F16 竖条可操控：发活动(展开清单)/通知(回面板聚焦)/结束/锁定共用操作本体',
+    /BtnSAct'\]\.Add_Click/.test(floatSrc) && /Open-ActList/.test(floatSrc)
+      && /BtnSNotice'\]\.Add_Click/.test(floatSrc) && /NoticeBox'\]\.Focus\(\)/.test(floatSrc)
+      && /BtnSEnd'\]\.Add_Click\(\{ Request-Confirm[\s\S]*?\{ Do-End \}/.test(floatSrc)
+      && /BtnSPolicy'\]\.Add_Click\(\{ Request-Confirm[\s\S]*?\{ Do-Policy \}/.test(floatSrc));
+  check('F17 悬浮球：可拖动、点一下展开面板（位移<5 视为点击）',
+    /x:Name="Ball"/.test(floatSrc) && /Ball'\]\.Add_MouseLeftButtonDown/.test(floatSrc)
+      && /\$dx \+ \$dy\) -lt 5/.test(floatSrc) && /Set-Form 'panel'/.test(floatSrc));
+  check('F18 悬浮球状态同步：求助>0 红球优先，否则登记进度',
+    /Ball'\]\.BorderBrush = \$script:brushHelp/.test(floatSrc) && /BMain'\]\.Text = \$pn/.test(floatSrc));
   { // 反向：删掉预设拉取后 F7 断言翻转（非橡皮图章）
     const broken = floatSrc.replace(/\/presets\/activities/g, '/removed-x');
     check('F15 反向·移除预设拉取被检出', !/\/presets\/activities/.test(broken) && broken !== floatSrc);

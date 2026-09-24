@@ -3,7 +3,8 @@
 # 数据源：轮询本机教师服务 http://127.0.0.1:3000/api/v1（本机请求免令牌）
 # 功能：状态总览（登记/在线/任务/归还/当前活动）+ 快捷操作
 #       （发通知 / 结束活动 / 锁定切换 / 发活动[预设+快捷计时] / 一键回大屏）
-# 形态：完整面板 <-> 贴屏幕右缘的细竖条（关键数字 + 点击展开），竖条可上下拖动。
+# 三种形态：完整面板 <-> 贴边竖条（可操控：发活动/通知/结束/锁定/大屏） <-> 悬浮球
+#       （可拖动、点一下展开面板）。竖条松手吸附右缘。
 #       每个破坏性操作均需"再点一次确认"（3 秒内），防止误触。
 param(
   [string]$BaseUrl = 'http://127.0.0.1:3000/api/v1',
@@ -28,7 +29,7 @@ $script:siteRoot = $BaseUrl -replace '/api/v1/?$', ''
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False">
   <Grid>
-    <!-- 完整面板形态 -->
+    <!-- 形态一：完整面板 -->
     <Border x:Name="Panel" Background="#F01B2A41" CornerRadius="10" Padding="14,12"
             BorderBrush="#FF3E566E" BorderThickness="1">
       <StackPanel>
@@ -40,8 +41,10 @@ $script:siteRoot = $BaseUrl -replace '/api/v1/?$', ''
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="BtnScreen" Content="大屏" Width="38" Height="24" Margin="0,0,4,0"
                     Background="#FF2E6FAF" Foreground="White" BorderThickness="0" FontSize="11" Cursor="Hand"/>
-            <Button x:Name="BtnCollapse" Content="—" Width="24" Height="24" Margin="0,0,4,0"
+            <Button x:Name="BtnToStrip" Content="▎" Width="24" Height="24" Margin="0,0,4,0" ToolTip="收成贴边竖条"
                     Background="Transparent" Foreground="#FF9FB4C9" BorderThickness="0" FontSize="12" Cursor="Hand"/>
+            <Button x:Name="BtnToBall" Content="●" Width="24" Height="24" Margin="0,0,4,0" ToolTip="收成悬浮球"
+                    Background="Transparent" Foreground="#FF9FB4C9" BorderThickness="0" FontSize="10" Cursor="Hand"/>
             <Button x:Name="BtnClose" Content="X" Width="24" Height="24"
                     Background="Transparent" Foreground="#FF9FB4C9" BorderThickness="0" FontSize="12" Cursor="Hand"/>
           </StackPanel>
@@ -86,7 +89,7 @@ $script:siteRoot = $BaseUrl -replace '/api/v1/?$', ''
         <TextBlock x:Name="Foot" Foreground="#FF5F7386" FontSize="10" Margin="0,6,0,0" Text="-"/>
       </StackPanel>
     </Border>
-    <!-- 贴边竖条形态（最小化）：关键数字，点击展开 -->
+    <!-- 形态二：贴边竖条（可操控） -->
     <Border x:Name="Strip" Background="#F01B2A41" CornerRadius="8" Padding="6,12"
             BorderBrush="#FF3E566E" BorderThickness="1" Visibility="Collapsed">
       <StackPanel HorizontalAlignment="Center">
@@ -94,8 +97,26 @@ $script:siteRoot = $BaseUrl -replace '/api/v1/?$', ''
         <TextBlock x:Name="SReg" Text="-" Foreground="#FFD6E4F2" FontSize="12" TextAlignment="Center" Margin="0,2"/>
         <TextBlock x:Name="SHelp" Text="-" Foreground="#FF7C93AB" FontSize="12" TextAlignment="Center" Margin="0,2"/>
         <TextBlock x:Name="SAct" Text="-" Foreground="#FF7C93AB" FontSize="12" TextAlignment="Center" Margin="0,2"/>
-        <Button x:Name="BtnExpand" Content="展开" Margin="0,12,0,0" Padding="6,3"
-                Background="#FF2E6FAF" Foreground="White" BorderThickness="0" FontSize="11" Cursor="Hand"/>
+        <Button x:Name="BtnSAct" Content="发活动" Margin="0,12,0,0" Padding="4,4" FontSize="11"
+                Background="#FF107C10" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        <Button x:Name="BtnSNotice" Content="通知" Margin="0,4,0,0" Padding="4,4" FontSize="11"
+                Background="#FF2E6FAF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        <Button x:Name="BtnSEnd" Content="结束" Margin="0,4,0,0" Padding="4,4" FontSize="11"
+                Background="#FF8A4B3A" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        <Button x:Name="BtnSPolicy" Content="锁定" Margin="0,4,0,0" Padding="4,4" FontSize="11"
+                Background="#FF4B6A8A" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        <Button x:Name="BtnSScreen" Content="大屏" Margin="0,4,0,0" Padding="4,4" FontSize="11"
+                Background="#FF2E6FAF" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        <Button x:Name="BtnExpand" Content="展开" Margin="0,10,0,0" Padding="4,4" FontSize="11"
+                Background="Transparent" Foreground="#FF9FB4C9" BorderThickness="1" BorderBrush="#FF3E566E" Cursor="Hand"/>
+      </StackPanel>
+    </Border>
+    <!-- 形态三：悬浮球（可拖动，点一下展开面板） -->
+    <Border x:Name="Ball" Width="54" Height="54" CornerRadius="27" Background="#F01B2A41"
+            BorderBrush="#FF6B7B8C" BorderThickness="2" Visibility="Collapsed" Cursor="Hand">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock x:Name="BMain" Text="-" Foreground="#FF8FD3A8" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>
+        <TextBlock x:Name="BSub" Text="" Foreground="#FFD6E4F2" FontSize="10" TextAlignment="Center"/>
       </StackPanel>
     </Border>
   </Grid>
@@ -106,10 +127,11 @@ $reader = New-Object System.Xml.XmlNodeReader $script:xaml
 $script:win = [System.Windows.Markup.XamlReader]::Load($reader)
 
 $script:C = @{}
-foreach ($n in 'Panel','Strip','Dot','Phase','StatCheckin','StatOnline','StatTask','StatReturn','StatTaskCur',
-               'BtnScreen','BtnCollapse','BtnClose','BtnAct','ActList',
+foreach ($n in 'Panel','Strip','Ball','Dot','Phase','StatCheckin','StatOnline','StatTask','StatReturn','StatTaskCur',
+               'BtnScreen','BtnToStrip','BtnToBall','BtnClose','BtnAct','ActList',
                'NoticeBox','SeatBox','BtnNotice','BtnEnd','BtnPolicy','Msg','Foot',
-               'SDot','SReg','SHelp','SAct','BtnExpand') {
+               'SDot','SReg','SHelp','SAct','BtnSAct','BtnSNotice','BtnSEnd','BtnSPolicy','BtnSScreen','BtnExpand',
+               'BMain','BSub') {
   $script:C[$n] = $script:win.FindName($n)
 }
 
@@ -178,7 +200,7 @@ function Request-Confirm {
   & $Action
 }
 
-# ---- 状态刷新（DispatcherTimer 主线程轮询；面板与竖条同步更新） ----
+# ---- 状态刷新（DispatcherTimer 主线程轮询；三种形态同步更新） ----
 function Update-Panel {
   try {
     $snap = (Invoke-Api -Method Get -Path '/dashboard/snapshot').data
@@ -195,15 +217,24 @@ function Update-Panel {
       $script:C['BtnPolicy'].IsEnabled = $false
       $script:C['BtnNotice'].IsEnabled = $false
       $script:C['BtnAct'].IsEnabled = $false
+      $script:C['BtnSAct'].IsEnabled = $false
+      $script:C['BtnSNotice'].IsEnabled = $false
+      $script:C['BtnSEnd'].IsEnabled = $false
+      $script:C['BtnSPolicy'].IsEnabled = $false
       $script:sessionId = ''
       $script:currentTaskId = ''
       $script:lastPolicy = ''
+      # 竖条/悬浮球同步
       $script:C['SDot'].Fill = $script:brushDim
       $script:C['SReg'].Text = '登 -'
       $script:C['SHelp'].Text = '助 -'
       $script:C['SHelp'].Foreground = $script:brushDim
       $script:C['SAct'].Text = '无活动'
       $script:C['SAct'].Foreground = $script:brushDim
+      $script:C['Ball'].BorderBrush = $script:brushDim
+      $script:C['BMain'].Text = '待课'
+      $script:C['BMain'].Foreground = $script:brushDim
+      $script:C['BSub'].Text = ''
       Set-Foot '等待教师服务...'
       return
     }
@@ -228,16 +259,21 @@ function Update-Panel {
       }
       $script:C['StatTaskCur'].Text = "当前活动：$($ct.title)$rem"
       $script:C['BtnEnd'].IsEnabled = $true
+      $script:C['BtnSEnd'].IsEnabled = $true
       $script:currentTaskId = [string]$ct.taskId
       $script:currentTaskTitle = [string]$ct.title
     } else {
       $script:C['StatTaskCur'].Text = '当前活动：无'
       $script:C['BtnEnd'].IsEnabled = $false
+      $script:C['BtnSEnd'].IsEnabled = $false
       $script:currentTaskId = ''
       $script:currentTaskTitle = ''
     }
     $script:C['BtnNotice'].IsEnabled = $true
+    $script:C['BtnSNotice'].IsEnabled = $true
     $script:C['BtnAct'].IsEnabled = $true
+    $script:C['BtnSAct'].IsEnabled = $true
+    $script:C['BtnSPolicy'].IsEnabled = $true
     $script:sessionId = [string]$sess.sessionId
 
     # 竖条同步：登记数 / 求助数（>0 变红）/ 活动状态
@@ -248,6 +284,19 @@ function Update-Panel {
     else { $script:C['SHelp'].Foreground = $script:brushDim }
     if ($ct) { $script:C['SAct'].Text = '活动'; $script:C['SAct'].Foreground = $script:brushOk }
     else { $script:C['SAct'].Text = '无活动'; $script:C['SAct'].Foreground = $script:brushDim }
+
+    # 悬浮球同步：求助>0 变红球优先展示，否则展示登记进度
+    if ($st.taskHelp -gt 0) {
+      $script:C['Ball'].BorderBrush = $script:brushHelp
+      $script:C['BMain'].Text = "助 $($st.taskHelp)"
+      $script:C['BMain'].Foreground = $script:brushHelp
+      $script:C['BSub'].Text = "登 $($st.checkedIn)/$($sess.totalSeats)"
+    } else {
+      $script:C['Ball'].BorderBrush = $script:brushOk
+      $script:C['BMain'].Text = $pn
+      $script:C['BMain'].Foreground = $script:brushOk
+      $script:C['BSub'].Text = "登 $($st.checkedIn)/$($sess.totalSeats)"
+    }
 
     try {
       $pol = (Invoke-Api -Method Get -Path "/sessions/$($script:sessionId)/policy").data
@@ -267,9 +316,17 @@ function Update-Panel {
     $script:C['BtnPolicy'].IsEnabled = $false
     $script:C['BtnNotice'].IsEnabled = $false
     $script:C['BtnAct'].IsEnabled = $false
+    $script:C['BtnSAct'].IsEnabled = $false
+    $script:C['BtnSNotice'].IsEnabled = $false
+    $script:C['BtnSEnd'].IsEnabled = $false
+    $script:C['BtnSPolicy'].IsEnabled = $false
     $script:sessionId = ''
     $script:currentTaskId = ''
     $script:C['SDot'].Fill = $script:brushBad
+    $script:C['Ball'].BorderBrush = $script:brushBad
+    $script:C['BMain'].Text = '断开'
+    $script:C['BMain'].Foreground = $script:brushBad
+    $script:C['BSub'].Text = ''
     Set-Foot '等待服务恢复...'
   }
 }
@@ -337,56 +394,136 @@ function Publish-ChipAction {
   }
 }
 
+# 拉取预设并渲染清单（面板/竖条共用）；成功返回 $true
+function Open-ActList {
+  if (-not $script:sessionId) { Set-Msg '没有进行中的课堂，无法发活动'; return $false }
+  try {
+    $ps = @((Invoke-Api -Method Get -Path '/presets/activities').data)
+  } catch {
+    Set-Msg ('预设获取失败：' + $_.Exception.Message)
+    return $false
+  }
+  if (-not $ps -or $ps.Count -eq 0) { Set-Msg '暂无活动预设（请到大屏预设管理创建）'; return $false }
+  $script:presets = $ps
+  try { Build-ActList $ps } catch { Set-Msg ('清单渲染失败：' + $_.Exception.Message); return $false }
+  $script:C['ActList'].Visibility = 'Visible'
+  $script:C['BtnAct'].Content = '收起清单'
+  return $true
+}
+
 $script:C['BtnAct'].Add_Click({
   if ($script:C['ActList'].Visibility -eq 'Visible') {
     $script:C['ActList'].Visibility = 'Collapsed'
     $script:C['BtnAct'].Content = '发活动'
     return
   }
-  if (-not $script:sessionId) { Set-Msg '没有进行中的课堂，无法发活动'; return }
+  [void](Open-ActList)
+})
+
+# ---- 操作本体（面板/竖条共用；破坏性操作由调用方包二次确认） ----
+function Do-Notice {
+  $msg = ''
+  if ($script:C['NoticeBox'].Text) { $msg = $script:C['NoticeBox'].Text.Trim() }
+  if (-not $msg) { Set-Msg '通知内容为空，未发送'; return }
+  $seat = ''
+  if ($script:C['SeatBox'].Text) { $seat = $script:C['SeatBox'].Text.Trim() }
+  if ($seat -and $seat -notmatch '^\d{1,2}$') { Set-Msg '座位号无效（应为 1-99 的数字，留空=全体）'; return }
+  $body = @{ message = $msg }
+  if ($seat) { $body['seat'] = $seat }
   try {
-    $ps = @((Invoke-Api -Method Get -Path '/presets/activities').data)
+    Invoke-Api -Method Post -Path '/commands/notice' -Body $body | Out-Null
+    $to = if ($seat) { "座位 $seat" } else { '全体' }
+    Set-Msg "通知已下发（$to）：$msg"
+    $script:C['NoticeBox'].Text = ''
   } catch {
-    Set-Msg ('预设获取失败：' + $_.Exception.Message)
-    return
-  }
-  if (-not $ps -or $ps.Count -eq 0) { Set-Msg '暂无活动预设（请到大屏预设管理创建）'; return }
-  $script:presets = $ps
-  try { Build-ActList $ps } catch { Set-Msg ('清单渲染失败：' + $_.Exception.Message); return }
-  $script:C['ActList'].Visibility = 'Visible'
-  $script:C['BtnAct'].Content = '收起清单'
-})
-
-# ---- 一键回大屏：打开默认浏览器 ----
-$script:C['BtnScreen'].Add_Click({
-  try { Start-Process $script:siteRoot; Set-Msg "已在浏览器打开大屏：$script:siteRoot" }
-  catch { Set-Msg ('打开大屏失败：' + $_.Exception.Message) }
-})
-
-# ---- 形态切换：完整面板 <-> 贴右缘细竖条 ----
-function Set-Collapsed([bool]$on) {
-  $wa = [System.Windows.SystemParameters]::WorkArea
-  if ($on) {
-    $script:win.SizeToContent = 'Manual'
-    $script:win.Width = 56
-    $script:win.Height = 260
-    $script:C['Panel'].Visibility = 'Collapsed'
-    $script:C['Strip'].Visibility = 'Visible'
-    $script:win.Left = $wa.Right - $script:win.Width
-    $script:win.Top = [Math]::Max(0, ($wa.Bottom - $script:win.Height) / 2)
-  } else {
-    $script:win.SizeToContent = 'Height'
-    $script:win.Width = 316
-    $script:C['Strip'].Visibility = 'Collapsed'
-    $script:C['Panel'].Visibility = 'Visible'
-    $script:win.Left = $wa.Right - $script:win.ActualWidth - 12
-    $script:win.Top = $wa.Bottom - $script:win.ActualHeight - 12
+    Set-Msg ('发送失败：' + $_.Exception.Message)
   }
 }
 
-$script:C['BtnCollapse'].Add_Click({ Set-Collapsed $true })
-$script:C['BtnExpand'].Add_Click({ Set-Collapsed $false })
-# 竖条拖动（任意方向），松手后 X 吸附回屏幕右缘（保持贴边竖条形态）
+function Do-End {
+  if (-not $script:sessionId -or -not $script:currentTaskId) { Set-Msg '当前没有进行中的活动'; return }
+  try {
+    Invoke-Api -Method Post -Path "/sessions/$($script:sessionId)/activities/$($script:currentTaskId)/end" -Body @{} | Out-Null
+    Set-Msg "已结束活动：$($script:currentTaskTitle)"
+    try { Update-Panel } catch { }
+  } catch {
+    Set-Msg ('结束失败：' + $_.Exception.Message)
+  }
+}
+
+function Do-Policy {
+  if (-not $script:sessionId) { Set-Msg '没有进行中的课堂'; return }
+  $next = 'activity'
+  if ($script:lastPolicy -eq 'activity') { $next = 'open' }
+  try {
+    Invoke-Api -Method Post -Path "/sessions/$($script:sessionId)/policy" -Body @{ mode = $next } | Out-Null
+    if ($next -eq 'activity') { Set-Msg '锁定策略已切换：仅活动时开放' }
+    else { Set-Msg '锁定策略已切换：开放' }
+    try { Update-Panel } catch { }
+  } catch {
+    Set-Msg ('切换失败：' + $_.Exception.Message)
+  }
+}
+
+# ---- 一键回大屏：打开默认浏览器（面板/竖条共用） ----
+function Do-Screen {
+  try { Start-Process $script:siteRoot; Set-Msg "已在浏览器打开大屏：$script:siteRoot" }
+  catch { Set-Msg ('打开大屏失败：' + $_.Exception.Message) }
+}
+
+# ---- 形态切换：panel 完整面板 / strip 贴边竖条 / ball 悬浮球 ----
+function Set-Form([string]$f) {
+  $wa = [System.Windows.SystemParameters]::WorkArea
+  $script:C['Panel'].Visibility = 'Collapsed'
+  $script:C['Strip'].Visibility = 'Collapsed'
+  $script:C['Ball'].Visibility = 'Collapsed'
+  if ($f -eq 'panel') {
+    $script:win.SizeToContent = 'Height'
+    $script:win.Width = 316
+    $script:C['Panel'].Visibility = 'Visible'
+    $script:win.Left = $wa.Right - $script:win.ActualWidth - 12
+    $script:win.Top = $wa.Bottom - $script:win.ActualHeight - 12
+  } elseif ($f -eq 'strip') {
+    $script:win.SizeToContent = 'Height'
+    $script:win.Width = 58
+    $script:C['Strip'].Visibility = 'Visible'
+    $script:win.Left = $wa.Right - $script:win.Width
+    $script:win.Top = [Math]::Max(0, ($wa.Bottom - $script:win.ActualHeight) / 2)
+  } else {
+    $script:win.SizeToContent = 'Manual'
+    $script:win.Width = 54
+    $script:win.Height = 54
+    $script:C['Ball'].Visibility = 'Visible'
+    $script:win.Left = $wa.Right - $script:win.Width - 6
+    $script:win.Top = $wa.Bottom - $script:win.Height - 64
+  }
+}
+
+# ---- 事件绑定：面板 ----
+$script:C['BtnScreen'].Add_Click({ Do-Screen })
+$script:C['BtnToStrip'].Add_Click({ Set-Form 'strip' })
+$script:C['BtnToBall'].Add_Click({ Set-Form 'ball' })
+$script:C['BtnClose'].Add_Click({ $script:win.Close() })
+$script:C['Panel'].Add_MouseLeftButtonDown({ try { $script:win.DragMove() } catch { } })
+
+$script:C['BtnNotice'].Add_Click({ Request-Confirm $script:C['BtnNotice'] { Do-Notice } })
+$script:C['BtnEnd'].Add_Click({ Request-Confirm $script:C['BtnEnd'] { Do-End } })
+$script:C['BtnPolicy'].Add_Click({ Request-Confirm $script:C['BtnPolicy'] { Do-Policy } })
+
+# ---- 事件绑定：竖条（可操控） ----
+$script:C['BtnExpand'].Add_Click({ Set-Form 'panel' })
+$script:C['BtnSScreen'].Add_Click({ Do-Screen })
+$script:C['BtnSAct'].Add_Click({
+  Set-Form 'panel'
+  if ($script:C['ActList'].Visibility -ne 'Visible') { [void](Open-ActList) }
+})
+$script:C['BtnSNotice'].Add_Click({
+  Set-Form 'panel'
+  try { $script:C['NoticeBox'].Focus() } catch { }
+})
+$script:C['BtnSEnd'].Add_Click({ Request-Confirm $script:C['BtnSEnd'] { Do-End } })
+$script:C['BtnSPolicy'].Add_Click({ Request-Confirm $script:C['BtnSPolicy'] { Do-Policy } })
+# 竖条拖动（任意方向），松手后 X 吸附回屏幕右缘（保持贴边形态）
 $script:C['Strip'].Add_MouseLeftButtonDown({ try { $script:win.DragMove() } catch { } })
 $script:C['Strip'].Add_MouseLeftButtonUp({
   try {
@@ -395,57 +532,16 @@ $script:C['Strip'].Add_MouseLeftButtonUp({
   } catch { }
 })
 
-# ---- 快捷操作（通知 / 结束 / 锁定） ----
-$script:C['BtnNotice'].Add_Click({
-  Request-Confirm $script:C['BtnNotice'] {
-    $msg = ''
-    if ($script:C['NoticeBox'].Text) { $msg = $script:C['NoticeBox'].Text.Trim() }
-    if (-not $msg) { Set-Msg '通知内容为空，未发送'; return }
-    $seat = ''
-    if ($script:C['SeatBox'].Text) { $seat = $script:C['SeatBox'].Text.Trim() }
-    if ($seat -and $seat -notmatch '^\d{1,2}$') { Set-Msg '座位号无效（应为 1-99 的数字，留空=全体）'; return }
-    $body = @{ message = $msg }
-    if ($seat) { $body['seat'] = $seat }
-    try {
-      Invoke-Api -Method Post -Path '/commands/notice' -Body $body | Out-Null
-      $to = if ($seat) { "座位 $seat" } else { '全体' }
-      Set-Msg "通知已下发（$to）：$msg"
-      $script:C['NoticeBox'].Text = ''
-    } catch {
-      Set-Msg ('发送失败：' + $_.Exception.Message)
-    }
-  }
+# ---- 事件绑定：悬浮球（拖动自由放置；位移极小视为点击 -> 展开面板） ----
+$script:C['Ball'].Add_MouseLeftButtonDown({
+  try {
+    $p1 = @{ x = $script:win.Left; y = $script:win.Top }
+    $script:win.DragMove()
+    $dx = [Math]::Abs($script:win.Left - $p1.x)
+    $dy = [Math]::Abs($script:win.Top - $p1.y)
+    if (($dx + $dy) -lt 5) { Set-Form 'panel' }
+  } catch { }
 })
-
-$script:C['BtnEnd'].Add_Click({
-  Request-Confirm $script:C['BtnEnd'] {
-    if (-not $script:sessionId -or -not $script:currentTaskId) { Set-Msg '当前没有进行中的活动'; return }
-    try {
-      Invoke-Api -Method Post -Path "/sessions/$($script:sessionId)/activities/$($script:currentTaskId)/end" -Body @{} | Out-Null
-      Set-Msg "已结束活动：$($script:currentTaskTitle)"
-    } catch {
-      Set-Msg ('结束失败：' + $_.Exception.Message)
-    }
-  }
-})
-
-$script:C['BtnPolicy'].Add_Click({
-  Request-Confirm $script:C['BtnPolicy'] {
-    if (-not $script:sessionId) { Set-Msg '没有进行中的课堂'; return }
-    $next = 'activity'
-    if ($script:lastPolicy -eq 'activity') { $next = 'open' }
-    try {
-      Invoke-Api -Method Post -Path "/sessions/$($script:sessionId)/policy" -Body @{ mode = $next } | Out-Null
-      if ($next -eq 'activity') { Set-Msg '锁定策略已切换：仅活动时开放' }
-      else { Set-Msg '锁定策略已切换：开放' }
-    } catch {
-      Set-Msg ('切换失败：' + $_.Exception.Message)
-    }
-  }
-})
-
-$script:C['BtnClose'].Add_Click({ $script:win.Close() })
-$script:C['Panel'].Add_MouseLeftButtonDown({ try { $script:win.DragMove() } catch { } })
 
 # ---- 启动轮询并显示 ----
 $script:pollTimer = New-Object System.Windows.Threading.DispatcherTimer
