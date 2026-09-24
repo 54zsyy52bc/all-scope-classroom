@@ -312,6 +312,25 @@ async function main() {
   check('新增文件零 emoji：app.js / views.js / tiles.js',
     !EMOJI.test(APP_JS) && !EMOJI.test(viewsSrc) && !EMOJI.test(tilesSrc));
 
+  // 19) 回归：登记页「管理」按钮必须有处理器（494d72a 删 course-dock.js 时丢了绑定，
+  //     现场事故 2026-09-24：点击无响应）。绑定唯一归属 app-dock.js boot()。
+  const DOCK_JS = fs.readFileSync(R('renderer/app-dock.js'), 'utf8');
+  const INDEX_HTML = fs.readFileSync(R('renderer/index.html'), 'utf8');
+  check('19a index.html 含「管理」按钮 btn-admin', /id="btn-admin"/.test(INDEX_HTML));
+  check('19b app-dock.js 绑定 btn-admin onclick=onAdmin',
+    /\$el\('btn-admin'\)[\s\S]*?\.onclick = onAdmin/.test(DOCK_JS));
+  check('19c onAdmin 校验管理员口令（verifyLocal admin）',
+    /verifyLocal\('admin'/.test(DOCK_JS));
+  check('19d 口令通过后返回桌面页（backToDesktop）',
+    /b2\.backToDesktop\(\)/.test(DOCK_JS));
+  check('19e 绑定在 boot() 内（非死代码）',
+    /function boot\(\)[\s\S]*?admin\.onclick = onAdmin/.test(DOCK_JS));
+  { // 反向：删掉绑定行后原断言必须翻转（证明不是橡皮图章）
+    const broken = DOCK_JS.replace("if (admin) admin.onclick = onAdmin;", "if (false) admin.onclick = onAdmin;");
+    check('19f 反向·移除 onclick 绑定被检出', !/if \(admin\) admin\.onclick = onAdmin/.test(broken) && broken !== DOCK_JS);
+  }
+  check('19g app-dock.js 行数 ≤300', DOCK_JS.split('\n').length <= 300, 'lines=' + DOCK_JS.split('\n').length);
+
   console.log('\n渲染层流程验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);
 }

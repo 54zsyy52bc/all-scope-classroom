@@ -165,8 +165,47 @@
     setTimeout(() => { if (el && el.parentNode) el.parentNode.removeChild(el); }, 3000);
   }
 
+  // 管理员入口（登记页右上角「管理」）：管理员口令验证通过后返回桌面页。
+  // [回归守护] 旧 course-dock.js 在 494d72a 被删除时连带丢了 btn-admin 绑定，
+  // 导致登记页「管理」点击无响应（现场事故 2026-09-24）。绑定必须挂在 boot() 里，
+  // 且本文件不能删——index.html:17 的按钮唯一处理器在这里。
+  function pwdOverlay() {
+    return new Promise((resolve) => {
+      const ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:90;';
+      ov.innerHTML = '<div style="background:#fff;width:380px;max-width:90vw;padding:24px;font-family:inherit">'
+        + '<h3 style="margin:0 0 12px;font-size:19px">管理员验证</h3>'
+        + '<input type="password" id="cd-pwd" style="width:100%;box-sizing:border-box;padding:9px 10px;font-size:15px;border:1px solid #ddd" placeholder="系统口令（老师设置）" />'
+        + '<p id="cd-err" style="color:#c42b1c;font-size:13px;min-height:18px;margin:6px 0 0"></p>'
+        + '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">'
+        + '<button id="cd-no" style="padding:8px 16px;border:1px solid #ddd;background:#fff;cursor:pointer">取消</button>'
+        + '<button id="cd-yes" style="padding:8px 16px;border:0;background:#0078d7;color:#fff;cursor:pointer">确认</button></div></div>';
+      document.body.appendChild(ov);
+      const close = () => { document.body.removeChild(ov); resolve(false); };
+      const go = async () => {
+        const pwd = document.getElementById('cd-pwd').value;
+        const err = document.getElementById('cd-err');
+        const b2 = bridge();
+        if (!b2 || !b2.verifyLocal) { err.textContent = '环境不支持口令校验'; return; }
+        try { const r = await b2.verifyLocal('admin', pwd); if (r && r.ok) { document.body.removeChild(ov); resolve(true); return; } } catch (_e) { /* noop */ }
+        err.textContent = '口令错误';
+      };
+      document.getElementById('cd-no').onclick = close;
+      document.getElementById('cd-yes').onclick = go;
+      document.getElementById('cd-pwd').onkeydown = (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); };
+      setTimeout(() => { const i = document.getElementById('cd-pwd'); if (i) i.focus(); }, 20);
+    });
+  }
+  async function onAdmin() {
+    if (!(await pwdOverlay())) return;
+    const b2 = bridge();
+    if (b2 && b2.backToDesktop) { try { await b2.backToDesktop(); } catch (_e) { /* noop */ } }
+  }
+
   function boot() {
     if (bb.guardStart) { try { bb.guardStart(); } catch (_e) { /* 课堂登记页也要进程状态 */ } }
+    const admin = $el('btn-admin');
+    if (admin) admin.onclick = onAdmin; // 登记/课中页「管理」唯一入口（见上方回归注释）
     render();
     refresh();
     if (bb.onApps) bb.onApps((p) => { if (p) { state = p; render(); } });
