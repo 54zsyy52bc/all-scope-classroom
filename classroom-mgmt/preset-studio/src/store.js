@@ -65,7 +65,8 @@ function createStore(dataFile) {
 
   // ---------------- 班级预设 ----------------
   function toClass(row) {
-    return row ? Object.assign({}, row) : null;
+    // presetId：渲染层 camelCase 别名（历史遗留——渲染层按 presetId 读，库内 snake_case）
+    return row ? Object.assign({}, row, { presetId: row.preset_id }) : null;
   }
   function listClasses() { return state.classes.map(toClass).sort((a, b) => (a.updated_at || 0) - (b.updated_at || 0)); }
   function getClass(presetId) {
@@ -136,6 +137,7 @@ function createStore(dataFile) {
   // ---------------- 活动预设 ----------------
   function toActivity(row) {
     return row ? Object.assign({}, row, {
+      presetId: row.preset_id, // 渲染层 camelCase 别名
       equipment: Array.isArray(row.equipment) ? row.equipment : [],
       taskTemplates: Array.isArray(row.taskTemplates) ? row.taskTemplates : [],
     }) : null;

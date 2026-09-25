@@ -87,12 +87,12 @@
     host.insertAdjacentHTML('beforeend', lessonHTML(l || {}));
   }
 
-  // 追加一个课时（智能生成课件导入用）；返回生成的课时名
-  function appendSkel(name) {
+  // 追加一个课时（智能生成课件导入用）；activityIds 可选——课件导入同时生成活动时预挂勾选
+  function appendSkel(name, activityIds) {
     const list = collect();
     const dup = list.filter((l) => l.name === name).length;
     const finalName = dup ? name + '（' + (dup + 1) + '）' : name;
-    addLesson({ name: finalName, activityIds: [], equipment: [] });
+    addLesson({ name: finalName, activityIds: activityIds || [], equipment: [] });
     return finalName;
   }
 

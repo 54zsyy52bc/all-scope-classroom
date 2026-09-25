@@ -30,6 +30,7 @@ function makeEl(id) {
     querySelector() { return null; }, querySelectorAll() { return []; },
     closest() { return null; },
     appendChild() {}, removeChild() {}, prepend() {}, click() {},
+    insertAdjacentHTML(_pos, html) { this.innerHTML += html; },
   };
 }
 const byId = [
@@ -65,8 +66,9 @@ const studioLog = [];
 const memory = { classes: [], activities: [], dict: [{ eqId: 'LED', eqName: 'LED', category: '元件' }] };
 globalThis.StudioApi = {
   listAll: async () => ({
-    classes: memory.classes.map((c) => Object.assign({}, c)),
-    activities: memory.activities.map((a) => Object.assign({}, a, { equipment: a.equipment.slice(), taskTemplates: a.taskTemplates.slice() })),
+    // 与真实 store 一致：snake_case 落库 + presetId camelCase 别名出栈
+    classes: memory.classes.map((c) => Object.assign({}, c, { presetId: c.preset_id })),
+    activities: memory.activities.map((a) => Object.assign({}, a, { presetId: a.preset_id, equipment: a.equipment.slice(), taskTemplates: a.taskTemplates.slice() })),
     dict: memory.dict.map((d) => Object.assign({}, d)),
   }),
   saveClass: async (row) => {
@@ -192,6 +194,19 @@ async function main() {
   elsMap['btn-export-pkg'].onclick();
   await new Promise((r) => setTimeout(r, 20));
   check('导出：触发 pkgExport', studioLog.some((l) => l.op === 'pkg:export'));
+
+  // 课件导入：同时生成「活动预设 + 课时骨架」并自动挂接
+  globalThis.StudioApi.pickCourseware = async () => ({ fileName: '点亮LED.pptx', baseName: '点亮LED' });
+  await global.PresetSmart.importCourseware();
+  const cwAct = studioLog.filter((l) => l.op === 'activity:save').pop();
+  check('课件导入：活动已保存（名称=课件名）', !!cwAct && cwAct.body.name === '点亮LED'
+    && cwAct.body.category === '课件', cwAct ? JSON.stringify(cwAct.body) : '无调用');
+  const lessonsHtml = elsMap['c-lessons-editor'].innerHTML;
+  check('课件导入：课时骨架生成', /data-l-name/.test(lessonsHtml) && lessonsHtml.includes('点亮LED'),
+    lessonsHtml.slice(0, 150));
+  check('课件导入：活动 chip 自动勾选挂接', /data-l-act[^>]*checked/.test(lessonsHtml.replace(/value="AP-[^"]+"/, 'value="AP-X"'))
+    || /value="AP-[^"]+"[^>]*checked/.test(lessonsHtml), lessonsHtml.slice(-200));
+  check('课件导入：活动进缓存列表', (global.Editor.activities || []).some((a) => a.name === '点亮LED'));
 
   // 适配层拒绝不支持的接口（无课堂接口可用）
   const j = await global.Editor.api('POST', '/api/v1/task', { title: 'x' });

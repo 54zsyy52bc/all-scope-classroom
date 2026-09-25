@@ -2,7 +2,7 @@
 // =============================================================================
 // Preset Studio · 智能生成（v5 预设编辑器大改，脑图：导入相关数据 → 活动包 / 学生包）
 //   - 导入学生名单（CSV/TSV/TXT：学号,姓名,分组）→ 填充学生包 + 自动生成分组配置
-//   - 导入课件（PPT/DOC/PDF）→ 按文件名生成课时骨架（活动/器材后补，* 项可后期替换）
+//   - 导入课件（PPT/DOC/PDF）→ 按文件名同时生成 活动预设 + 课时骨架 并自动挂接（器材/模板后补）
 //   - parseRosterText 纯逻辑在 src/class-parts.js（无头单测），这里只管选文件与回填 UI
 // =============================================================================
 (function (global) {
@@ -72,16 +72,38 @@
     toast('学生名单已导入：' + students.length + ' 人');
   }
 
-  // 导入课件：按文件名生成课时骨架
+  // 导入课件：生成「活动预设 + 课时骨架」并自动挂接（活动=课时引用的实体，器材/模板后补）
   async function importCourseware() {
     if (!global.StudioApi || !global.StudioApi.pickCourseware) { toast('当前环境不支持文件导入', true); return; }
     let picked;
     try { picked = await global.StudioApi.pickCourseware(); } catch (e) { toast((e && e.message) || '读取失败', true); return; }
     if (!picked) return; // 用户取消
     if (!global.PresetLessons) { toast('课时编辑器未装配', true); return; }
-    const name = global.PresetLessons.appendSkel(picked.baseName);
-    setNote('已由课件生成课时「<b>' + esc(name) + '</b>」骨架（活动包/器材包可后期在课时里挂载）');
-    toast('已生成课时：' + name);
+
+    // 1) 先建活动预设：名称=课件文件名（去扩展名），器材/模板留空后期补
+    let actId = null;
+    let actPart = '';
+    if (Editor && Editor.api) {
+      const j = await Editor.api('POST', '/api/v1/presets/activities', {
+        name: picked.baseName,
+        category: '课件',
+        note: '由课件导入生成',
+        timed: false, durationSec: 0, equipment: [], taskTemplates: [],
+      });
+      if (j && j.code === 0 && j.data && j.data.preset_id) actId = j.data.preset_id;
+    }
+    // 2) 活动进缓存（chips 才能显示并默认勾选），再追加课时骨架
+    if (actId) {
+      if (Editor.refreshPresets) await Editor.refreshPresets();
+      else (Editor.activities = Editor.activities || []).push({
+        presetId: actId, name: picked.baseName, timed: false, durationSec: 0, equipment: [], taskTemplates: [],
+      });
+      actPart = '，活动「' + esc(picked.baseName) + '」已创建并挂到该课时';
+    }
+    const lessonName = global.PresetLessons.appendSkel(picked.baseName, actId ? [actId] : []);
+    setNote('已由课件 <b>' + esc(picked.fileName) + '</b> 生成课时「<b>' + esc(lessonName) + '</b>」' + actPart
+      + (actId ? '' : '（活动创建失败，可手动到「活动预设」页补建后勾选）'));
+    toast('已生成：课时「' + lessonName + '」' + (actId ? ' + 活动' : ''));
   }
 
   function bind() {
