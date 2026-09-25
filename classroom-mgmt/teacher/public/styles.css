@@ -633,3 +633,28 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
   font-size: 13px; color: var(--muted);
   border-bottom: 1px dashed var(--line); padding: 4px 2px;
 }
+
+/* ---------- 课堂工具（计时器 / 随机分组 / 小组积分） ---------- */
+.tl-wrap { text-align: center; margin: 12px 0; }
+.tl-clock { font-size: 84px; font-weight: 700; letter-spacing: 4px; }
+.tl-bar-wrap {
+  height: 10px; border-radius: 5px; background: var(--line);
+  overflow: hidden; max-width: 480px; margin: 8px auto;
+}
+.tl-bar-wrap i { display: block; height: 100%; background: var(--indigo); transition: width .4s linear; }
+.rg-result { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.rg-group {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 12px; min-width: 150px; background: var(--panel);
+}
+.rg-group b { display: block; margin-bottom: 4px; }
+.rg-group span { display: inline-block; margin: 2px 8px 2px 0; font-size: 14px; }
+.rg-group span i { font-style: normal; color: var(--muted); font-size: 12px; margin-left: 2px; }
+.sc-board { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.sc-card {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; text-align: center; min-width: 140px; background: var(--panel);
+}
+.sc-card b { font-size: 15px; }
+.sc-num { font-size: 40px; font-weight: 700; margin: 4px 0; }
+.sc-btns { display: flex; gap: 6px; justify-content: center; }

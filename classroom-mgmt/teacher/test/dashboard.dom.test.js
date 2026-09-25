@@ -73,6 +73,10 @@ const byId = new Set([
   'btn-picker', 'overlay-picker', 'pk-tab-names', 'pk-tab-cam', 'pk-close', 'pk-panel-names',
   'pk-panel-cam', 'pk-names', 'pk-roll', 'pk-cam-roll', 'pk-result', 'pk-history',
   'pk-video', 'pk-canvas', 'pk-shot',
+  'btn-tools', 'overlay-tools', 'tab-timer', 'tab-group', 'tab-score',
+  'tl-panel-timer', 'tl-panel-group', 'tl-panel-score', 'tl-time', 'tl-bar',
+  'tl-min', 'tl-sec', 'tl-start', 'tl-pause', 'tl-reset',
+  'rg-mode', 'rg-num', 'rg-make', 'rg-result', 'sc-board', 'sc-reset',
 ]);
 for (const id of byId) elsMap[id] = makeEl(id);
 // 弹窗内的输入框：让 querySelectorAll('input') 返回假元素
@@ -185,6 +189,7 @@ globalThis.confirm = () => true;
 (0, eval)(fs.readFileSync(path.join(ROOT, 'error-format.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'borrow.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'picker.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'tools.js'), 'utf8'));
 // 模拟浏览器：全部脚本加载后触发 DOMContentLoaded（app.js 的 init 在此执行）
 if (domReady) domReady();
 
@@ -404,6 +409,44 @@ async function main() {
     && elsMap['toast'].textContent.includes('摄像头'), elsMap['toast'].textContent);
   PK.close();
   check('picker close 复位滚动状态', PK._fast === true && typeof PK.close === 'function');
+
+  // ---------- 课堂小工具（tools.js：计时器 / 随机分组 / 小组积分） ----------
+  const TL = globalThis.DashboardTools;
+  check('tools 已加载并暴露 API', !!TL && typeof TL.open === 'function' && typeof TL._scores === 'function');
+  await TL.open();
+  await new Promise((r) => setTimeout(r, 10));
+  check('打开工具弹窗且积分板渲染小组', elsMap['overlay-tools'].hidden === false
+    && elsMap['sc-board'].innerHTML.includes('G1') && elsMap['sc-board'].innerHTML.includes('G2'),
+    elsMap['sc-board'].innerHTML.slice(0, 120));
+  // 计时器：5 秒 × 快速 tick
+  TL._fast = true;
+  elsMap['tl-min'].value = '0';
+  elsMap['tl-sec'].value = '3';
+  elsMap['tl-start'].onclick();
+  await new Promise((r) => setTimeout(r, 150));
+  check('计时器走秒到零并提示结束', elsMap['tl-time'].textContent === '00:00'
+    && elsMap['toast'].textContent.includes('计时结束'), elsMap['tl-time'].textContent);
+  // 随机分组：按每组人数 2 → 3 名学生分 2 组
+  elsMap['rg-mode'].value = 'size';
+  elsMap['rg-num'].value = '2';
+  elsMap['rg-make'].onclick();
+  await new Promise((r) => setTimeout(r, 20));
+  const rgHtml = elsMap['rg-result'].innerHTML;
+  check('随机分组：3 人按每组 2 人分 2 组', rgHtml.includes('第 1 组（2 人）') && rgHtml.includes('第 2 组（1 人）')
+    && rgHtml.includes('张三') && rgHtml.includes('王五'), rgHtml.slice(0, 200));
+  // 小组积分：模拟点击 +1 / +5
+  const board = elsMap['sc-board'];
+  const fakeClick = (g, d) => {
+    const card = { querySelector: (sel) => (sel === 'b' ? { textContent: g } : { textContent: '' }) };
+    const btn = { dataset: { scAdd: String(d) }, closest: (sel) => (sel === '.sc-card' ? card : null) };
+    board._listeners.click({ target: { closest: (sel) => (sel === '[data-sc-add]' ? btn : null) } });
+  };
+  fakeClick('G1', 1);
+  fakeClick('G1', 5);
+  fakeClick('G2', 1);
+  check('小组积分：+1/+5 累计正确', TL._scores().G1 === 6 && TL._scores().G2 === 1, JSON.stringify(TL._scores()));
+  elsMap['sc-reset'].onclick();
+  check('小组积分：清零', TL._scores().G1 === 0 && TL._scores().G2 === 0);
 
   // 清理活动计时条/快照合并等残留定时器，避免进程退出竞态
   for (let i = 1; i <= 20; i += 1) clearInterval(i);

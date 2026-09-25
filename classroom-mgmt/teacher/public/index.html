@@ -61,6 +61,7 @@
     <button id="btn-borrow" class="btn" data-phase-vis="checkin task return" data-page-node-id="k7Bzazxf5a5DEwl7Ty6Vds">补登借用</button>
     <button id="btn-policy" class="btn" data-phase-vis="checkin task" data-page-node-id="oqt0kkopSnQjwL2FJ5WTWR">锁定策略：全课可用</button>
     <button id="btn-picker" class="btn" data-phase-vis="checkin task">随机抽选</button>
+    <button id="btn-tools" class="btn" data-phase-vis="checkin task">课堂工具</button>
   </section>
 
   <!-- 待激活座位（登记超出课堂范围的学生请求；教师一键激活扩容后即消失） -->
@@ -232,6 +233,54 @@
     </div>
   </div>
 
+  <!-- 课堂小工具弹窗（计时器 / 随机分组 / 小组积分） -->
+  <div class="overlay" id="overlay-tools" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="tools-title">
+      <h2 id="tools-title">课堂工具</h2>
+      <div class="modal-actions">
+        <button class="btn btn-sm btn-primary" id="tab-timer">计时器</button>
+        <button class="btn btn-sm btn-ghost" id="tab-group">随机分组</button>
+        <button class="btn btn-sm btn-ghost" id="tab-score">小组积分</button>
+        <button class="btn btn-ghost btn-sm" data-close="overlay-tools">关闭</button>
+      </div>
+      <div id="tl-panel-timer">
+        <div class="tl-wrap">
+          <b class="tl-clock" id="tl-time">00:00</b>
+          <div class="tl-bar-wrap"><i id="tl-bar" style="width:0%"></i></div>
+        </div>
+        <div class="modal-actions">
+          <label>分钟<input id="tl-min" type="number" min="0" max="120" value="5" /></label>
+          <label>秒<input id="tl-sec" type="number" min="0" max="59" value="0" /></label>
+          <button class="btn btn-primary" id="tl-start">开始</button>
+          <button class="btn btn-ghost" id="tl-pause" hidden>暂停</button>
+          <button class="btn btn-ghost" id="tl-reset">复位</button>
+        </div>
+        <p class="modal-hint">倒计时结束蜂鸣三声；关闭弹窗后计时继续在后台走。</p>
+      </div>
+      <div id="tl-panel-group" hidden>
+        <p class="modal-hint">从本堂课已登记学生中加密随机洗牌分组。</p>
+        <div class="modal-actions">
+          <label>方式
+            <select id="rg-mode">
+              <option value="count">按组数</option>
+              <option value="size">按每组人数</option>
+            </select>
+          </label>
+          <label>数量<input id="rg-num" type="number" min="2" max="20" value="4" /></label>
+          <button class="btn btn-primary" id="rg-make">随机分组</button>
+        </div>
+        <div class="rg-result" id="rg-result"></div>
+      </div>
+      <div id="tl-panel-score" hidden>
+        <p class="modal-hint">按小组记分（+1/−1/+5），按课堂会话保存——换一节课自动清零。</p>
+        <div class="sc-board" id="sc-board"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="sc-reset">积分清零</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="icons.js"></script>
   <script src="dialog.js"></script>
   <script src="help-alert.js"></script>
@@ -303,6 +352,7 @@
 
   <script src="borrow.js"></script>
   <script src="picker.js"></script>
+  <script src="tools.js"></script>
   <script src="admit.js"></script>
   <script src="activity.js"></script>
   <script src="manage.js"></script>
