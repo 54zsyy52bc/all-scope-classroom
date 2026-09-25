@@ -63,6 +63,7 @@ let domReady = null;
 
 // ---------- 桩 StudioApi（内存模拟主进程 store）----------
 const studioLog = [];
+let genSeq = 0; // 桩 id 自增（与真实 store.genId 行为一致）
 const memory = { classes: [], activities: [], dict: [{ eqId: 'LED', eqName: 'LED', category: '元件' }] };
 globalThis.StudioApi = {
   listAll: async () => ({
@@ -73,7 +74,7 @@ globalThis.StudioApi = {
   }),
   saveClass: async (row) => {
     studioLog.push({ op: 'class:save', body: row });
-    const r = Object.assign({ preset_id: row.preset_id || 'CP-GEN001' }, row);
+    const r = Object.assign({ preset_id: row.preset_id || 'CP-GEN' + String(++genSeq).padStart(3, '0') }, row);
     const i = memory.classes.findIndex((c) => c.preset_id === r.preset_id);
     if (i >= 0) memory.classes[i] = r; else memory.classes.push(r);
     return Object.assign({}, r);
@@ -81,7 +82,7 @@ globalThis.StudioApi = {
   removeClass: async (id) => { memory.classes = memory.classes.filter((c) => c.preset_id !== id); return { presetId: id }; },
   saveActivity: async (row) => {
     studioLog.push({ op: 'activity:save', body: row });
-    const r = Object.assign({ preset_id: row.preset_id || 'AP-GEN001' }, row);
+    const r = Object.assign({ preset_id: row.preset_id || 'AP-GEN' + String(++genSeq).padStart(3, '0') }, row);
     const i = memory.activities.findIndex((a) => a.preset_id === r.preset_id);
     if (i >= 0) memory.activities[i] = r; else memory.activities.push(r);
     return Object.assign({}, r);
@@ -195,18 +196,30 @@ async function main() {
   await new Promise((r) => setTimeout(r, 20));
   check('导出：触发 pkgExport', studioLog.some((l) => l.op === 'pkg:export'));
 
-  // 课件导入：同时生成「活动预设 + 课时骨架」并自动挂接
-  globalThis.StudioApi.pickCourseware = async () => ({ fileName: '点亮LED.pptx', baseName: '点亮LED' });
+  // 批量课件导入：识别活动 → 每课件一个课时 + 活动批量创建挂接（同名去重）
+  globalThis.StudioApi.pickCourseware = async () => ({ files: [
+    { fileName: '点亮LED.pptx', baseName: '点亮LED', filePath: 'C:/f/点亮LED.pptx' },
+    { fileName: '面包板入门.pdf', baseName: '面包板入门', filePath: 'C:/f/面包板入门.pdf' },
+  ] });
+  globalThis.StudioApi.parseCourseware = async (paths) => paths.map((p) => (p.endsWith('.pptx')
+    ? { fileName: '点亮LED.pptx', baseName: '点亮LED', titles: ['活动一：认识面包板', '实验：LED 亮度'] }
+    : { fileName: '面包板入门.pdf', baseName: '面包板入门', titles: [], reason: '该格式暂不支持内容识别（PPTX/DOCX 可识别），已按文件名生成课时' }));
   await global.PresetSmart.importCourseware();
-  const cwAct = studioLog.filter((l) => l.op === 'activity:save').pop();
-  check('课件导入：活动已保存（名称=课件名）', !!cwAct && cwAct.body.name === '点亮LED'
-    && cwAct.body.category === '课件', cwAct ? JSON.stringify(cwAct.body) : '无调用');
+  const cwActs = studioLog.filter((l) => l.op === 'activity:save'
+    && ['活动一：认识面包板', '实验：LED 亮度'].includes(l.body.name));
+  check('批量课件：识别到的 2 个活动已创建', cwActs.length === 2
+    && cwActs.some((l) => l.body.name === '活动一：认识面包板') && cwActs.some((l) => l.body.name === '实验：LED 亮度'),
+    JSON.stringify(cwActs.map((l) => l.body.name)));
+  const cwIds = ['活动一：认识面包板', '实验：LED 亮度'].map((n) => (global.Editor.activities || []).find((a) => a.name === n));
+  check('批量课件：两个活动 id 独立（不互相覆盖）', cwIds.every(Boolean) && cwIds[0].presetId !== cwIds[1].presetId,
+    JSON.stringify(cwIds.map((a) => a && a.presetId)));
   const lessonsHtml = elsMap['c-lessons-editor'].innerHTML;
-  check('课件导入：课时骨架生成', /data-l-name/.test(lessonsHtml) && lessonsHtml.includes('点亮LED'),
-    lessonsHtml.slice(0, 150));
-  check('课件导入：活动 chip 自动勾选挂接', /data-l-act[^>]*checked/.test(lessonsHtml.replace(/value="AP-[^"]+"/, 'value="AP-X"'))
-    || /value="AP-[^"]+"[^>]*checked/.test(lessonsHtml), lessonsHtml.slice(-200));
-  check('课件导入：活动进缓存列表', (global.Editor.activities || []).some((a) => a.name === '点亮LED'));
+  check('批量课件：两个课时骨架生成', /点亮LED/.test(lessonsHtml) && /面包板入门/.test(lessonsHtml),
+    lessonsHtml.slice(0, 200));
+  check('批量课件：活动 chip 自动勾选挂接', (lessonsHtml.match(/data-l-act value="AP-[^"]*" checked/g) || []).length >= 2,
+    lessonsHtml.slice(-260));
+  check('批量课件：缓存含新建活动', ['活动一：认识面包板', '实验：LED 亮度'].every((n) => (global.Editor.activities || []).some((a) => a.name === n)));
+  check('批量课件：PDF 降级提示', /暂不支持/.test(elsMap['roster-import-note'].innerHTML || ''), elsMap['roster-import-note'].innerHTML.slice(0, 150));
 
   // 适配层拒绝不支持的接口（无课堂接口可用）
   const j = await global.Editor.api('POST', '/api/v1/task', { title: 'x' });

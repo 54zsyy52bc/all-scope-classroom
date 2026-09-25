@@ -105,6 +105,7 @@ echo "${YELLOW}== Preset Studio ==${RESET}"
 
 run_case "本地库 store"           "$STUDIO" "$NODE" test/store.test.js
 run_case "class-parts 数据标准化"  "$STUDIO" "$NODE" test/class-parts.test.js
+run_case "课件解析 courseware"     "$STUDIO" "$NODE" test/courseware-parse.test.js
 run_case "渲染层 renderer.dom"    "$STUDIO" "$NODE" test/renderer.dom.test.js
 
 # ---------------------------------------------------------------------------

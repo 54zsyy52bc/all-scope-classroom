@@ -2,7 +2,8 @@
 // =============================================================================
 // Preset Studio · 智能生成（v5 预设编辑器大改，脑图：导入相关数据 → 活动包 / 学生包）
 //   - 导入学生名单（CSV/TSV/TXT：学号,姓名,分组）→ 填充学生包 + 自动生成分组配置
-//   - 导入课件（PPT/DOC/PDF）→ 按文件名同时生成 活动预设 + 课时骨架 并自动挂接（器材/模板后补）
+//   - 批量导入课件（PPTX/DOCX/PDF 多选）→ 主进程解压识别活动标题（活动/实验/任务…），
+//     每课件生成一个课时，识别到的活动批量创建并自动挂接（同名去重；PDF 仅按文件名生成骨架）
 //   - parseRosterText 纯逻辑在 src/class-parts.js（无头单测），这里只管选文件与回填 UI
 // =============================================================================
 (function (global) {
@@ -72,38 +73,59 @@
     toast('学生名单已导入：' + students.length + ' 人');
   }
 
-  // 导入课件：生成「活动预设 + 课时骨架」并自动挂接（活动=课时引用的实体，器材/模板后补）
+  // 批量导入课件：多选 → 主进程解析内容识别活动标题 → 每课件一个课时 + 活动预设批量创建并挂接
   async function importCourseware() {
     if (!global.StudioApi || !global.StudioApi.pickCourseware) { toast('当前环境不支持文件导入', true); return; }
     let picked;
     try { picked = await global.StudioApi.pickCourseware(); } catch (e) { toast((e && e.message) || '读取失败', true); return; }
-    if (!picked) return; // 用户取消
+    if (!picked || !picked.files || !picked.files.length) return; // 用户取消
+    const files = picked.files;
     if (!global.PresetLessons) { toast('课时编辑器未装配', true); return; }
 
-    // 1) 先建活动预设：名称=课件文件名（去扩展名），器材/模板留空后期补
-    let actId = null;
-    let actPart = '';
-    if (Editor && Editor.api) {
-      const j = await Editor.api('POST', '/api/v1/presets/activities', {
-        name: picked.baseName,
-        category: '课件',
-        note: '由课件导入生成',
-        timed: false, durationSec: 0, equipment: [], taskTemplates: [],
-      });
-      if (j && j.code === 0 && j.data && j.data.preset_id) actId = j.data.preset_id;
+    // 1) 内容识别：主进程解压 PPTX/DOCX 按关键词提取候选活动标题（与 files 顺序对齐）
+    const parsedMap = {};
+    const paths = files.map((f) => f.filePath).filter(Boolean);
+    if (paths.length && global.StudioApi.parseCourseware) {
+      try {
+        const parsed = await global.StudioApi.parseCourseware(paths) || [];
+        parsed.forEach((p) => { if (p && p.fileName) parsedMap[p.fileName] = p; });
+      } catch (e) { toast('课件内容识别失败：' + ((e && e.message) || e), true); }
     }
-    // 2) 活动进缓存（chips 才能显示并默认勾选），再追加课时骨架
-    if (actId) {
-      if (Editor.refreshPresets) await Editor.refreshPresets();
-      else (Editor.activities = Editor.activities || []).push({
-        presetId: actId, name: picked.baseName, timed: false, durationSec: 0, equipment: [], taskTemplates: [],
-      });
-      actPart = '，活动「' + esc(picked.baseName) + '」已创建并挂到该课时';
+
+    // 2) 逐课件建课时：识别到的标题→活动预设（同名去重复用），未识别→纯骨架
+    const cache = Editor.activities = Editor.activities || [];
+    const known = new Map(cache.map((a) => [a.name, a.presetId]));
+    const added = [];
+    let actCount = 0;
+    const reasons = [];
+    for (const f of files) {
+      const info = parsedMap[f.fileName] || { titles: [] };
+      if (info.reason) reasons.push(f.baseName + '：' + info.reason);
+      const ids = [];
+      for (const title of (info.titles || [])) {
+        let id = known.get(title);
+        if (!id) {
+          const j = await Editor.api('POST', '/api/v1/presets/activities', {
+            name: title, category: '课件', note: '由课件「' + f.baseName + '」内容识别生成',
+            timed: false, durationSec: 0, equipment: [], taskTemplates: [],
+          });
+          if (j && j.code === 0 && j.data && j.data.preset_id) {
+            id = j.data.preset_id;
+            known.set(title, id);
+            cache.push({ presetId: id, name: title, timed: false, durationSec: 0, equipment: [], taskTemplates: [] });
+            actCount += 1;
+          }
+        }
+        if (id) ids.push(id);
+      }
+      const lessonName = global.PresetLessons.appendSkel(f.baseName, ids);
+      added.push(lessonName + '（活动 ' + ids.length + '）');
     }
-    const lessonName = global.PresetLessons.appendSkel(picked.baseName, actId ? [actId] : []);
-    setNote('已由课件 <b>' + esc(picked.fileName) + '</b> 生成课时「<b>' + esc(lessonName) + '</b>」' + actPart
-      + (actId ? '' : '（活动创建失败，可手动到「活动预设」页补建后勾选）'));
-    toast('已生成：课时「' + lessonName + '」' + (actId ? ' + 活动' : ''));
+    if (Editor.refreshPresets) await Editor.refreshPresets(); // 统一刷列表与 chips
+    setNote('已导入 <b>' + files.length + '</b> 个课件 → ' + esc(added.join('、'))
+      + '，新建活动 ' + actCount + ' 个'
+      + (reasons.length ? '<br />' + esc(reasons.join('<br />')) : ''));
+    toast('批量导入完成：' + files.length + ' 个课时，新建活动 ' + actCount + ' 个');
   }
 
   function bind() {

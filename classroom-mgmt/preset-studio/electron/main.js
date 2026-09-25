@@ -13,6 +13,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { createStore } = require('../src/store');
+const coursewareParse = require('../src/courseware-parse');
 
 let mainWindow = null;
 let store = null;
@@ -117,16 +118,38 @@ if (!gotLock) {
       return { text, fileName: path.basename(res.filePaths[0]) };
     }));
 
-    // 智能生成：选课件文件（按文件名生成课时骨架；内容解析属后期增强）
+    // 批量导入课件：可多选（PPTX/DOCX/PDF），返回文件清单（内容识别走 courseware:parse）
     ipcMain.handle('import:pick-courseware', wrap(async () => {
       const res = await dialog.showOpenDialog(mainWindow, {
-        title: '导入课件生成课时',
-        properties: ['openFile'],
+        title: '批量导入课件生成课时',
+        properties: ['openFile', 'multiSelections'],
         filters: [{ name: '课件', extensions: ['ppt', 'pptx', 'doc', 'docx', 'pdf'] }],
       });
-      if (res.canceled || !res.filePaths || !res.filePaths[0]) return null;
-      const fileName = path.basename(res.filePaths[0]);
-      return { fileName, baseName: fileName.replace(/\.[^.]+$/, ''), filePath: res.filePaths[0] };
+      if (res.canceled || !res.filePaths || !res.filePaths.length) return { files: [] };
+      return {
+        files: res.filePaths.map((p) => {
+          const fileName = path.basename(p);
+          return { fileName, baseName: fileName.replace(/\.[^.]+$/, ''), filePath: p };
+        }),
+      };
+    }));
+
+    // 批量解析课件内容：PPTX/DOCX 解压提取文本并按关键词识别活动标题（与 paths 顺序对齐）
+    ipcMain.handle('courseware:parse', wrap(async (payload) => {
+      const paths = (payload && Array.isArray(payload.paths)) ? payload.paths : [];
+      const out = [];
+      for (const p of paths) {
+        const fileName = path.basename(p);
+        let buf = null;
+        try { buf = await fs.promises.readFile(p); } catch (e) { buf = null; }
+        if (!buf) {
+          out.push({ fileName, baseName: fileName.replace(/\.[^.]+$/, ''), titles: [], reason: '文件读取失败' });
+          continue;
+        }
+        const r = coursewareParse.extractActivities(fileName, buf);
+        out.push(Object.assign({ fileName, baseName: fileName.replace(/\.[^.]+$/, '') }, r));
+      }
+      return out;
     }));
   }
 

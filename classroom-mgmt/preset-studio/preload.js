@@ -25,4 +25,5 @@ contextBridge.exposeInMainWorld('StudioApi', {
   pkgOpenFile: () => call('pkg:open-file'),
   pickRoster: () => call('import:pick-roster'),
   pickCourseware: () => call('import:pick-courseware'),
+  parseCourseware: (paths) => call('courseware:parse', { paths }),
 });
