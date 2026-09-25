@@ -100,4 +100,40 @@ function extractActivities(fileName, buf) {
   }
 }
 
-module.exports = { unzipEntries, pptxSlideTexts, docxLines, findActivityCandidates, extractActivities };
+// ---------- 器材识别：课件文本命中器材字典（eqId / eqName） ----------
+function findEquipmentCandidates(lines, dict) {
+  const items = (Array.isArray(dict) ? dict : []).filter((d) => d && d.eqId);
+  if (!items.length) return [];
+  const hit = new Map();
+  for (const raw of lines) {
+    const line = String(raw || '');
+    if (!line) continue;
+    for (const d of items) {
+      if (hit.has(d.eqId)) continue;
+      const id = String(d.eqId);
+      const nm = String(d.eqName || '');
+      if ((id.length >= 2 && line.toLowerCase().includes(id.toLowerCase()))
+        || (nm.length >= 2 && line.includes(nm))) {
+        hit.set(d.eqId, { eqId: id, eqName: nm || id, preset: 1 });
+      }
+    }
+    if (hit.size >= 20) break;                          // 单课件上限 20 种
+  }
+  return [...hit.values()];
+}
+
+// ---------- 全文行提取（供 AI 提示词用，截断上限） ----------
+const MAX_LINES = 400;
+function extractLines(fileName, buf) {
+  const lower = String(fileName || '').toLowerCase();
+  try {
+    if (lower.endsWith('.pptx')) return pptxSlideTexts(buf).flat().slice(0, MAX_LINES);
+    if (lower.endsWith('.docx')) return docxLines(buf).slice(0, MAX_LINES);
+    return [];
+  } catch (e) { return []; }
+}
+
+module.exports = {
+  unzipEntries, pptxSlideTexts, docxLines,
+  findActivityCandidates, findEquipmentCandidates, extractLines, extractActivities,
+};

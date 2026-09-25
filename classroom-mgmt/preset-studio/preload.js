@@ -25,5 +25,8 @@ contextBridge.exposeInMainWorld('StudioApi', {
   pkgOpenFile: () => call('pkg:open-file'),
   pickRoster: () => call('import:pick-roster'),
   pickCourseware: () => call('import:pick-courseware'),
-  parseCourseware: (paths) => call('courseware:parse', { paths }),
+  // 兼容两种形态：parseCourseware(paths)（批量导课时）或 parseCourseware({ paths, dict })（智能生成）
+  parseCourseware: (payload) => call('courseware:parse',
+    Array.isArray(payload) ? { paths: payload } : (payload || {})),
+  openAiPage: (url, prompt) => call('ai:open', { url, prompt }),
 });

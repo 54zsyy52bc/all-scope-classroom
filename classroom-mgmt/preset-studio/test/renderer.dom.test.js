@@ -42,6 +42,7 @@ const byId = [
   'd-eqid', 'd-eqname', 'd-category', 'btn-dict-save', 'dict-list',
   'overlay-import', 'import-title', 'import-file-name', 'import-result',
   'import-cancel', 'import-commit', 'toast',
+  'ss-ai-result', 'ss-target-class',
 ];
 for (const id of byId) elsMap[id] = makeEl(id);
 
@@ -115,6 +116,7 @@ memory.activities.push({
 (0, eval)(fs.readFileSync(path.join(ROOT, 'class-roster-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'class-lessons-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'smart-import.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'smart-studio.js'), 'utf8'));
 if (domReady) domReady();
 
 async function main() {
@@ -220,6 +222,63 @@ async function main() {
     lessonsHtml.slice(-260));
   check('批量课件：缓存含新建活动', ['活动一：认识面包板', '实验：LED 亮度'].every((n) => (global.Editor.activities || []).some((a) => a.name === n)));
   check('批量课件：PDF 降级提示', /暂不支持/.test(elsMap['roster-import-note'].innerHTML || ''), elsMap['roster-import-note'].innerHTML.slice(0, 150));
+
+  // ===================== 智能生成页：快速识别 → AI 回贴 → 确认入库 =====================
+  // 前置：保存一个班级进入缓存（作为入库目标）
+  elsMap['c-name'].value = '初二(9)班';
+  elsMap['btn-class-save'].onclick();
+  await new Promise((r) => setTimeout(r, 30));
+  const clsSmart = (global.Editor.classes || []).find((c) => c.name === '初二(9)班');
+  check('智能生成：前置班级已入缓存', !!clsSmart && !!clsSmart.presetId, JSON.stringify(global.Editor.classes.map((c) => c.name)));
+
+  // 快速识别：桩返回活动标题 + 依据 dict 的器材命中 + AI 用全文行
+  global.Editor.dict = [{ eqId: 'LED', eqName: 'LED 发光二极管', category: '元件' }];
+  globalThis.StudioApi.parseCourseware = async (payload) => {
+    const paths = Array.isArray(payload) ? payload : payload.paths;
+    const dict = Array.isArray(payload) ? [] : (payload.dict || []);
+    return paths.map((p) => (p.endsWith('.pptx') ? {
+      fileName: '点亮LED.pptx', baseName: '点亮LED',
+      titles: ['活动一：认识面包板', '实验：LED 亮度'],
+      equipment: dict.some((d) => d.eqId === 'LED') ? [{ eqId: 'LED', eqName: 'LED 发光二极管', preset: 1 }] : [],
+      lines: ['第1课 点亮LED', '实验：观察 LED 亮度变化'],
+    } : { fileName: '面包板入门.pdf', baseName: '面包板入门', titles: [], equipment: [], lines: [] }));
+  };
+  globalThis.StudioApi.openAiPage = async (url, prompt) => ({ copied: !!prompt, opened: !!url });
+  elsMap['ss-import-quick'].onclick();
+  await new Promise((r) => setTimeout(r, 30));
+  check('智能生成：快速识别产生 2 条草稿', global.PresetSmartStudio._drafts().length === 2,
+    JSON.stringify(global.PresetSmartStudio._drafts().map((d) => d.fileName)));
+  const ssHtml = elsMap['ss-drafts'].innerHTML;
+  check('智能生成：草稿含识别活动与器材命中', ssHtml.includes('实验：LED 亮度') && ssHtml.includes('LED 发光二极管'),
+    ssHtml.slice(0, 200));
+
+  // AI 回贴：覆盖第一条草稿（课时名/活动/器材）
+  elsMap['ss-ai-result'].value = JSON.stringify([{
+    courseware: '点亮LED.pptx', lessonName: '第1课 点亮LED（AI）',
+    activities: [{ name: '挑战：设计交通灯' }], equipment: [{ eqId: 'LED', preset: 3 }],
+  }]);
+  await global.PresetSmartStudio.applyAiResult();
+  const d0 = global.PresetSmartStudio._drafts()[0];
+  check('智能生成：AI 回贴覆盖草稿', d0.lessonName === '第1课 点亮LED（AI）'
+    && d0.activities[0] === '挑战：设计交通灯' && d0.equipment[0].preset === 3,
+    JSON.stringify(d0));
+
+  // 确认入库：活动去重（面包板/实验已存在）+ 新建「挑战」+ 课时挂到班级
+  const actsBefore = studioLog.filter((l) => l.op === 'activity:save').length;
+  elsMap['ss-target-class'].value = clsSmart.presetId;
+  elsMap['ss-commit'].onclick();
+  await new Promise((r) => setTimeout(r, 30));
+  const newAct = studioLog.filter((l) => l.op === 'activity:save'
+    && l.body.name === '挑战：设计交通灯');
+  check('智能生成：新活动已创建（同名去重复用旧活动）', newAct.length === 1
+    && studioLog.filter((l) => l.op === 'activity:save').length === actsBefore + 1,
+    JSON.stringify(studioLog.filter((l) => l.op === 'activity:save').map((l) => l.body.name)));
+  const smartSave = studioLog.filter((l) => l.op === 'class:save').pop();
+  const mergedLesson = smartSave && smartSave.body.lessons.find((l) => l.name === '第1课 点亮LED（AI）');
+  check('智能生成：课时挂到班级（activityIds+器材）', !!mergedLesson && mergedLesson.activityIds.length === 1
+    && mergedLesson.equipment[0].eqId === 'LED' && mergedLesson.equipment[0].preset === 3,
+    smartSave ? JSON.stringify(smartSave.body.lessons) : '无调用');
+  check('智能生成：入库后草稿清空', global.PresetSmartStudio._drafts().length === 0);
 
   // 适配层拒绝不支持的接口（无课堂接口可用）
   const j = await global.Editor.api('POST', '/api/v1/task', { title: 'x' });

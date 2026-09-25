@@ -209,6 +209,27 @@ input:focus, select:focus { outline: none; border-color: var(--indigo); }
   padding: 8px 12px; margin: 8px 0; font-size: 14px; color: var(--muted);
 }
 .import-result { color: var(--text); }
+
+/* ---------- 智能生成页：草稿卡片 ---------- */
+.ai-textarea {
+  width: 100%; min-height: 110px; resize: vertical;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font-family: var(--font); font-size: 13px;
+}
+.draft-card {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 10px;
+}
+.draft-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.draft-head input[data-d-name] { flex: 1; margin-top: 0; }
+.draft-head .row-del { min-height: 34px; }
+.draft-sec { margin: 6px 0; display: flex; flex-direction: column; gap: 6px; }
+.draft-sec > .hint { margin: 0; }
+.ss-row { display: grid; gap: 8px; align-items: center; grid-template-columns: 1fr 44px; }
+.ss-row input { margin-top: 0; }
+.ss-eq { grid-template-columns: 1fr 1.4fr 70px 44px; }
+#ss-ai-url { flex: 1; min-width: 260px; margin-top: 0; }
 .row-del {
   min-height: 40px;
   background: var(--panel); color: var(--offline);

@@ -105,5 +105,20 @@ let threw = false;
 try { unzipEntries(Buffer.from('junk')); } catch (e) { threw = /E-ZIP-01/.test(e.message); }
 check('解压：坏 zip 抛 E-ZIP-01', threw);
 
+// ---------- 器材识别 + 全文行提取（智能生成页用） ----------
+const { findEquipmentCandidates, extractLines } = require('../src/courseware-parse');
+const dict = [
+  { eqId: 'LED', eqName: 'LED 发光二极管' },
+  { eqId: 'R1', eqName: '电阻 220Ω' },
+  { eqId: 'X', eqName: '单字符不该匹配' },
+];
+const eqLines = ['实验需要 LED 和面包板', '用 R1 限流', '其他普通内容'];
+const eqs = findEquipmentCandidates(eqLines, dict);
+check('器材识别：eqId/eqName 命中', eqs.some((e) => e.eqId === 'LED') && eqs.some((e) => e.eqId === 'R1'), JSON.stringify(eqs));
+check('器材识别：单字符 eqId 不误匹配 + 去重', !eqs.some((e) => e.eqId === 'X') && eqs.length === 2);
+check('器材识别：空字典/空行安全', findEquipmentCandidates(eqLines, []).length === 0 && findEquipmentCandidates([], dict).length === 0);
+check('行提取：pptx 全文', extractLines('点亮LED.pptx', pptx).length === 6);
+check('行提取：pdf 空 + 坏文件安全', extractLines('x.pdf', Buffer.from('%PDF')) .length === 0 && extractLines('bad.pptx', Buffer.from('junk')).length === 0);
+
 console.log('\ncourseware-parse 验证：' + pass + ' 通过, ' + fail + ' 失败');
 process.exit(fail > 0 ? 1 : 0);

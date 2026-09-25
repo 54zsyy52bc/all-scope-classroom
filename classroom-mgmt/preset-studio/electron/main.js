@@ -9,7 +9,7 @@
 //   - IPC 桥接渲染层（CRUD / 器材字典 / 预设包导出导入，含文件对话框）
 //   - 渲染层不可信：所有数据操作经主进程 store，预演/合并逻辑在主进程执行
 // =============================================================================
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { createStore } = require('../src/store');
@@ -134,22 +134,34 @@ if (!gotLock) {
       };
     }));
 
-    // 批量解析课件内容：PPTX/DOCX 解压提取文本并按关键词识别活动标题（与 paths 顺序对齐）
+    // 批量解析课件内容：识别活动标题 + 器材字典命中 + 全文行（AI 提示词用），与 paths 顺序对齐
     ipcMain.handle('courseware:parse', wrap(async (payload) => {
       const paths = (payload && Array.isArray(payload.paths)) ? payload.paths : [];
+      const dict = (payload && Array.isArray(payload.dict)) ? payload.dict : [];
       const out = [];
       for (const p of paths) {
         const fileName = path.basename(p);
+        const base = { fileName, baseName: fileName.replace(/\.[^.]+$/, '') };
         let buf = null;
         try { buf = await fs.promises.readFile(p); } catch (e) { buf = null; }
-        if (!buf) {
-          out.push({ fileName, baseName: fileName.replace(/\.[^.]+$/, ''), titles: [], reason: '文件读取失败' });
-          continue;
-        }
+        if (!buf) { out.push(Object.assign(base, { titles: [], equipment: [], lines: [], reason: '文件读取失败' })); continue; }
         const r = coursewareParse.extractActivities(fileName, buf);
-        out.push(Object.assign({ fileName, baseName: fileName.replace(/\.[^.]+$/, '') }, r));
+        const lines = coursewareParse.extractLines(fileName, buf);
+        out.push(Object.assign(base, r, {
+          equipment: coursewareParse.findEquipmentCandidates(lines, dict),
+          lines,
+        }));
       }
       return out;
+    }));
+
+    // AI 生成辅助：提示词写入剪贴板 + 用默认浏览器打开 AI 网页（本机自动化，不内置任何云调用）
+    ipcMain.handle('ai:open', wrap((payload) => {
+      const url = payload && payload.url;
+      const prompt = payload && payload.prompt;
+      if (prompt) clipboard.writeText(String(prompt));
+      if (url && /^https?:\/\//.test(url)) shell.openExternal(url);
+      return { opened: !!(url && /^https?:\/\//.test(url)), copied: !!prompt };
     }));
   }
 

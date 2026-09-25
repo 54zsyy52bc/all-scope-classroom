@@ -213,6 +213,7 @@
     if (global.PresetRoster) { global.PresetRoster.bind(); global.PresetRoster.reset(); }
     if (global.PresetLessons) { global.PresetLessons.bind(); global.PresetLessons.reset(); }
     if (global.PresetSmart) global.PresetSmart.bind();
+    if (global.PresetSmartStudio) global.PresetSmartStudio.bind();
   }
 
   function init() {

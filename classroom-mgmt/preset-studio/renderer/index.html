@@ -23,6 +23,7 @@
     <button class="tab active" data-tab="classes" data-page-node-id="SEklgiPprZQzoj7PkRnByP">班级预设</button>
     <button class="tab" data-tab="activities" data-page-node-id="rFiANXVDGqVlzaBYGBIqYX">活动预设</button>
     <button class="tab" data-tab="dict" data-page-node-id="qZutvFpL8njbIf45B5whYU">器材字典</button>
+    <button class="tab" data-tab="smart">智能生成</button>
   </nav>
 
   <!-- ===================== 班级预设（班级包：信息包 + 学生包 + 课时包） ===================== -->
@@ -129,6 +130,52 @@
     </div>
   </section>
 
+  <!-- ===================== 智能生成（课件 → 课时包：快速 / AI） ===================== -->
+  <section class="tab-panel" id="panel-smart">
+    <div class="card">
+      <div class="card-head">
+        <h2>课件智能分析 → 课时包</h2>
+        <span class="hint">生成草稿 → 修改 → 确认入库（挂到班级）</span>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-head">① 批量导入课件</div>
+        <div class="mini-actions">
+          <button class="btn btn-ghost" id="ss-import-quick">快速识别（关键词 + 器材字典）</button>
+          <button class="btn btn-ghost" id="ss-import-ai">AI 生成（调本机 AI / 打开网页）</button>
+        </div>
+        <div class="import-note" id="ss-note" hidden></div>
+        <div class="mini-actions" id="ss-ai-tools" hidden>
+          <button class="btn btn-ghost" id="ss-ai-open">打开 AI 网页（提示词已复制到剪贴板）</button>
+          <input id="ss-ai-url" type="text" placeholder="AI 页面地址 https://…（默认浏览器打开，可留空）" maxlength="200" />
+        </div>
+      </div>
+
+      <div class="sub-card" id="ss-ai-import-card" hidden>
+        <div class="sub-head">AI 结果回贴<span class="hint">把 AI 返回的 JSON 粘贴到下面（格式见提示词）</span></div>
+        <textarea id="ss-ai-result" class="ai-textarea" rows="6" placeholder='[{"courseware":"课件名","lessonName":"第1课 …","activities":[{"name":"…"}],"equipment":[{"eqId":"LED","preset":2}]}]'></textarea>
+        <div class="mini-actions">
+          <button class="btn btn-ghost" id="ss-ai-apply">解析 AI 结果并加入草稿</button>
+        </div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-head">② 草稿（可直接修改）</div>
+        <div id="ss-drafts"><p class="hint">还没有草稿 —— 先在上方导入课件。</p></div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-head">③ 确认入库</div>
+        <div class="mini-actions">
+          <label>挂到班级<select id="ss-target-class"></select></label>
+          <button class="btn btn-primary" id="ss-commit">确认生成入库</button>
+          <button class="btn btn-ghost" id="ss-clear">清空草稿</button>
+        </div>
+        <p class="hint">入库动作：新建活动预设（同名复用）→ 课时追加到所选班级（activityIds + 课时器材）。</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== 导入预演弹窗 ===================== -->
   <div class="overlay" id="overlay-import" hidden data-page-node-id="oxVWuQ33fKthDENlGkXIG8">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="import-title" data-page-node-id="ONgGzLYrAtJr9nAFZ5T5Mt">
@@ -152,6 +199,7 @@
   <script src="class-roster-ui.js"></script>
   <script src="class-lessons-ui.js"></script>
   <script src="smart-import.js"></script>
+  <script src="smart-studio.js"></script>
   <script>
     document.getElementById('brand-mark').innerHTML = Icons.svg('clipboard-check', 22);
   </script>
