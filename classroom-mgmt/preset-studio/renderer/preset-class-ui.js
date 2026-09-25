@@ -26,6 +26,21 @@
     ).join('');
   }
 
+  // ---------- 器材编号 → 名称自动同步（草稿卡/课时器材/活动器材行通用）----------
+  // 输入的编号命中字典时，自动带出同行的名称输入框；未命中不动，允许手填。
+  function syncEqName(input) {
+    if (!input || !input.dataset) return false;
+    const isId = input.dataset.dEqid !== undefined || input.dataset.leId !== undefined
+      || input.dataset.eqId !== undefined;
+    if (!isId) return false;
+    const row = input.parentElement;
+    const nameEl = row && row.querySelector('[data-d-eqname],[data-le-name],[data-eq-name]');
+    if (!nameEl) return false;
+    const hit = (Editor.dict || []).find((x) => x && x.eqId === String(input.value || '').trim());
+    if (hit && hit.eqName) { nameEl.value = hit.eqName; return true; }
+    return false;
+  }
+
   // ---------- 分组编辑器 ----------
   function groupRowHTML(name, size) {
     return '<div class="group-row">'
@@ -136,6 +151,8 @@
   }
 
   function bind() {
+    // 全局委托：任意器材编号输入变化 → 自动带出同行名称（见 syncEqName）
+    document.addEventListener('input', (e) => syncEqName(e.target));
     const ga = $('btn-group-auto');
     if (ga) ga.onclick = autoGroups;
     const gadd = $('btn-group-add');
@@ -177,5 +194,6 @@
     collectClassEq,
     refreshDictOptions,
     renderGroups, // v5：供学生包「从名单生成分组」复用
+    syncEqName,   // v5.5：器材编号→名称自动同步（测试可直接调用）
   };
 })(window);

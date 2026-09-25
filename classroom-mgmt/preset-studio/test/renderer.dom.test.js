@@ -43,8 +43,9 @@ const byId = [
   'overlay-import', 'import-title', 'import-file-name', 'import-result',
   'import-cancel', 'import-commit', 'toast',
   'ss-ai-result', 'ss-target-class',
-  'overlay-oobe', 'ob-dots', 'ob-step-1', 'ob-step-2', 'ob-step-3', 'ob-step-4',
+  'overlay-oobe', 'ob-dots', 'ob-step-1', 'ob-step-teacher', 'ob-step-2', 'ob-step-import', 'ob-step-3', 'ob-step-4',
   'ob-class-name', 'ob-seats', 'ob-group', 'ob-dict-seed', 'ob-prev', 'ob-next', 'ob-skip',
+  'ob-teacher-name', 'ob-teacher-school', 'ob-import-pkg',
 ];
 for (const id of byId) elsMap[id] = makeEl(id);
 
@@ -290,27 +291,55 @@ async function main() {
   const j = await global.Editor.api('POST', '/api/v1/task', { title: 'x' });
   check('适配层拒绝课堂接口', j.code === 1, JSON.stringify(j));
 
-  // OOBE 首次运行向导：meta 未标记自动弹出 → 建班 → 字典种子 → 完成写标记
+  // OOBE 首次运行向导（6 步）：弹出 → 教师信息 → 建班 → 导入步骤 → 字典种子 → 完成写标记
   check('OOBE：meta 未标记时自动弹出', elsMap['overlay-oobe'].hidden === false
     && elsMap['ob-step-1'].hidden === false && elsMap['ob-dots'].innerHTML.includes('on'),
     'hidden=' + elsMap['overlay-oobe'].hidden);
+  elsMap['ob-teacher-name'].value = '王老师';
+  elsMap['ob-teacher-school'].value = '实验中学';
+  await global.Oobe.next(); // 1→2（教师信息步骤，暂存填写值）
+  await global.Oobe.next(); // 2→3：保存教师信息
+  check('OOBE：教师信息写入 meta', metaStore.teacherInfo && metaStore.teacherInfo.name === '王老师'
+    && metaStore.teacherInfo.school === '实验中学', JSON.stringify(metaStore.teacherInfo));
   elsMap['ob-class-name'].value = '初二(1)班';
   elsMap['ob-seats'].value = '48';
-  await global.Oobe.next(); // 1→2（填班级信息）
-  await global.Oobe.next(); // 2：创建班级 → 进入步骤3
+  await global.Oobe.next(); // 3→4：创建班级
   const oobeCls = studioLog.filter((l) => l.op === 'class:save').pop();
-  check('OOBE：第二步创建班级', !!oobeCls && oobeCls.body.name === '初二(1)班'
+  check('OOBE：创建班级', !!oobeCls && oobeCls.body.name === '初二(1)班'
     && oobeCls.body.totalSeats === 48 && oobeCls.body.note === 'OOBE 创建', JSON.stringify(oobeCls && oobeCls.body));
-  check('OOBE：进入步骤 3', elsMap['ob-step-3'].hidden === false && elsMap['ob-step-1'].hidden === true);
+  check('OOBE：进入导入步骤', elsMap['ob-step-import'].hidden === false && elsMap['ob-step-1'].hidden === true);
+  await global.Oobe.next(); // 3→4：导入步骤无操作
+  check('OOBE：进入字典种子步骤', elsMap['ob-step-3'].hidden === false);
   elsMap['ob-dict-seed'].checked = true;
   const dictBefore = studioLog.filter((l) => l.op === 'dict:save').length;
-  await global.Oobe.next(); // 步骤3：字典种子 → 进入步骤4
+  await global.Oobe.next(); // 4→5：字典种子
   const dictAdds = studioLog.filter((l) => l.op === 'dict:save').length - dictBefore;
   check('OOBE：字典种子导入 6 条', dictAdds === 6
     && memory.dict.some((d) => d.eqId === 'LED'), String(dictAdds));
-  await global.Oobe.next(); // 步骤4：完成
+  await global.Oobe.next(); // 5→6：完成
   check('OOBE：完成写 meta 标记并关闭弹层', metaStore.oobeDone === true
     && elsMap['overlay-oobe'].hidden === true, 'oobeDone=' + metaStore.oobeDone);
+
+  // OOBE 导入入口：点击隐藏向导并复用主导入流程（桩 pkgOpenFile 返回 null = 用户取消）
+  elsMap['overlay-oobe'].hidden = false;
+  elsMap['ob-import-pkg'].onclick();
+  check('OOBE：导入入口复用主导入流程', elsMap['overlay-oobe'].hidden === true
+    && typeof global.Editor.importPkg === 'function');
+
+  // 器材编号 → 名称自动同步（草稿卡 data-d-eqid 行；字典命中才带出）
+  memory.dict.push({ eqId: 'TEST-EQ', eqName: '测试器材甲', category: '元件' });
+  await global.Editor.refreshPresets(); // 同步 Editor.dict 缓存（与真实使用一致）
+  const eqNameEl = { value: '' };
+  const synced = global.PresetClassUi.syncEqName({
+    dataset: { dEqid: '' }, value: 'TEST-EQ',
+    parentElement: { querySelector: () => eqNameEl },
+  });
+  check('器材编号：命中字典自动带出名称', synced === true && eqNameEl.value === '测试器材甲', eqNameEl.value);
+  const notHit = global.PresetClassUi.syncEqName({
+    dataset: { dEqid: '' }, value: 'NO-SUCH-EQ',
+    parentElement: { querySelector: () => eqNameEl },
+  });
+  check('器材编号：未命中不动名称', notHit === false && eqNameEl.value === '测试器材甲');
 
   console.log('\nPreset Studio 渲染层验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);

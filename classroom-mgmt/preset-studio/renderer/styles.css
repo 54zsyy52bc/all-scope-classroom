@@ -345,3 +345,10 @@ button, .btn { box-shadow: none; }
 .ob-list { color: var(--muted); }
 .ck { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .ck input { width: auto; }
+
+/* ---------- OOBE 全屏化：首启向导独占整屏 ---------- */
+#overlay-oobe { background: var(--bg); z-index: 90; }
+#overlay-oobe .modal { width: min(760px, 94vw); max-height: 92vh; overflow: auto; padding: 44px 52px; }
+#overlay-oobe .modal-hint { font-size: 16px; }
+#overlay-oobe .ob-list { font-size: 16px; }
+#overlay-oobe h2 { margin-bottom: 4px; }

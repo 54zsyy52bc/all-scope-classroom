@@ -73,7 +73,8 @@ const byId = new Set([
   'btn-picker', 'overlay-picker', 'pk-tab-names', 'pk-tab-cam', 'pk-close', 'pk-panel-names',
   'pk-panel-cam', 'pk-names', 'pk-roll', 'pk-cam-roll', 'pk-result', 'pk-history',
   'pk-video', 'pk-canvas', 'pk-shot',
-  'overlay-oobe', 'tb-dots', 'tb-step-1', 'tb-step-2', 'tb-step-3', 'tb-step-4',
+  'overlay-oobe', 'tb-dots', 'tb-step-1', 'tb-step-teacher', 'tb-step-2', 'tb-step-3', 'tb-step-4',
+  'tb-teacher-name', 'tb-teacher-school', 'tb-import-now',
   'tb-open-manage', 'tb-prev', 'tb-next', 'tb-skip',
   'btn-tools', 'overlay-tools', 'tab-timer', 'tab-group', 'tab-score',
   'tl-panel-timer', 'tl-panel-group', 'tl-panel-score', 'tl-time', 'tl-bar',
@@ -461,23 +462,35 @@ async function main() {
   // 清理活动计时条/快照合并等残留定时器，避免进程退出竞态
   for (let i = 1; i <= 20; i += 1) clearInterval(i);
 
-  // OOBE 首次运行向导：自动弹出 → 步进/回退 → 跳过写标记
+  // OOBE 首次运行向导（5 步）：弹出 → 教师信息 → 步进/回退 → 跳过写标记
   check('OOBE：首次进入自动弹出且步骤 1 可见', elsMap['overlay-oobe'].hidden === false
     && elsMap['tb-step-1'].hidden === false && elsMap['tb-dots'].innerHTML.includes('on'),
     'hidden=' + elsMap['overlay-oobe'].hidden);
-  elsMap['tb-next'].onclick();
-  elsMap['tb-prev'].onclick();
-  check('OOBE：上一步回到步骤 1', elsMap['tb-step-1'].hidden === false && elsMap['tb-step-2'].hidden === true);
-  elsMap['tb-next'].onclick();
-  elsMap['tb-next'].onclick();
-  elsMap['tb-next'].onclick();
-  check('OOBE：到达步骤 4 且按钮文案切换', elsMap['tb-step-4'].hidden === false
+  elsMap['tb-teacher-name'].value = '王老师';
+  elsMap['tb-teacher-school'].value = '实验中学';
+  elsMap['tb-next'].onclick(); // 1→2（教师信息步骤，暂存填写值）
+  elsMap['tb-prev'].onclick(); // 2→1（回退不丢已填）
+  check('OOBE：上一步回到步骤 1 且保留填写', elsMap['tb-step-1'].hidden === false
+    && elsMap['tb-teacher-name'].value === '王老师', elsMap['tb-teacher-name'].value);
+  elsMap['tb-next'].onclick(); // 1→2
+  elsMap['tb-next'].onclick(); // 2→3：保存教师信息
+  const savedT = JSON.parse(localStorage.getItem('kct-teacher-info') || '{}');
+  check('OOBE：教师信息保存并进入步骤 3', savedT.name === '王老师' && savedT.school === '实验中学'
+    && elsMap['tb-step-2'].hidden === false && elsMap['tb-step-1'].hidden === true,
+    localStorage.getItem('kct-teacher-info'));
+  elsMap['tb-next'].onclick(); // 3→4
+  check('OOBE：到达导入步骤', elsMap['tb-step-3'].hidden === false && typeof elsMap['tb-import-now'].onclick === 'function');
+  elsMap['tb-next'].onclick(); // 4→5
+  check('OOBE：到达最后一步且按钮文案切换', elsMap['tb-step-4'].hidden === false
     && elsMap['tb-next'].textContent.indexOf('完成') >= 0,
     'next=' + elsMap['tb-next'].textContent);
   elsMap['tb-skip'].onclick();
   check('OOBE：跳过写 localStorage 标记并关闭弹层', localStorage.getItem('kct-oobe-done') === '1'
     && elsMap['overlay-oobe'].hidden === true,
     'mark=' + localStorage.getItem('kct-oobe-done'));
+  elsMap['f-teacher'].value = '';
+  global.DashboardOobe.prefillTeacher();
+  check('OOBE：教师姓名自动预填开始上课表单', elsMap['f-teacher'].value === '王老师', elsMap['f-teacher'].value);
 
   console.log('\n大屏验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);

@@ -365,6 +365,12 @@
           <li><b>学生端</b> —— 每组一台学生机，开机自动进入课堂桌面等待登记</li>
         </ul>
       </div>
+      <div id="tb-step-teacher" hidden>
+        <p class="modal-hint">先登记教师信息，之后「开始上课」会自动带出姓名，不用每次手填。</p>
+        <label>教师姓名<input id="tb-teacher-name" type="text" placeholder="例如：王老师" maxlength="20" /></label>
+        <label>学校 / 单位<input id="tb-teacher-school" type="text" placeholder="选填" maxlength="30" /></label>
+        <p class="modal-hint">保存在本机浏览器；留空姓名 = 暂不填写。</p>
+      </div>
       <div id="tb-step-2" hidden>
         <p class="modal-hint">课堂四步（顶部按钮随阶段自动增减）：</p>
         <ul class="ob-list">
@@ -381,7 +387,10 @@
           <li>大屏「预设管理」→ <b>导入预设包</b>；也可在此导出本机备份</li>
           <li>导入后「开始上课」弹窗里就能直接选班级/活动预设</li>
         </ul>
-        <div class="modal-actions"><button class="btn btn-primary" id="tb-open-manage">现在打开预设管理</button></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="tb-import-now">直接导入预设包</button>
+          <button class="btn btn-ghost" id="tb-open-manage">现在打开预设管理</button>
+        </div>
       </div>
       <div id="tb-step-4" hidden>
         <p class="modal-hint">课中互动小工具（都在顶部按钮区）：</p>

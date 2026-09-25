@@ -215,15 +215,26 @@
           <li><b>智能生成</b> —— 批量导入课件，快速/AI 生成课时包</li>
         </ul>
       </div>
+      <div id="ob-step-teacher" hidden>
+        <p class="modal-hint">先登记教师信息，保存在本机（后续版本会自动用于预设包署名）。</p>
+        <label>教师姓名<input id="ob-teacher-name" type="text" placeholder="例如：王老师" maxlength="20" /></label>
+        <label>学校 / 单位<input id="ob-teacher-school" type="text" placeholder="选填" maxlength="30" /></label>
+        <p class="modal-hint">留空姓名 = 暂不填写，随时可在系统里补。</p>
+      </div>
       <div id="ob-step-2" hidden>
-        <p class="modal-hint">第一步：建一个班级（以后随时可改，也能从预设包导入）。</p>
+        <p class="modal-hint">建一个班级（以后随时可改，也能从预设包导入）。</p>
         <label>班级名称<input id="ob-class-name" type="text" placeholder="例如：初二(1)班" maxlength="30" /></label>
         <label>座位数<input id="ob-seats" type="number" min="1" max="99" value="50" /></label>
         <label>每组人数<input id="ob-group" type="number" min="1" max="20" value="5" /></label>
         <p class="modal-hint">留空名称 = 跳过，稍后在「班级预设」页创建。</p>
       </div>
+      <div id="ob-step-import" hidden>
+        <p class="modal-hint">已有别的电脑导出的预设包（.kctpreset）？现在就能导入。</p>
+        <div class="modal-actions"><button class="btn btn-primary" id="ob-import-pkg">选择预设包文件导入</button></div>
+        <p class="modal-hint">导入前会先预演（新增/覆盖/跳过清单），确认后才落库。没有包就点「下一步」跳过。</p>
+      </div>
       <div id="ob-step-3" hidden>
-        <p class="modal-hint">第二步：器材字典用于登记器材时快速联想编号。</p>
+        <p class="modal-hint">器材字典用于登记器材时快速联想编号。</p>
         <label class="ck"><input id="ob-dict-seed" type="checkbox" checked /> 导入常用器材（LED / 面包板 / UNO 主控 / 杜邦线等 6 条）</label>
       </div>
       <div id="ob-step-4" hidden>

@@ -190,6 +190,7 @@
     } catch (e) { toast('读取本地数据失败：' + (e && e.message || e), true); }
   }
   Editor.refreshPresets = refreshPresets;
+  Editor.importPkg = importPkg; // OOBE 导入步骤复用同一导入流程
 
   // ---------- 事件 ----------
   function bind() {

@@ -666,3 +666,9 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
 .ob-dots i.done { background: var(--indigo-hover); }
 .ob-list { margin: 8px 0 4px; padding-left: 18px; line-height: 1.9; color: var(--muted); }
 .ob-list li b { color: var(--text); }
+
+/* ---------- OOBE 全屏化：首启向导独占整屏 ---------- */
+#overlay-oobe { background: var(--bg); z-index: 90; }
+#overlay-oobe .modal { width: min(860px, 94vw); max-height: 92vh; overflow: auto; padding: 44px 52px; }
+#overlay-oobe .modal-hint { font-size: 17px; }
+#overlay-oobe .ob-list { font-size: 17px; }

@@ -1,12 +1,13 @@
 'use strict';
-// Preset Studio · OOBE 首次运行向导（类似 Windows 开箱体验）。
-// 四步：欢迎 → 创建第一个班级 → 器材字典种子 → 完成。完成/跳过均写 meta.oobeDone。
-// 依赖 window.StudioApi（metaGet/metaSet/saveClass/saveDict）与 window.Editor（toast/refreshPresets）。
+// Preset Studio · OOBE 首次运行向导（全屏，类似 Windows 开箱体验）。
+// 六步：欢迎 → 教师信息 → 创建第一个班级 → 导入预设包 → 器材字典种子 → 完成。
+// 完成/跳过均写 meta.oobeDone；教师信息写 meta.teacherInfo 供本机后续使用。
+// 依赖 window.StudioApi（metaGet/metaSet/saveClass/saveDict）与 window.Editor（toast/refreshPresets/importPkg）。
 (function (global) {
   const $ = (id) => document.getElementById(id);
   const S = () => global.StudioApi;
-  let step = 1;
-  const TOTAL = 4;
+  const STEP_IDS = ['ob-step-1', 'ob-step-teacher', 'ob-step-2', 'ob-step-import', 'ob-step-3', 'ob-step-4'];
+  let step = 1; // 1 基下标（1..6）
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -16,16 +17,16 @@
   function toast(t, err) { if (global.Editor && global.Editor.toast) global.Editor.toast(t, err); }
 
   function render() {
-    for (let i = 1; i <= TOTAL; i += 1) { const p = $('ob-step-' + i); if (p) p.hidden = i !== step; }
+    STEP_IDS.forEach((id, i) => { const p = $(id); if (p) p.hidden = i + 1 !== step; });
     const dots = $('ob-dots');
-    if (dots) dots.innerHTML = Array.from({ length: TOTAL }, (_, i) =>
+    if (dots) dots.innerHTML = STEP_IDS.map((_, i) =>
       '<i class="' + (i + 1 === step ? 'on' : (i + 1 < step ? 'done' : '')) + '"></i>').join('');
     const prev = $('ob-prev');
     if (prev) prev.hidden = step === 1;
     const next = $('ob-next');
-    if (next) next.textContent = step === TOTAL ? '完成，开始使用' : '下一步';
+    if (next) next.textContent = step === STEP_IDS.length ? '完成，开始使用' : '下一步';
     const skip = $('ob-skip');
-    if (skip) skip.hidden = step === TOTAL;
+    if (skip) skip.hidden = step === STEP_IDS.length;
   }
 
   async function finish() {
@@ -36,8 +37,17 @@
     toast('设置完成，欢迎使用全域预设编辑器');
   }
 
+  async function saveTeacher() {
+    const name = ($('ob-teacher-name') || {}).value.trim();
+    const school = ($('ob-teacher-school') || {}).value.trim();
+    if (!name) return;
+    try { await S().metaSet('teacherInfo', { name: name.slice(0, 20), school: school.slice(0, 30) }); } catch (e) { /* 忽略 */ }
+    toast('教师信息已保存到本机');
+  }
+
   async function next() {
-    if (step === 2) {
+    if (step === 2) await saveTeacher();
+    if (step === 3) {
       const name = ($('ob-class-name') || {}).value.trim();
       if (name) {
         const body = {
@@ -51,7 +61,7 @@
         if (global.Editor) global.Editor.classes = global.Editor.classes || [];
       }
     }
-    if (step === 3) {
+    if (step === 5) {
       const ck = $('ob-dict-seed');
       if (ck && ck.checked) {
         const SEED = [
@@ -69,7 +79,7 @@
         toast('已导入 ' + added + ' 条常用器材');
       }
     }
-    if (step >= TOTAL) { await finish(); return; }
+    if (step >= STEP_IDS.length) { await finish(); return; }
     step += 1;
     render();
   }
@@ -79,6 +89,15 @@
     try { await S().metaSet('oobeDone', true); } catch (e) { /* 忽略 */ }
     const ov = $('overlay-oobe');
     if (ov) ov.hidden = true;
+  }
+
+  // 导入预设包：复用主导入流程（文件对话框 → 预演 → 确认），向导暂时让位。
+  // 不写 oobeDone——导入完成后若首次设置未走完，下次启动向导还会出现。
+  function openImport() {
+    if (!(global.Editor && global.Editor.importPkg)) { toast('当前环境不支持导入', true); return; }
+    const ov = $('overlay-oobe');
+    if (ov) ov.hidden = true;
+    global.Editor.importPkg();
   }
 
   async function maybeShow() {
@@ -94,6 +113,7 @@
     b('ob-next', next);
     b('ob-prev', prev);
     b('ob-skip', skip);
+    b('ob-import-pkg', openImport);
   }
   bind();
   maybeShow();
