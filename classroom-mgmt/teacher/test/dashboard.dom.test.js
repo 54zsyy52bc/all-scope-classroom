@@ -70,6 +70,9 @@ const byId = new Set([
   'activity-bar', 'ab-icon', 'ab-title', 'ab-desc', 'ab-time', 'ab-state',
   'ab-timer-wrap', 'ab-pause', 'ab-resume', 'ab-adjust', 'ab-restart', 'ab-stop', 'ab-end', 'btn-policy',
   'btn-borrow', 'overlay-borrow', 'borrow-title', 'bf-seat', 'bf-eq', 'bf-qty', 'bf-error', 'bf-submit',
+  'btn-picker', 'overlay-picker', 'pk-tab-names', 'pk-tab-cam', 'pk-close', 'pk-panel-names',
+  'pk-panel-cam', 'pk-names', 'pk-roll', 'pk-cam-roll', 'pk-result', 'pk-history',
+  'pk-video', 'pk-canvas', 'pk-shot',
 ]);
 for (const id of byId) elsMap[id] = makeEl(id);
 // 弹窗内的输入框：让 querySelectorAll('input') 返回假元素
@@ -181,6 +184,7 @@ globalThis.confirm = () => true;
 (0, eval)(fs.readFileSync(path.join(ROOT, 'stream.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'error-format.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'borrow.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'picker.js'), 'utf8'));
 // 模拟浏览器：全部脚本加载后触发 DOMContentLoaded（app.js 的 init 在此执行）
 if (domReady) domReady();
 
@@ -378,6 +382,28 @@ async function main() {
   check('Esc 关闭补登弹窗', elsMap['overlay-borrow'].hidden === true);
   check('Esc 取消不触发补登请求',
     fetchLog.filter((f) => f.url.includes('/borrows')).length === borrowCallsBeforeEsc);
+
+  // ---------- 随机抽选（picker.js：名单模式 + 摄像头降级） ----------
+  const PK = globalThis.DashboardPicker;
+  check('picker 已加载并暴露 API', !!PK && typeof PK.rollNames === 'function' && typeof PK.rollCam === 'function');
+  await PK.open();
+  await new Promise((r) => setTimeout(r, 10));
+  check('打开抽选弹窗并从快照加载名单', elsMap['overlay-picker'].hidden === false
+    && elsMap['pk-names'].innerHTML.includes('张三') && elsMap['pk-names'].innerHTML.includes('王五'),
+    elsMap['pk-names'].innerHTML.slice(0, 120));
+  check('名单格 = 有姓名座位数（3）', (elsMap['pk-names'].innerHTML.match(/pk-cell/g) || []).length === 3);
+  PK._fast = true;
+  const w = await PK.rollNames();
+  check('名单抽选：定格在有姓名的学生上', !!w && ['张三', '李四', '王五'].includes(w.name) && !!w.seat, JSON.stringify(w));
+  check('名单抽选：结果与历史已记录', elsMap['pk-result'].innerHTML.includes(w.name)
+    && elsMap['pk-history'].innerHTML.includes(w.name), elsMap['pk-result'].innerHTML);
+  const w2 = await PK.rollNames();
+  check('名单抽选：可重复抽且写入历史 2 条', !!w2 && (elsMap['pk-history'].innerHTML.match(/pk-h/g) || []).length === 2);
+  const camRes = await PK.rollCam();
+  check('摄像头模式：无摄像头环境安全降级（toast 提示，不抛错）', camRes === null
+    && elsMap['toast'].textContent.includes('摄像头'), elsMap['toast'].textContent);
+  PK.close();
+  check('picker close 复位滚动状态', PK._fast === true && typeof PK.close === 'function');
 
   // 清理活动计时条/快照合并等残留定时器，避免进程退出竞态
   for (let i = 1; i <= 20; i += 1) clearInterval(i);

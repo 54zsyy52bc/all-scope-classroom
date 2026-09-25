@@ -1,203 +1,236 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/png" href="logo-mark.png" />
+<html lang="zh-CN" data-page-node-id="RBoU2BH54BHvnUHhD1Wf7Z">
+<head data-page-node-id="f2fBExzM91M8nkMqIHAeT1">
+  <meta charset="UTF-8" data-page-node-id="AZqPju047pLhlB2P4j5IDH" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="6PJIiNMy5FyGZaeFLFLtUT" />
+  <link rel="icon" type="image/png" href="logo-mark.png" data-page-node-id="hLt2LzhgZR6SG6tEELW5Je" />
   <title>全域 · 教师大屏</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css" data-page-node-id="SyqRbV4UOLv3yla6hMYDbx" />
 </head>
-<body data-phase="waiting">
-  <header class="topbar">
-    <div class="brand">
-      <img class="brand-mark" src="logo-mark.png" alt="全域" />
-      <div class="brand-text">
-        <img class="logo-text" src="logo-text.png" alt="全域 · 课堂看板" />
-        <p class="class-meta" id="class-meta">尚未开课</p>
+<body data-phase="waiting" data-page-node-id="z2ewUMOFSzxHGVHg7XBP5A">
+  <header class="topbar" data-page-node-id="wu0rrHSjebG4cDSxhYlFZN">
+    <div class="brand" data-page-node-id="Ahi0AfP0ySnUTDA3FXHVxN">
+      <img class="brand-mark" src="logo-mark.png" alt="全域" data-page-node-id="UStHMRxgSsYpv390SWHSEH" />
+      <div class="brand-text" data-page-node-id="6OpQvhVMhvOTGHG68X6jXn">
+        <img class="logo-text" src="logo-text.png" alt="全域 · 课堂看板" data-page-node-id="ha5XJ3j4dAPdy9Xt74eBSB" />
+        <p class="class-meta" id="class-meta" data-page-node-id="bkgiPskqqtZVpBWOMmpGAp">尚未开课</p>
       </div>
     </div>
-    <div class="topbar-right">
-      <button class="btn btn-ghost btn-sm" id="btn-shell-admin" title="学生机全域桌面配置">桌面设置</button>
-      <span class="pill phase-pill" id="phase-pill">待课</span>
-      <span class="pill conn-pill" id="conn-pill" data-state="offline">连接中</span>
+    <div class="topbar-right" data-page-node-id="qMQTqVjNBp3Hk9GRupA0JJ">
+      <button class="btn btn-ghost btn-sm" id="btn-shell-admin" title="学生机全域桌面配置" data-page-node-id="Hq8sUvwPQXgq345bP72Dfp">桌面设置</button>
+      <span class="pill phase-pill" id="phase-pill" data-page-node-id="4jIoAMWSA3AZPKibKqwcWC">待课</span>
+      <span class="pill conn-pill" id="conn-pill" data-state="offline" data-page-node-id="ArPQSW1kbc1gFuzQe9KcJx">连接中</span>
     </div>
   </header>
 
   <!-- 全部组登记完成横幅 -->
-  <div class="done-banner" id="all-done-banner" hidden role="status">全部小组已完成登记，可以发布活动了</div>
+  <div class="done-banner" id="all-done-banner" hidden role="status" data-page-node-id="zLJhx2JwRxzlx2sgJtI3QR">全部小组已完成登记，可以发布活动了</div>
 
   <!-- 求助强提醒横幅（学生按"求助"即时弹出+蜂鸣；未处理前常驻，每 20s 重播） -->
-  <div class="help-banner" id="help-banner" hidden role="alert" aria-live="assertive" title="点这里静音（求助未处理前横幅保留）">
-    <span class="hb-ico">!</span>
-    <span id="help-banner-text">有同学求助</span>
-    <button type="button" class="hb-ack" id="help-banner-ack">已阅 · 静音</button>
+  <div class="help-banner" id="help-banner" hidden role="alert" aria-live="assertive" title="点这里静音（求助未处理前横幅保留）" data-page-node-id="iCyKB8iDTKNNfIedNWBC3j">
+    <span class="hb-ico" data-page-node-id="pyiPK4O2JevA9Fsf5RZlmR">!</span>
+    <span id="help-banner-text" data-page-node-id="nQ1XhqCoAAwclAPezjyH4R">有同学求助</span>
+    <button type="button" class="hb-ack" id="help-banner-ack" data-page-node-id="Ygqr3M8UKZw9dpPOP2FPV2">已阅 · 静音</button>
   </div>
 
-  <section class="stats" aria-label="课堂统计">
-    <div class="stat">
-      <b id="st-checkin">0</b><span>已登记</span>
-      <i id="st-checkin-rate" class="mini">0%</i>
+  <section class="stats" aria-label="课堂统计" data-page-node-id="cScSc62j9NZiZiYdOmB9vm">
+    <div class="stat" data-page-node-id="dz0mqGx1HbfZo3TgtTazjv">
+      <b id="st-checkin" data-page-node-id="hdhTd3JKpKIXWgEWXAld8Y">0</b><span data-page-node-id="07JxjibcvOh6PmFhqBWcOQ">已登记</span>
+      <i id="st-checkin-rate" class="mini" data-page-node-id="gQHCnkgSYi84ta8o0w09ZE">0%</i>
     </div>
-    <div class="stat"><b id="st-pending">0</b><span>未登记</span></div>
-    <div class="stat">
-      <b id="st-online">0</b><span>在线</span>
-      <i id="st-online-rate" class="mini">0%</i>
+    <div class="stat" data-page-node-id="6k9YkI0R0RIEmz2fmYF4kv"><b id="st-pending" data-page-node-id="YWWVdt4K68JHMvpwaXkw30">0</b><span data-page-node-id="e8yTVzZCPWiAScmN4V4vdI">未登记</span></div>
+    <div class="stat" data-page-node-id="UKHqhv9GGqdM0BB7nMhjI7">
+      <b id="st-online" data-page-node-id="1TTyRac7bY7hjESHBw3uTH">0</b><span data-page-node-id="Q6rB5ixkdUJfFjBKGBwra5">在线</span>
+      <i id="st-online-rate" class="mini" data-page-node-id="rBCkz6QEFU1ByY6MReW7yc">0%</i>
     </div>
-    <div class="stat"><b id="st-help" class="hl-help">0</b><span>求助</span></div>
-    <div class="stat"><b id="st-task-done">0</b><span>活动完成</span></div>
-    <div class="stat"><b id="st-returned">0</b><span>已归还</span></div>
+    <div class="stat" data-page-node-id="f3u3sk6HgrymW6iPuFXCM3"><b id="st-help" class="hl-help" data-page-node-id="JwQDMaDscSxY26rWV1cIoI">0</b><span data-page-node-id="nNDXa6fmuuiubG8iiNVLjD">求助</span></div>
+    <div class="stat" data-page-node-id="tIwf47X6fXs22CT9dLuuHp"><b id="st-task-done" data-page-node-id="jTHcxBqHhlpuwdMbtVYm7Q">0</b><span data-page-node-id="Bcem1kuYm7cgo7AuXEOTKV">活动完成</span></div>
+    <div class="stat" data-page-node-id="34A7cbFPjgyV6LH6LQaKDR"><b id="st-returned" data-page-node-id="NGHemOlI5uE20F88YKCCql">0</b><span data-page-node-id="wTfPXmMoUXhHzmqnMEpdFy">已归还</span></div>
   </section>
 
-  <section class="controls" aria-label="教师操作">
-    <button id="btn-start" class="btn btn-primary" data-phase-vis="waiting">开始上课</button>
-    <button id="btn-task" class="btn" data-phase-vis="checkin task">发布活动</button>
-    <button id="btn-end" class="btn btn-warn" data-phase-vis="checkin task">下课</button>
-    <button id="btn-finish" class="btn btn-danger" data-phase-vis="return">结束课堂</button>
-    <button id="btn-shutdown" class="btn btn-danger" data-phase-vis="return">强制关机</button>
-    <button id="btn-cancel-shutdown" class="btn btn-ghost" data-phase-vis="return">撤销关机</button>
-    <button id="btn-export-xlsx" class="btn" data-phase-vis="checkin task return closed">导出 Excel</button>
-    <button id="btn-export-csv" class="btn" data-phase-vis="checkin task return closed">导出 CSV</button>
-    <button id="btn-manage" class="btn" data-phase-vis="waiting checkin">预设管理</button>
-    <button id="btn-borrow" class="btn" data-phase-vis="checkin task return">补登借用</button>
-    <button id="btn-policy" class="btn" data-phase-vis="checkin task">锁定策略：全课可用</button>
+  <section class="controls" aria-label="教师操作" data-page-node-id="qAHEJvmkXMO4vcfFKTK8o4">
+    <button id="btn-start" class="btn btn-primary" data-phase-vis="waiting" data-page-node-id="P12ojSrg7gkmHwdHAhlOGM">开始上课</button>
+    <button id="btn-task" class="btn" data-phase-vis="checkin task" data-page-node-id="mDzFZJYGSheZikOwutboVs">发布活动</button>
+    <button id="btn-end" class="btn btn-warn" data-phase-vis="checkin task" data-page-node-id="jxGMXfotkv6WkiU3Zcd3CU">下课</button>
+    <button id="btn-finish" class="btn btn-danger" data-phase-vis="return" data-page-node-id="nY4T6wArDLLVCGqlgez58T">结束课堂</button>
+    <button id="btn-shutdown" class="btn btn-danger" data-phase-vis="return" data-page-node-id="8vJZFmKcDifd1JMuFIB2x8">强制关机</button>
+    <button id="btn-cancel-shutdown" class="btn btn-ghost" data-phase-vis="return" data-page-node-id="OGVJJDTYvlpY1qK6OQH0Od">撤销关机</button>
+    <button id="btn-export-xlsx" class="btn" data-phase-vis="checkin task return closed" data-page-node-id="nKpG8g0UIrku0vSQYjRjJt">导出 Excel</button>
+    <button id="btn-export-csv" class="btn" data-phase-vis="checkin task return closed" data-page-node-id="sRmTOqksjRPCC4AFY9ESG6">导出 CSV</button>
+    <button id="btn-manage" class="btn" data-phase-vis="waiting checkin" data-page-node-id="VvrFE3LEpZEEuLXggyvkoi">预设管理</button>
+    <button id="btn-borrow" class="btn" data-phase-vis="checkin task return" data-page-node-id="k7Bzazxf5a5DEwl7Ty6Vds">补登借用</button>
+    <button id="btn-policy" class="btn" data-phase-vis="checkin task" data-page-node-id="oqt0kkopSnQjwL2FJ5WTWR">锁定策略：全课可用</button>
+    <button id="btn-picker" class="btn" data-phase-vis="checkin task">随机抽选</button>
   </section>
 
   <!-- 待激活座位（登记超出课堂范围的学生请求；教师一键激活扩容后即消失） -->
-  <section class="pending-seats" id="pending-seats" aria-label="待激活座位" hidden></section>
+  <section class="pending-seats" id="pending-seats" aria-label="待激活座位" hidden data-page-node-id="d24PTZApfhMhrzNqIfQTDU"></section>
 
-  <section class="task-banner" id="task-banner" hidden>
-    <div class="task-icon" id="task-icon"></div>
-    <div class="task-info">
-      <h2 id="task-title">—</h2>
-      <p id="task-desc">—</p>
+  <section class="task-banner" id="task-banner" hidden data-page-node-id="P2BoBY1rpOCgBkXmZkmcYk">
+    <div class="task-icon" id="task-icon" data-page-node-id="qBhNO2ZjSWsFLEGW7MnHg9"></div>
+    <div class="task-info" data-page-node-id="JTmcMPONiAXfOUX1nFpup4">
+      <h2 id="task-title" data-page-node-id="qqKq4UeHIbKbMSpSerDRPB">—</h2>
+      <p id="task-desc" data-page-node-id="4D44Yb1bVH5FVewUnbD49F">—</p>
     </div>
-    <div class="task-stats">
-      <span class="ts ts-doing"><i id="ts-doing">0</i>进行中</span>
-      <span class="ts ts-done"><i id="ts-done">0</i>已完成</span>
-      <span class="ts ts-help"><i id="ts-help">0</i>求助</span>
+    <div class="task-stats" data-page-node-id="ECHQEhoC5U0cc2xldctc1Y">
+      <span class="ts ts-doing" data-page-node-id="RwOUrFHNeBbtVogA4WVVah"><i id="ts-doing" data-page-node-id="PdCLWH95dGL9fItLGk33KB">0</i>进行中</span>
+      <span class="ts ts-done" data-page-node-id="GL5uuD06MzHLUAs84iEjTD"><i id="ts-done" data-page-node-id="r8z7S4gXfQlSWeVjjDVaKP">0</i>已完成</span>
+      <span class="ts ts-help" data-page-node-id="Bh4Zdze6VJD5iutB0qbmLm"><i id="ts-help" data-page-node-id="hqhVpCThJzKwFPvBlONBk8">0</i>求助</span>
     </div>
   </section>
 
-  <main class="groups" id="groups" aria-label="小组状态墙"></main>
+  <main class="groups" id="groups" aria-label="小组状态墙" data-page-node-id="IHJ2QUCPxMBwbkTsAXkBWb"></main>
 
-  <section class="side" aria-label="事件与提示">
-    <div class="alerts" id="alerts" hidden></div>
-    <div class="events" id="events">
-      <h3>课堂事件</h3>
-      <div class="events-body" id="events-body"></div>
+  <section class="side" aria-label="事件与提示" data-page-node-id="XQqU23bB8trFmEYqIDCEGc">
+    <div class="alerts" id="alerts" hidden data-page-node-id="NUGdhhVJK6924eFV3dJo07"></div>
+    <div class="events" id="events" data-page-node-id="HJHv51oCOj2JLSa2heTyJM">
+      <h3 data-page-node-id="CAPQhf012iFioNJFAD2ClB">课堂事件</h3>
+      <div class="events-body" id="events-body" data-page-node-id="15BGJG3oRNjEjLNU3ji1BF"></div>
     </div>
   </section>
 
   <!-- 开始上课弹窗 -->
-  <div class="overlay" id="overlay-start" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="start-title">
-      <h2 id="start-title">开始上课</h2>
-      <label>教师姓名<input id="f-teacher" type="text" placeholder="例如：王老师" maxlength="20" /></label>
-      <label>班级预设
-        <select id="f-class-preset"><option value="">（不使用预设，手动填写）</option></select>
+  <div class="overlay" id="overlay-start" hidden data-page-node-id="sf0Ea5umUS7W64IWWafTM1">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="start-title" data-page-node-id="bur9s51TvHOQzMZty1TdTm">
+      <h2 id="start-title" data-page-node-id="PmZedzKe10sc5psTGzGeOv">开始上课</h2>
+      <label data-page-node-id="uDSqHnGgGY9JYn0yB9drFC">教师姓名<input id="f-teacher" type="text" placeholder="例如：王老师" maxlength="20" data-page-node-id="eVkOJPKdFT9QMhiECOJOpU" /></label>
+      <label data-page-node-id="zE4K6lX2DVzVBilNfIs9Sb">班级预设
+        <select id="f-class-preset" data-page-node-id="ZSdx8LsuxJumgzYltI6Wjj"><option value="" data-page-node-id="IML73uMsvE8sRGB3BkZm2o">（不使用预设，手动填写）</option></select>
       </label>
-      <label>班级名称<input id="f-class" type="text" placeholder="选预设后自动填充" maxlength="30" /></label>
-      <label>机房终端台数（每组一台）<input id="f-term" type="number" min="1" max="50" value="14" /></label>
-      <label>每组人数上限<input id="f-members" type="number" min="1" max="20" value="6" /></label>
-      <label>总座位数 <strong id="f-seats-note">84</strong>（=台数×每组人数，自动）<input id="f-seats" type="hidden" /></label>
-      <label>活动预设
-        <select id="f-activity-preset"><option value="">（不使用预设）</option></select>
+      <label data-page-node-id="JI4KE7pCCB3L4KUo5qBAQf">班级名称<input id="f-class" type="text" placeholder="选预设后自动填充" maxlength="30" data-page-node-id="vEdg49J3mimNfp5H6CICC6" /></label>
+      <label data-page-node-id="dzTd3Axfwxbjn2GCDAjZX6">机房终端台数（每组一台）<input id="f-term" type="number" min="1" max="50" value="14" data-page-node-id="sem8oillYHb8jrKBsFNxCA" /></label>
+      <label data-page-node-id="M0oAiAiOI5RRua2MPirLXB">每组人数上限<input id="f-members" type="number" min="1" max="20" value="6" data-page-node-id="i3oMMEcOm91acKVFwWp2FV" /></label>
+      <label data-page-node-id="r6xwbJGyqHAMOHyiYhNlrb">总座位数 <strong id="f-seats-note" data-page-node-id="5mV8MCrXRt9jvoxKgdKPdF">84</strong>（=台数×每组人数，自动）<input id="f-seats" type="hidden" data-page-node-id="3PN2FTyXfKDY7JrSAU67As" /></label>
+      <label data-page-node-id="lANaNrkM1nukPvJusdilw8">活动预设
+        <select id="f-activity-preset" data-page-node-id="11AC5gWUPYPjqL8tq3Wn3i"><option value="" data-page-node-id="pI1Uv0GQ1JZCeeoE2EudSO">（不使用预设）</option></select>
       </label>
-      <p class="modal-hint" id="f-activity-hint">选活动预设后，器材清单与活动模板将随课堂下发</p>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" data-close="overlay-start">取消</button>
-        <button class="btn btn-primary" id="confirm-start">开始上课</button>
+      <p class="modal-hint" id="f-activity-hint" data-page-node-id="GcjlwfYDC3diTelXgHBCuo">选活动预设后，器材清单与活动模板将随课堂下发</p>
+      <div class="modal-actions" data-page-node-id="FlPb14SQf4J2fmbBuq2H0e">
+        <button class="btn btn-ghost" data-close="overlay-start" data-page-node-id="Pl1Q021TteHtEagjNa4ykr">取消</button>
+        <button class="btn btn-primary" id="confirm-start" data-page-node-id="NSpPpNnKlpvvcR719GnPnj">开始上课</button>
       </div>
     </div>
   </div>
 
   <!-- 发布活动弹窗（预设活动 / 现场自定义 + 可选计时） -->
-  <div class="overlay" id="overlay-task" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-title-label">
-      <h2 id="task-title-label">发布活动</h2>
-      <div class="tpl-chips" id="tpl-chips" hidden></div>
-      <label>活动预设
-        <select id="f-task-preset"><option value="">（现场自定义）</option></select>
+  <div class="overlay" id="overlay-task" hidden data-page-node-id="bmQUWxDJNTFU4SfN04u7ie">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-title-label" data-page-node-id="UfcscDHGkB5zKx6DYzmZs9">
+      <h2 id="task-title-label" data-page-node-id="nDoLoQLbxZ01JFE7zoznJm">发布活动</h2>
+      <div class="tpl-chips" id="tpl-chips" hidden data-page-node-id="tLsNoozHpfWB7GxSsrdpH8"></div>
+      <label data-page-node-id="yxJ6IgjqGJXn3WA4LMaZIl">活动预设
+        <select id="f-task-preset" data-page-node-id="hy0pDYkVdTyFSkKLeH6jFc"><option value="" data-page-node-id="tk3IsgBNvvLtUEyjfpG5wc">（现场自定义）</option></select>
       </label>
-      <label>活动标题<input id="f-task-title" type="text" placeholder="例如：焊接练习" maxlength="40" /></label>
-      <label>活动说明<input id="f-task-desc" type="text" placeholder="例如：第一关 · 点亮 LED（选填）" maxlength="80" /></label>
-      <div class="timer-row">
-        <label class="switch-label"><input type="checkbox" id="f-task-timed" /> 启用计时</label>
-        <label>时长（分钟）<input id="f-task-duration" type="number" min="1" max="120" value="10" disabled /></label>
+      <label data-page-node-id="x5eAaGDrIqWWbkbhz3v3uA">活动标题<input id="f-task-title" type="text" placeholder="例如：焊接练习" maxlength="40" data-page-node-id="0VmDvyKvcRs61AjZLofnoW" /></label>
+      <label data-page-node-id="7Gp1aglqsrNVt8RAskhlZy">活动说明<input id="f-task-desc" type="text" placeholder="例如：第一关 · 点亮 LED（选填）" maxlength="80" data-page-node-id="3MR5ZXGV5K0WZSFsMvYd0i" /></label>
+      <div class="timer-row" data-page-node-id="3ADExAq80eOUsRskt56D09">
+        <label class="switch-label" data-page-node-id="Dgt8nzpvAmRZlrwGE8Bvl6"><input type="checkbox" id="f-task-timed" data-page-node-id="d1UW5qs186iUmsdMA2Q9Bj" /> 启用计时</label>
+        <label data-page-node-id="zq708gAsty8AaNqASPCSsG">时长（分钟）<input id="f-task-duration" type="number" min="1" max="120" value="10" disabled data-page-node-id="OnUMcs5wrrozLiZaX5yGbZ" /></label>
       </div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" data-close="overlay-task">取消</button>
-        <button class="btn btn-primary" id="confirm-task">发布活动</button>
+      <div class="modal-actions" data-page-node-id="fYlHoluxiMO6EvhGqoGZZQ">
+        <button class="btn btn-ghost" data-close="overlay-task" data-page-node-id="5ibxQE8O3b4SQs14GGLdsN">取消</button>
+        <button class="btn btn-primary" id="confirm-task" data-page-node-id="SPeQvZhHX1cFiyxxciKw1r">发布活动</button>
       </div>
     </div>
   </div>
 
   <!-- 活动计时控制条（进行中活动） -->
-  <section class="activity-bar" id="activity-bar" hidden>
-    <div class="ab-info">
-      <span class="ab-icon" id="ab-icon"></span>
-      <div>
-        <b id="ab-title">—</b>
-        <p id="ab-desc">—</p>
+  <section class="activity-bar" id="activity-bar" hidden data-page-node-id="3V8uyFwsKtoayC0QIzhgCS">
+    <div class="ab-info" data-page-node-id="erzVf2Bt2CSMXG7tanE6Wn">
+      <span class="ab-icon" id="ab-icon" data-page-node-id="LtE1WMxg0qbeVhfRNPNE2S"></span>
+      <div data-page-node-id="dpBXYZCbKzkL1S0B1cqVhq">
+        <b id="ab-title" data-page-node-id="58b5mYw9tAYq69eBGCsTix">—</b>
+        <p id="ab-desc" data-page-node-id="7Ui4bXVor0dFiFrYmECf7H">—</p>
       </div>
     </div>
-    <div class="ab-timer" id="ab-timer-wrap">
-      <span class="ab-time" id="ab-time">00:00</span>
-      <span class="ab-state" id="ab-state">进行中</span>
+    <div class="ab-timer" id="ab-timer-wrap" data-page-node-id="fkpGutLRCwNSdHfAbKnUYt">
+      <span class="ab-time" id="ab-time" data-page-node-id="Hcd78WIK4CCnqD4jdlAv9q">00:00</span>
+      <span class="ab-state" id="ab-state" data-page-node-id="vmAF1GFUGdec1JgKCdlcfE">进行中</span>
     </div>
-    <div class="ab-actions">
-      <button class="btn btn-ghost" id="ab-pause">暂停</button>
-      <button class="btn btn-ghost" id="ab-resume" hidden>继续</button>
-      <button class="btn btn-ghost" id="ab-adjust">调时长</button>
-      <button class="btn btn-ghost" id="ab-restart">重计时</button>
-      <button class="btn btn-danger" id="ab-end">结束活动</button>
+    <div class="ab-actions" data-page-node-id="WkDeFiIvBCjXRNcgqQfXMC">
+      <button class="btn btn-ghost" id="ab-pause" data-page-node-id="coVRc0wWqYeXk8dEqSdXlk">暂停</button>
+      <button class="btn btn-ghost" id="ab-resume" hidden data-page-node-id="eTjjNMOyDyN2zjjc4AvzGZ">继续</button>
+      <button class="btn btn-ghost" id="ab-adjust" data-page-node-id="igZyCidnDQJCgwnLQPenXG">调时长</button>
+      <button class="btn btn-ghost" id="ab-restart" data-page-node-id="Tn9pQpEp245G6KwanGKnUf">重计时</button>
+      <button class="btn btn-danger" id="ab-end" data-page-node-id="VeOSOoUFZbZnum0whzxD2N">结束活动</button>
     </div>
   </section>
 
   <!-- 预设管理面板（v4：本机只接收与使用——导入预设包 / 导出备份 / 查看 / 删除卫生） -->
-  <section class="manage" id="manage" hidden>
-    <div class="manage-head">
-      <div class="manage-title">
-        <h2>预设管理</h2>
-        <p class="manage-hint">预设由办公电脑「预设编辑器」维护；本机仅导入使用，可导入预设包或导出本机备份</p>
+  <section class="manage" id="manage" hidden data-page-node-id="lnygFYVcTiSGPuUPuY5b0a">
+    <div class="manage-head" data-page-node-id="vy4aSIMuGuzJ8dccO8vlfu">
+      <div class="manage-title" data-page-node-id="SUqBSeQf2RIhKjNyCFJFLJ">
+        <h2 data-page-node-id="pGF01jYEcn6awpV3nF56iQ">预设管理</h2>
+        <p class="manage-hint" data-page-node-id="6XsuOBMyqzI0GQZw5VI6qM">预设由办公电脑「预设编辑器」维护；本机仅导入使用，可导入预设包或导出本机备份</p>
       </div>
-      <div class="manage-tools">
-        <input type="file" id="m-import-file" accept=".kctpreset,application/json,.json" hidden />
-        <button class="btn btn-primary" id="m-import-btn">导入预设包</button>
-        <button class="btn" id="m-export-btn">导出备份</button>
-        <button class="btn btn-ghost" id="btn-manage-close">收起</button>
+      <div class="manage-tools" data-page-node-id="9ALyFWUttGZDBXpjnYU9DB">
+        <input type="file" id="m-import-file" accept=".kctpreset,application/json,.json" hidden data-page-node-id="SAjyN2VFqu8q1jNTJBkNS8" />
+        <button class="btn btn-primary" id="m-import-btn" data-page-node-id="P48nL3SNGYRxvvOfK3mQB9">导入预设包</button>
+        <button class="btn" id="m-export-btn" data-page-node-id="CZBXKsSGEFdFpgfn0Yh7wZ">导出备份</button>
+        <button class="btn btn-ghost" id="btn-manage-close" data-page-node-id="iSlCORGCs5GVtfp3rsoJUu">收起</button>
       </div>
     </div>
-    <div class="m-import-result" id="m-import-result" hidden></div>
-    <div class="manage-grid">
-      <div class="card">
-        <h3>班级预设</h3>
-        <div class="list" id="m-class-list"></div>
+    <div class="m-import-result" id="m-import-result" hidden data-page-node-id="ruMqf1eR2IiotEogEG2WQs"></div>
+    <div class="manage-grid" data-page-node-id="Yxm0FFdJw2ngi8I0HExbqg">
+      <div class="card" data-page-node-id="yldQgmbivkijsWgWUX8SJf">
+        <h3 data-page-node-id="EC41c1kdX5dNuyANbRxCDZ">班级预设</h3>
+        <div class="list" id="m-class-list" data-page-node-id="1RkGsDOSbcLohbeoPxS9Re"></div>
       </div>
-      <div class="card">
-        <h3>活动预设</h3>
-        <div class="list" id="m-activity-list"></div>
+      <div class="card" data-page-node-id="ijAD26YRoM2DckNeHuIeK3">
+        <h3 data-page-node-id="xqRJS36Y79uz3Np99SFw6n">活动预设</h3>
+        <div class="list" id="m-activity-list" data-page-node-id="4mGvK72nqZSSe4SAovsS7W"></div>
       </div>
     </div>
   </section>
 
   <!-- 通用确认/输入弹窗（替代原生 confirm/prompt；dialog.js 控制显隐与行为） -->
-  <div class="overlay" id="overlay-dialog" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-      <h2 id="dialog-title"></h2>
-      <p id="dialog-message"></p>
-      <label id="dialog-prompt-wrap" hidden><span id="dialog-prompt-label"></span>
-        <input id="dialog-input" type="text" />
+  <div class="overlay" id="overlay-dialog" hidden data-page-node-id="pIv1HgZ3NQKOzF2BgZxo5W">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title" data-page-node-id="48SolCiPud4axHUL1Cdumy">
+      <h2 id="dialog-title" data-page-node-id="MXNyPoxGmnvTbJOHqHjNo0"></h2>
+      <p id="dialog-message" data-page-node-id="cFl0BUTKHYnbhqZBo1Te7A"></p>
+      <label id="dialog-prompt-wrap" hidden data-page-node-id="GtP2AVcuQokvpZTTD3y0wZ"><span id="dialog-prompt-label" data-page-node-id="fr7ArbvBss0hn8lfK3ZujU"></span>
+        <input id="dialog-input" type="text" data-page-node-id="VQuyFOSXfcVZmiPA85345X" />
       </label>
-      <p class="dialog-error" id="dialog-error" hidden></p>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" id="dialog-cancel"></button>
-        <button class="btn btn-primary" id="dialog-confirm"></button>
+      <p class="dialog-error" id="dialog-error" hidden data-page-node-id="oBctDH37bGke7vMXipWCNy"></p>
+      <div class="modal-actions" data-page-node-id="aXdQbsbcy16z57BtXE8nUH">
+        <button class="btn btn-ghost" id="dialog-cancel" data-page-node-id="XJ66MFUyKkdrEUTw2hsQwH"></button>
+        <button class="btn btn-primary" id="dialog-confirm" data-page-node-id="pJnKzbi9R97YLqJH8L30aO"></button>
       </div>
     </div>
   </div>
 
-  <div class="toast" id="toast" hidden></div>
+  <div class="toast" id="toast" hidden data-page-node-id="uUORMdQth7veu9QL640HVI"></div>
+
+  <!-- 随机抽选弹窗（名单抽选 / 摄像头抽选） -->
+  <div class="overlay" id="overlay-picker" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+      <h2 id="picker-title">随机抽选</h2>
+      <div class="modal-actions">
+        <button class="btn btn-sm btn-primary" id="pk-tab-names">名单抽选</button>
+        <button class="btn btn-sm btn-ghost" id="pk-tab-cam">摄像头抽选</button>
+        <button class="btn btn-ghost btn-sm" id="pk-close" data-close="overlay-picker">关闭</button>
+      </div>
+      <div id="pk-panel-names">
+        <p class="modal-hint">从本堂课已登记学生中随机抽选（滚动减速定格，加密随机保证公平）。</p>
+        <div class="pk-grid" id="pk-names"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="pk-roll">开始抽选</button>
+        </div>
+      </div>
+      <div id="pk-panel-cam" hidden>
+        <p class="modal-hint">打开教室摄像头，3×3 方格轮盘随机抽「屏幕方位」——定格在哪格，就请那个区域的同学回答。</p>
+        <div class="pk-cam-wrap">
+          <video id="pk-video" autoplay playsinline muted></video>
+          <canvas id="pk-canvas" width="640" height="480"></canvas>
+          <canvas id="pk-shot" width="240" height="180" title="中奖区域定格"></canvas>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="pk-cam-roll">开始抽选</button>
+        </div>
+      </div>
+      <p class="pk-result" id="pk-result"></p>
+      <div class="pk-history" id="pk-history"></div>
+    </div>
+  </div>
 
   <script src="icons.js"></script>
   <script src="dialog.js"></script>
@@ -207,68 +240,69 @@
   <script src="app.js"></script>
   <script src="presets.js"></script>
   <!-- v5 全域桌面配置弹窗 -->
-  <div class="overlay" id="overlay-shell" hidden>
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="shell-title">
-      <h2 id="shell-title">全域学生桌面配置</h2>
-      <p class="modal-hint">注意：桌面配置默认在【各学生机『设置』】本机保存生效；此处为集中管理预留（不会自动下发到学生机）。</p>
-      <div class="grid2">
-        <fieldset>
-          <legend>口令（互相独立，不可相同）</legend>
-          <label>管理员口令
-            <span class="inline-seats">
-              <label class="ck"><input id="sf-admin-enable" type="checkbox" /> 启用</label>
-              <input id="sf-admin-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" />
-              <button type="button" class="btn btn-ghost btn-sm" id="sf-admin-save">保存</button>
+  <div class="overlay" id="overlay-shell" hidden data-page-node-id="g5TrjZNeR3ALmVKm9gCQvD">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="shell-title" data-page-node-id="eRorIV2CwqSV1BAnScUDkJ">
+      <h2 id="shell-title" data-page-node-id="T9IvQO6aPXgu1K7gCL4RmC">全域学生桌面配置</h2>
+      <p class="modal-hint" data-page-node-id="SvT8uAM4UcORXylLCaxBKH">注意：桌面配置默认在【各学生机『设置』】本机保存生效；此处为集中管理预留（不会自动下发到学生机）。</p>
+      <div class="grid2" data-page-node-id="vEhI0pDV73emw3CS7szu81">
+        <fieldset data-page-node-id="cKMU7Ady5f4PoK7ngnz58l">
+          <legend data-page-node-id="H0seKPjcBzeOcPuieF6VNm">口令（互相独立，不可相同）</legend>
+          <label data-page-node-id="EYiPDEgrFuz6FUuKs5m3pC">管理员口令
+            <span class="inline-seats" data-page-node-id="oZrMzHnteQA3JS3iGuxVyh">
+              <label class="ck" data-page-node-id="QnyoG26ggEQXBX4hwpXV0r"><input id="sf-admin-enable" type="checkbox" data-page-node-id="AqAZZAjAoecHpPUEbTYrlk" /> 启用</label>
+              <input id="sf-admin-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" data-page-node-id="ICuqM5CowuRsFQmTyTo5uZ" />
+              <button type="button" class="btn btn-ghost btn-sm" id="sf-admin-save" data-page-node-id="Y7EJ0Gte3xiqFh9iB6qwZK">保存</button>
             </span>
           </label>
-          <label>自由创作口令
-            <span class="inline-seats">
-              <label class="ck"><input id="sf-exit-enable" type="checkbox" /> 启用</label>
-              <input id="sf-exit-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" />
-              <button type="button" class="btn btn-ghost btn-sm" id="sf-exit-save">保存</button>
+          <label data-page-node-id="I00HrLcjzI93v8A5FEoNiR">自由创作口令
+            <span class="inline-seats" data-page-node-id="BVICHtUQ3GdHF3APMb5QIg">
+              <label class="ck" data-page-node-id="VyTTDCHlK3QF9urEl9MLKV"><input id="sf-exit-enable" type="checkbox" data-page-node-id="kZaP0SDavfZmLKAEnJhiMP" /> 启用</label>
+              <input id="sf-exit-pwd" type="password" placeholder="设新口令(4-32位)" maxlength="32" data-page-node-id="r50GHq67EZHf01ulkNTvTB" />
+              <button type="button" class="btn btn-ghost btn-sm" id="sf-exit-save" data-page-node-id="NO89LkaYixLcfJmrXPs0oY">保存</button>
             </span>
           </label>
-          <p class="modal-hint">口令只在教师机以哈希保存；管理口令 ≠ 自由创作口令（服务端强制）。</p>
+          <p class="modal-hint" data-page-node-id="g8RX9HoI60pucWwzrkW6d2">口令只在教师机以哈希保存；管理口令 ≠ 自由创作口令（服务端强制）。</p>
         </fieldset>
-        <fieldset>
-          <legend>课程与应用白名单</legend>
-          <label>课程名称<input id="sf-course-name" type="text" maxlength="30" /></label>
-          <label>应用白名单（每行：显示名|exe，如 画图|mspaint.exe）
+        <fieldset data-page-node-id="Dkr3Iko3YF8EDuY0MPpsJg">
+          <legend data-page-node-id="Eg1AwqOhDffV9DIO5ohDwa">课程与应用白名单</legend>
+          <label data-page-node-id="CKpnuONAXI56W7q0gKgMZ7">课程名称<input id="sf-course-name" type="text" maxlength="30" data-page-node-id="1577LfDfGW2UYH6hQCmWW7" /></label>
+          <label data-page-node-id="JyNpYrMwF4C9ZamRnz79Cz">应用白名单（每行：显示名|exe，如 画图|mspaint.exe）
             <textarea id="sf-apps" rows="4" placeholder="画图|mspaint.exe"></textarea>
           </label>
-          <label>课堂禁用进程（逗号分隔 exe）
-            <input id="sf-deny" type="text" placeholder="chrome.exe,msedge.exe,firefox.exe" />
+          <label data-page-node-id="FRSkmUyzK8lajrdqSQdcLZ">课堂禁用进程（逗号分隔 exe）
+            <input id="sf-deny" type="text" placeholder="chrome.exe,msedge.exe,firefox.exe" data-page-node-id="MEus2XQCNWjPGLx346L2eF" />
           </label>
-          <label class="ck"><input id="sf-guard-enable" type="checkbox" /> 启用禁用进程轮询强杀</label>
+          <label class="ck" data-page-node-id="Eqdh4p1UnDLsVeh1mBmUcp"><input id="sf-guard-enable" type="checkbox" data-page-node-id="I0hDgc5Axoi7RdR6kGQE0K" /> 启用禁用进程轮询强杀</label>
         </fieldset>
       </div>
-      <p class="modal-hint" id="sf-msg" style="color:#107c10"></p>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" data-close="overlay-shell">关闭</button>
-        <button class="btn btn-primary" id="sf-save-all">保存课程与白名单</button>
+      <p class="modal-hint" id="sf-msg" style="color:#107c10" data-page-node-id="NMxZ2ckUop6ZnSTNSKizeE"></p>
+      <div class="modal-actions" data-page-node-id="2DhZFPBunKMs2a6HjcwQc9">
+        <button class="btn btn-ghost" data-close="overlay-shell" data-page-node-id="EJIABoKYGbJX1chAbdMxYL">关闭</button>
+        <button class="btn btn-primary" id="sf-save-all" data-page-node-id="YfZ0ivZhDvlpHII0y5aFDp">保存课程与白名单</button>
       </div>
     </div>
   </div>
 
   <!-- 补登借用弹窗（L1：学生端归还空态提示「联系老师补登」时的教师入口） -->
-  <div class="overlay" id="overlay-borrow" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="borrow-title">
-      <h2 id="borrow-title">补登借用</h2>
-      <p class="modal-hint">用于「器材已发给学生、但系统里没登记」的情况：补一条借出记录，归还流程即可正常走。</p>
-      <label>座位号<input id="bf-seat" type="number" min="1" max="99" placeholder="例如：7" /></label>
-      <label>器材
-        <select id="bf-eq"><option value="">（加载中…）</option></select>
+  <div class="overlay" id="overlay-borrow" hidden data-page-node-id="4E6HAp6nemHghksnFYtdWN">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="borrow-title" data-page-node-id="kVv6AlCCgZHCQlTjtTSwjP">
+      <h2 id="borrow-title" data-page-node-id="9MranUUdbLURaqSGePCbMT">补登借用</h2>
+      <p class="modal-hint" data-page-node-id="MEAVh0hEIFrQoHWF76UAU1">用于「器材已发给学生、但系统里没登记」的情况：补一条借出记录，归还流程即可正常走。</p>
+      <label data-page-node-id="eqTQp9wn0BUg8haNCWYTQr">座位号<input id="bf-seat" type="number" min="1" max="99" placeholder="例如：7" data-page-node-id="2RgtwHcrG5W58efe7WJr9y" /></label>
+      <label data-page-node-id="q11KCbFKUrqIhQHKSUWcwD">器材
+        <select id="bf-eq" data-page-node-id="lQnomIAiybZ4LNi5pG6WFU"><option value="" data-page-node-id="tHPym5jPxo2Cf0p7wcQg57">（加载中…）</option></select>
       </label>
-      <label>数量<input id="bf-qty" type="number" min="1" max="99" value="1" /></label>
-      <p class="dialog-error" id="bf-error" hidden></p>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" data-close="overlay-borrow">取消</button>
-        <button class="btn btn-primary" id="bf-submit">确认补登</button>
+      <label data-page-node-id="GcVoLCijzMHD3u0qXBrUZX">数量<input id="bf-qty" type="number" min="1" max="99" value="1" data-page-node-id="XFfEtbDBJpm6g4YdhcXeJd" /></label>
+      <p class="dialog-error" id="bf-error" hidden data-page-node-id="HwZH5aLWJOSPQFat5aHRHZ"></p>
+      <div class="modal-actions" data-page-node-id="MQqGsl0juWhZj2RgtaEcGu">
+        <button class="btn btn-ghost" data-close="overlay-borrow" data-page-node-id="QVOmCAANUWTsRZ5CaROGiF">取消</button>
+        <button class="btn btn-primary" id="bf-submit" data-page-node-id="QD0PjR2RBJDmg8CZpRP1Wq">确认补登</button>
       </div>
     </div>
   </div>
 
   <script src="borrow.js"></script>
+  <script src="picker.js"></script>
   <script src="admit.js"></script>
   <script src="activity.js"></script>
   <script src="manage.js"></script>
