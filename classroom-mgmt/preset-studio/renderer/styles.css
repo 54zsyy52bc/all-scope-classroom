@@ -71,6 +71,22 @@ body {
 }
 .card h2 { margin: 0 0 14px; font-size: 18px; }
 .card h3 { margin: 18px 0 10px; font-size: 15px; color: var(--muted); }
+
+/* ---------- 班级编辑器：编号子卡片分区 ---------- */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.card-head h2 { margin: 0; }
+.sub-card {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.sub-head {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 15px; font-weight: 600; color: var(--text);
+  margin: 0 0 10px;
+}
+.sub-head .hint { font-weight: 400; font-size: 12px; }
+.sub-div { border-top: 1px dashed var(--line); margin: 12px 0; }
+.info-row { margin-top: -4px; }
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
