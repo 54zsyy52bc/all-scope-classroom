@@ -43,6 +43,8 @@ const byId = [
   'overlay-import', 'import-title', 'import-file-name', 'import-result',
   'import-cancel', 'import-commit', 'toast',
   'ss-ai-result', 'ss-target-class',
+  'overlay-oobe', 'ob-dots', 'ob-step-1', 'ob-step-2', 'ob-step-3', 'ob-step-4',
+  'ob-class-name', 'ob-seats', 'ob-group', 'ob-dict-seed', 'ob-prev', 'ob-next', 'ob-skip',
 ];
 for (const id of byId) elsMap[id] = makeEl(id);
 
@@ -64,6 +66,7 @@ let domReady = null;
 
 // ---------- 桩 StudioApi（内存模拟主进程 store）----------
 const studioLog = [];
+const metaStore = {};
 let genSeq = 0; // 桩 id 自增（与真实 store.genId 行为一致）
 const memory = { classes: [], activities: [], dict: [{ eqId: 'LED', eqName: 'LED', category: '元件' }] };
 globalThis.StudioApi = {
@@ -91,6 +94,8 @@ globalThis.StudioApi = {
   removeActivity: async (id) => { memory.activities = memory.activities.filter((a) => a.preset_id !== id); return { presetId: id }; },
   saveDict: async (item) => { studioLog.push({ op: 'dict:save', body: item }); memory.dict.push(item); return item; },
   removeDict: async () => ({}),
+  metaGet: async (key) => (key in metaStore ? metaStore[key] : null),
+  metaSet: async (key, value) => { metaStore[key] = value; return value; },
   pkgExport: async () => { studioLog.push({ op: 'pkg:export' }); return { pkg: 'kct-preset-package', schemaVersion: 1, exportedAt: Date.now(), classes: [], activities: [] }; },
   pkgSaveFile: async () => { studioLog.push({ op: 'pkg:save-file' }); return null; },
   pkgOpenFile: async () => null,
@@ -117,6 +122,7 @@ memory.activities.push({
 (0, eval)(fs.readFileSync(path.join(ROOT, 'class-lessons-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'smart-import.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'smart-studio.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'oobe.js'), 'utf8'));
 if (domReady) domReady();
 
 async function main() {
@@ -283,6 +289,28 @@ async function main() {
   // 适配层拒绝不支持的接口（无课堂接口可用）
   const j = await global.Editor.api('POST', '/api/v1/task', { title: 'x' });
   check('适配层拒绝课堂接口', j.code === 1, JSON.stringify(j));
+
+  // OOBE 首次运行向导：meta 未标记自动弹出 → 建班 → 字典种子 → 完成写标记
+  check('OOBE：meta 未标记时自动弹出', elsMap['overlay-oobe'].hidden === false
+    && elsMap['ob-step-1'].hidden === false && elsMap['ob-dots'].innerHTML.includes('on'),
+    'hidden=' + elsMap['overlay-oobe'].hidden);
+  elsMap['ob-class-name'].value = '初二(1)班';
+  elsMap['ob-seats'].value = '48';
+  await global.Oobe.next(); // 1→2（填班级信息）
+  await global.Oobe.next(); // 2：创建班级 → 进入步骤3
+  const oobeCls = studioLog.filter((l) => l.op === 'class:save').pop();
+  check('OOBE：第二步创建班级', !!oobeCls && oobeCls.body.name === '初二(1)班'
+    && oobeCls.body.totalSeats === 48 && oobeCls.body.note === 'OOBE 创建', JSON.stringify(oobeCls && oobeCls.body));
+  check('OOBE：进入步骤 3', elsMap['ob-step-3'].hidden === false && elsMap['ob-step-1'].hidden === true);
+  elsMap['ob-dict-seed'].checked = true;
+  const dictBefore = studioLog.filter((l) => l.op === 'dict:save').length;
+  await global.Oobe.next(); // 步骤3：字典种子 → 进入步骤4
+  const dictAdds = studioLog.filter((l) => l.op === 'dict:save').length - dictBefore;
+  check('OOBE：字典种子导入 6 条', dictAdds === 6
+    && memory.dict.some((d) => d.eqId === 'LED'), String(dictAdds));
+  await global.Oobe.next(); // 步骤4：完成
+  check('OOBE：完成写 meta 标记并关闭弹层', metaStore.oobeDone === true
+    && elsMap['overlay-oobe'].hidden === true, 'oobeDone=' + metaStore.oobeDone);
 
   console.log('\nPreset Studio 渲染层验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);

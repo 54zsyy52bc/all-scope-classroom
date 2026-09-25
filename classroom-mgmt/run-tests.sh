@@ -197,24 +197,56 @@ if [ "$MODE" = "--full" ] || [ "$MODE" = "full" ]; then
   if [ ! -f "$SIOT_EXE" ]; then
     bad "broker 启动（找不到 $SIOT_EXE）"
   else
-    # 5.1 清理 1883 端口残留 -> 启动 broker
-    for p in $(netstat -ano 2>/dev/null | grep ':1883' | grep -i listening | awk '{print $5}' | sort -u); do
+    # 5.1 独立测试 broker（1884/1889/8081，全新数据目录）
+    # 关键：真实课堂的 broker/学生机/残留教师端都挂在 1883 上——冒烟若共用，
+    # 残留教师端会抢答学生 hello（返回旧会话 sync），真实学生端会把签到打进测试库。
+    # 因此测试 broker 完全独立：换端口 + 复制运行时（data/ 不带 = 全新库），不碰 1883。
+    E2E_BROKER_DIR=/tmp/siot-e2e-broker
+    rm -rf "$E2E_BROKER_DIR"
+    mkdir -p "$E2E_BROKER_DIR"
+    cp -r "$SIOT_DIR/main.exe" "$SIOT_DIR/httpsvr" "$SIOT_DIR/ssl" "$E2E_BROKER_DIR/" 2>/dev/null || true
+    mkdir -p "$E2E_BROKER_DIR/conf" "$E2E_BROKER_DIR/data"
+    cat > "$E2E_BROKER_DIR/conf/config.json" <<'EOC'
+{
+  "workerNum": 2,
+  "host": "127.0.0.1",
+  "port": "1884",
+  "httpPort": "8081",
+  "tlsHost": "127.0.0.1",
+  "tlsPort": "8884",
+  "wsPath": "/ws",
+  "wsPort": "1889",
+  "wsTLS": false,
+  "tlsInfo": {
+    "verify": true,
+    "caFile": "ssl/ca/ca.pem",
+    "certFile": "ssl/server/cert.pem",
+    "keyFile": "ssl/server/key.pem"
+  },
+  "plugins": {
+    "auth": "authlocal",
+    "bridge": "local"
+  },
+  "debug": false
+}
+EOC
+    for p in $(netstat -ano 2>/dev/null | grep ':1884' | grep -i listening | awk '{print $5}' | sort -u); do
       taskkill /F /PID "$p" >/dev/null 2>&1 || true
     done
-    ( cd "$SIOT_DIR" && nohup ./main.exe -c conf/config.json >/tmp/siot-e2e.log 2>&1 & echo $! >/tmp/siot-e2e.pid )
+    ( cd "$E2E_BROKER_DIR" && nohup ./main.exe -c conf/config.json >/tmp/siot-e2e.log 2>&1 & echo $! >/tmp/siot-e2e.pid )
     SIOT_PID=$(cat /tmp/siot-e2e.pid 2>/dev/null || echo "")
-    note "SIoT broker 启动中 (pid=${SIOT_PID:-?}) ..."
+    note "SIoT 测试 broker 启动中 (pid=${SIOT_PID:-?}, 端口 1884/1889) ..."
 
     # 5.2 等待 broker 就绪（最多 20s）
     ready=0
     for i in $(seq 1 20); do
-      if netstat -ano 2>/dev/null | grep ':1883' | grep -qi listening; then ready=1; break; fi
+      if netstat -ano 2>/dev/null | grep ':1884' | grep -qi listening; then ready=1; break; fi
       sleep 1
     done
     if [ "$ready" -eq 0 ]; then
-      bad "broker 监听 1883"; tail -8 /tmp/siot-e2e.log | sed 's/^/        /'
+      bad "broker 监听 1884"; tail -8 /tmp/siot-e2e.log | sed 's/^/        /'
     else
-      ok "broker 就绪（1883）"
+      ok "broker 就绪（1884，独立于真实 1883）"
 
       # 5.3 启动 teacher server（临时库）
       # 关键：先确认 3000 端口干净。否则上一轮残留的 teacher server 仍占着端口，
@@ -227,7 +259,7 @@ if [ "$MODE" = "--full" ] || [ "$MODE" = "full" ]; then
         sleep 1
       done
       rm -f /tmp/rt-e2e-$$.db*
-      ( cd "$TEACHER" && DB_PATH=/tmp/rt-e2e-$$.db nohup "$NODE" server.js >/tmp/teacher-e2e.log 2>&1 & echo $! >/tmp/teacher-e2e.pid )
+      ( cd "$TEACHER" && DB_PATH=/tmp/rt-e2e-$$.db SIOT_TCP_PORT=1884 SIOT_WS_PORT=1889 SIOT_WEB_PORT=8081 nohup "$NODE" server.js >/tmp/teacher-e2e.log 2>&1 & echo $! >/tmp/teacher-e2e.pid )
       SRV_PID=$(cat /tmp/teacher-e2e.pid 2>/dev/null || echo "")
       note "teacher server 启动中 (pid=${SRV_PID:-?}) ..."
 
@@ -242,9 +274,9 @@ if [ "$MODE" = "--full" ] || [ "$MODE" = "full" ]; then
       else
         ok "teacher server 就绪（3000）"
         # 5.4 全链路冒烟（真实 broker）
-        run_case "全链路冒烟 smoke（真实 broker）" "$TEACHER" env DB_PATH=/tmp/rt-e2e-$$.db "$NODE" test/smoke.js
+        run_case "全链路冒烟 smoke（真实 broker）" "$TEACHER" env DB_PATH=/tmp/rt-e2e-$$.db SMOKE_BROKER=mqtt://127.0.0.1:1884 "$NODE" test/smoke.js
         # 5.5 学生端真机联调（需 broker 仍在跑）
-        run_case "学生端真机联调 net.broker"      "$STUDENT" env SIOT_IP=127.0.0.1 SIOT_WS_PORT=1888 "$NODE" test/net.broker.test.js
+        run_case "学生端真机联调 net.broker"      "$STUDENT" env SIOT_IP=127.0.0.1 SIOT_WS_PORT=1889 SIOT_TCP_PORT=1884 "$NODE" test/net.broker.test.js
       fi
 
       # 5.6 清理 server（按端口反查，确保杀到 node 本体）
@@ -254,12 +286,13 @@ if [ "$MODE" = "--full" ] || [ "$MODE" = "full" ]; then
       rm -f /tmp/rt-e2e-$$.db*
     fi
 
-    # 5.7 清理 broker
-    for p in $(netstat -ano 2>/dev/null | grep ':1883' | grep -i listening | awk '{print $5}' | sort -u); do
+    # 5.7 清理 broker（只清测试端口 1884；真实 1883 不碰）
+    for p in $(netstat -ano 2>/dev/null | grep ':1884' | grep -i listening | awk '{print $5}' | sort -u); do
       taskkill /F /PID "$p" >/dev/null 2>&1 || true
     done
+    rm -rf "$E2E_BROKER_DIR"
     rm -f /tmp/siot-e2e.pid /tmp/teacher-e2e.pid
-    note "进程已清理（端口 3000 / 1883）"
+    note "进程已清理（端口 3000 / 1884；真实 1883 未触碰）"
   fi
 fi
 

@@ -331,3 +331,17 @@ button, .btn { box-shadow: none; }
   .lesson-row, .roster-row { transition: none !important; }
 }
 
+
+/* ---------- OOBE 首次运行向导 ---------- */
+.ob-dots { display: flex; gap: 6px; justify-content: center; margin: 6px 0 12px; }
+.ob-dots i {
+  width: 22px; height: 6px; border-radius: 3px;
+  background: var(--line); display: inline-block;
+}
+.ob-dots i.on { background: var(--indigo); }
+.ob-dots i.done { background: var(--indigo-hover); }
+.ob-list { margin: 8px 0 4px; padding-left: 18px; line-height: 1.9; }
+.ob-list li b { color: var(--text); }
+.ob-list { color: var(--muted); }
+.ck { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.ck input { width: auto; }

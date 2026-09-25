@@ -73,6 +73,8 @@ const byId = new Set([
   'btn-picker', 'overlay-picker', 'pk-tab-names', 'pk-tab-cam', 'pk-close', 'pk-panel-names',
   'pk-panel-cam', 'pk-names', 'pk-roll', 'pk-cam-roll', 'pk-result', 'pk-history',
   'pk-video', 'pk-canvas', 'pk-shot',
+  'overlay-oobe', 'tb-dots', 'tb-step-1', 'tb-step-2', 'tb-step-3', 'tb-step-4',
+  'tb-open-manage', 'tb-prev', 'tb-next', 'tb-skip',
   'btn-tools', 'overlay-tools', 'tab-timer', 'tab-group', 'tab-score',
   'tl-panel-timer', 'tl-panel-group', 'tl-panel-score', 'tl-time', 'tl-bar',
   'tl-min', 'tl-sec', 'tl-start', 'tl-pause', 'tl-reset',
@@ -176,6 +178,13 @@ globalThis.fetch = fetchStub;
 globalThis.EventSource = EventSourceStub;
 globalThis.confirm = () => true;
 // 预载 Icons（真实 icons.js），然后按页面顺序加载 app.js → presets.js → activity.js → manage.js → stream.js
+// localStorage 桩（OOBE 完成标记等前端持久化用）
+globalThis.localStorage = {
+  _m: {},
+  getItem(k) { return Object.prototype.hasOwnProperty.call(this._m, k) ? this._m[k] : null; },
+  setItem(k, v) { this._m[k] = String(v); },
+  removeItem(k) { delete this._m[k]; },
+};
 (0, eval)(fs.readFileSync(path.join(ROOT, 'icons.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'dialog.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'term-ui.js'), 'utf8'));
@@ -190,6 +199,7 @@ globalThis.confirm = () => true;
 (0, eval)(fs.readFileSync(path.join(ROOT, 'borrow.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'picker.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'tools.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'oobe.js'), 'utf8'));
 // 模拟浏览器：全部脚本加载后触发 DOMContentLoaded（app.js 的 init 在此执行）
 if (domReady) domReady();
 
@@ -450,6 +460,25 @@ async function main() {
 
   // 清理活动计时条/快照合并等残留定时器，避免进程退出竞态
   for (let i = 1; i <= 20; i += 1) clearInterval(i);
+
+  // OOBE 首次运行向导：自动弹出 → 步进/回退 → 跳过写标记
+  check('OOBE：首次进入自动弹出且步骤 1 可见', elsMap['overlay-oobe'].hidden === false
+    && elsMap['tb-step-1'].hidden === false && elsMap['tb-dots'].innerHTML.includes('on'),
+    'hidden=' + elsMap['overlay-oobe'].hidden);
+  elsMap['tb-next'].onclick();
+  elsMap['tb-prev'].onclick();
+  check('OOBE：上一步回到步骤 1', elsMap['tb-step-1'].hidden === false && elsMap['tb-step-2'].hidden === true);
+  elsMap['tb-next'].onclick();
+  elsMap['tb-next'].onclick();
+  elsMap['tb-next'].onclick();
+  check('OOBE：到达步骤 4 且按钮文案切换', elsMap['tb-step-4'].hidden === false
+    && elsMap['tb-next'].textContent.indexOf('完成') >= 0,
+    'next=' + elsMap['tb-next'].textContent);
+  elsMap['tb-skip'].onclick();
+  check('OOBE：跳过写 localStorage 标记并关闭弹层', localStorage.getItem('kct-oobe-done') === '1'
+    && elsMap['overlay-oobe'].hidden === true,
+    'mark=' + localStorage.getItem('kct-oobe-done'));
+
   console.log('\n大屏验证：' + pass + ' 通过, ' + fail + ' 失败');
   process.exit(fail > 0 ? 1 : 0);
 }

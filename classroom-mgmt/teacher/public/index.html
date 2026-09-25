@@ -351,8 +351,57 @@
   </div>
 
   <script src="borrow.js"></script>
+
+  <!-- OOBE 首次运行向导 -->
+  <div class="overlay" id="overlay-oobe" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="tb-title">
+      <h2 id="tb-title">欢迎使用全域课堂大屏</h2>
+      <div class="ob-dots" id="tb-dots"></div>
+      <div id="tb-step-1" hidden>
+        <p class="modal-hint">这块大屏是你的课堂指挥台：左边是小组状态墙，右侧滚动课堂事件，顶部统计实时刷新。</p>
+        <ul class="ob-list">
+          <li><b>小组状态墙</b> —— 每组登记/活动/求助状态一眼可见，求助自动变红横幅+蜂鸣</li>
+          <li><b>顶部统计</b> —— 已登记 / 在线 / 求助 / 活动完成 / 已归还</li>
+          <li><b>学生端</b> —— 每组一台学生机，开机自动进入课堂桌面等待登记</li>
+        </ul>
+      </div>
+      <div id="tb-step-2" hidden>
+        <p class="modal-hint">课堂四步（顶部按钮随阶段自动增减）：</p>
+        <ul class="ob-list">
+          <li><b>① 开始上课</b> —— 填教师姓名，选班级/活动预设</li>
+          <li><b>② 学生登记</b> —— 各组学生在学生机上输入座位号登记</li>
+          <li><b>③ 发布活动</b> —— 选活动预设或现场自定义，可启用倒计时</li>
+          <li><b>④ 下课</b> —— 学生归还器材 → 结束课堂（可导出 Excel/CSV）</li>
+        </ul>
+      </div>
+      <div id="tb-step-3" hidden>
+        <p class="modal-hint">班级/活动预设由「办公电脑上的预设编辑器」维护，打包拷过来即可。</p>
+        <ul class="ob-list">
+          <li>预设编辑器 → <b>导出预设包</b>（.kctpreset）→ U 盘拷到本机</li>
+          <li>大屏「预设管理」→ <b>导入预设包</b>；也可在此导出本机备份</li>
+          <li>导入后「开始上课」弹窗里就能直接选班级/活动预设</li>
+        </ul>
+        <div class="modal-actions"><button class="btn btn-primary" id="tb-open-manage">现在打开预设管理</button></div>
+      </div>
+      <div id="tb-step-4" hidden>
+        <p class="modal-hint">课中互动小工具（都在顶部按钮区）：</p>
+        <ul class="ob-list">
+          <li><b>随机抽选</b> —— 名单抽选（登记学生）+ 摄像头 3×3 方格抽"屏幕方位"</li>
+          <li><b>课堂工具</b> —— 快速计时器（结束蜂鸣）/ 随机分组 / 小组积分板</li>
+          <li>随时按 F11 全屏投屏效果最佳</li>
+        </ul>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="tb-skip">跳过向导</button>
+        <button class="btn btn-ghost" id="tb-prev">上一步</button>
+        <button class="btn btn-primary" id="tb-next">下一步</button>
+      </div>
+    </div>
+  </div>
+
   <script src="picker.js"></script>
   <script src="tools.js"></script>
+  <script src="oobe.js"></script>
   <script src="admit.js"></script>
   <script src="activity.js"></script>
   <script src="manage.js"></script>

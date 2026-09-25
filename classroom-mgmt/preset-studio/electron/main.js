@@ -70,6 +70,10 @@ if (!gotLock) {
     ipcMain.handle('dict:save', wrap((item) => store.upsertDictItem(item)));
     ipcMain.handle('dict:remove', wrap((eqId) => { store.removeDictItem(eqId); return { eqId }; }));
 
+    // OOBE 等本机键值标记
+    ipcMain.handle('meta:get', wrap((key) => store.getMeta(key)));
+    ipcMain.handle('meta:set', wrap((payload) => store.setMeta(payload && payload.key, payload && payload.value)));
+
     // 预设包：导出（filter={classes:[],activities:[]} 可选，只导出勾选如"单活动包"；缺省全量）/ 预演 / 提交
     ipcMain.handle('pkg:export', wrap((filter) => store.exportPackage(filter)));
 

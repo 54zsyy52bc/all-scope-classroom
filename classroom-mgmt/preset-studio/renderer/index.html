@@ -200,8 +200,51 @@
   <script src="class-lessons-ui.js"></script>
   <script src="smart-import.js"></script>
   <script src="smart-studio.js"></script>
+
+  <!-- OOBE 首次运行向导 -->
+  <div class="overlay" id="overlay-oobe" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+      <h2 id="ob-title">欢迎使用全域预设编辑器</h2>
+      <div class="ob-dots" id="ob-dots"></div>
+      <div id="ob-step-1" hidden>
+        <p class="modal-hint">这里是「办公电脑」上的课件与课堂内容准备台，课前把内容都备好、打包发到教师机。</p>
+        <ul class="ob-list">
+          <li><b>班级预设</b> —— 座位、分组、学生名单、上课器材与课时安排</li>
+          <li><b>活动预设</b> —— 器材清单与任务模板，一键发布到课堂</li>
+          <li><b>器材字典</b> —— 常用器材编码，输入时自动联想</li>
+          <li><b>智能生成</b> —— 批量导入课件，快速/AI 生成课时包</li>
+        </ul>
+      </div>
+      <div id="ob-step-2" hidden>
+        <p class="modal-hint">第一步：建一个班级（以后随时可改，也能从预设包导入）。</p>
+        <label>班级名称<input id="ob-class-name" type="text" placeholder="例如：初二(1)班" maxlength="30" /></label>
+        <label>座位数<input id="ob-seats" type="number" min="1" max="99" value="50" /></label>
+        <label>每组人数<input id="ob-group" type="number" min="1" max="20" value="5" /></label>
+        <p class="modal-hint">留空名称 = 跳过，稍后在「班级预设」页创建。</p>
+      </div>
+      <div id="ob-step-3" hidden>
+        <p class="modal-hint">第二步：器材字典用于登记器材时快速联想编号。</p>
+        <label class="ck"><input id="ob-dict-seed" type="checkbox" checked /> 导入常用器材（LED / 面包板 / UNO 主控 / 杜邦线等 6 条）</label>
+      </div>
+      <div id="ob-step-4" hidden>
+        <p class="modal-hint">全部就绪！日常使用三步：</p>
+        <ul class="ob-list">
+          <li>这里编辑预设 → <b>导出预设包</b>（.kctpreset 文件）</li>
+          <li>拷到教师机 → 大屏「预设管理」里<b>导入</b></li>
+          <li>课前在班级页核对课时安排即可</li>
+        </ul>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="ob-skip">跳过向导</button>
+        <button class="btn btn-ghost" id="ob-prev">上一步</button>
+        <button class="btn btn-primary" id="ob-next">下一步</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     document.getElementById('brand-mark').innerHTML = Icons.svg('clipboard-check', 22);
   </script>
+  <script src="oobe.js"></script>
 </body>
 </html>

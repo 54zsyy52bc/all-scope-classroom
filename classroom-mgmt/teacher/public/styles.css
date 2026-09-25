@@ -658,3 +658,11 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
 .sc-card b { font-size: 15px; }
 .sc-num { font-size: 40px; font-weight: 700; margin: 4px 0; }
 .sc-btns { display: flex; gap: 6px; justify-content: center; }
+
+/* ---------- OOBE 首次运行向导 ---------- */
+.ob-dots { display: flex; gap: 6px; justify-content: center; margin: 6px 0 14px; }
+.ob-dots i { width: 26px; height: 6px; border-radius: 3px; background: var(--line); display: inline-block; }
+.ob-dots i.on { background: var(--indigo); }
+.ob-dots i.done { background: var(--indigo-hover); }
+.ob-list { margin: 8px 0 4px; padding-left: 18px; line-height: 1.9; color: var(--muted); }
+.ob-list li b { color: var(--text); }

@@ -39,13 +39,14 @@ function createStore(dataFile) {
         classes: Array.isArray(raw.classes) ? raw.classes : [],
         activities: Array.isArray(raw.activities) ? raw.activities : [],
         dict: Array.isArray(raw.dict) ? raw.dict : DEFAULT_DICT.map((d) => Object.assign({}, d)),
+        meta: raw.meta && typeof raw.meta === 'object' && !Array.isArray(raw.meta) ? raw.meta : {},
       };
     } catch (_e) {
       // 首次运行 / 文件损坏：新建空库（损坏文件重命名为 .bak 防止覆盖丢失）
       try {
         if (fs.existsSync(file)) fs.renameSync(file, file + '.bak-' + Date.now());
       } catch (_e2) { /* 忽略 */ }
-      return { version: 1, classes: [], activities: [], dict: DEFAULT_DICT.map((d) => Object.assign({}, d)) };
+      return { version: 1, classes: [], activities: [], dict: DEFAULT_DICT.map((d) => Object.assign({}, d)), meta: {} };
     }
   }
 
@@ -280,12 +281,17 @@ function createStore(dataFile) {
     return preview;
   }
 
+  // ---------------- Meta（OOBE 完成标记等键值） ----------------
+  function getMeta(key) { return (state.meta || {})[key]; }
+  function setMeta(key, value) { state.meta = state.meta || {}; state.meta[key] = value; persist(); return true; }
+
   return {
     file, genId,
     listClasses, getClass, upsertClass, removeClass,
     listActivities, getActivity, upsertActivity, removeActivity,
     listDict, upsertDictItem, removeDictItem,
     exportPackage, previewImport, commitImport,
+    getMeta, setMeta,
   };
 }
 
