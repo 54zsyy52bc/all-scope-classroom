@@ -25,15 +25,25 @@
     <button class="tab" data-tab="dict">器材字典</button>
   </nav>
 
-  <!-- ===================== 班级预设 ===================== -->
+  <!-- ===================== 班级预设（班级包：信息包 + 课堂包 + 学生包） ===================== -->
   <section class="tab-panel active" id="panel-classes">
     <div class="card">
-      <h2>新建班级预设</h2>
+      <h2>基本信息 <span class="hint">信息包（选填，随预设包导出）</span></h2>
       <div class="form-grid">
         <label>班级名称<input id="c-name" type="text" placeholder="例如：初二(1)班" maxlength="30" /></label>
         <label>座位数<input id="c-seats" type="number" min="1" max="99" value="50" /></label>
         <label>分组大小<input id="c-group" type="number" min="1" max="20" value="5" /></label>
         <label>备注<input id="c-note" type="text" placeholder="例如：东机房（选填）" maxlength="60" /></label>
+        <label>年级 / 学期<input id="c-grade" type="text" placeholder="例如：初二 / 2026秋季" maxlength="20" /></label>
+        <label>教室<input id="c-room" type="text" placeholder="例如：东机房 302" maxlength="30" /></label>
+        <label>任课教师<input id="c-teacher" type="text" placeholder="选填" maxlength="20" /></label>
+      </div>
+
+      <h3>学生配置 <span class="hint">学生包：名单 + 分组归属；可手动录入，也可在下方「智能生成」导入</span></h3>
+      <div class="roster-editor" id="c-students-editor"></div>
+      <div class="mini-actions">
+        <button class="btn btn-ghost" id="btn-student-add">+ 添加学生</button>
+        <button class="btn btn-ghost" id="btn-roster-groups">从名单生成分组</button>
       </div>
 
       <h3>分组配置 <span class="hint">不填则按人数均分；填写后座位数以各组之和为准</span></h3>
@@ -46,6 +56,19 @@
       <h3>上课器材 <span class="hint">每节课都发放的器材（可选），与活动器材合并下发；编号可从字典联想</span></h3>
       <div class="eq-editor" id="class-eq-editor"></div>
       <button class="btn btn-ghost" id="btn-class-eq-add">+ 添加上课器材</button>
+
+      <h3>课时安排 <span class="hint">*课时包：每课时勾选活动包与器材，支持后期单独替换添加</span></h3>
+      <div class="lesson-editor" id="c-lessons-editor"></div>
+      <div class="mini-actions">
+        <button class="btn btn-ghost" id="btn-lesson-add">+ 添加课时</button>
+        <button class="btn btn-ghost" id="btn-lesson-courseware">导入课件生成课时</button>
+      </div>
+
+      <h3>智能生成 <span class="hint">导入班级分组表（CSV/TXT：学号,姓名,分组）一键填充学生包与分组</span></h3>
+      <div class="mini-actions">
+        <button class="btn btn-ghost" id="btn-roster-import">导入学生名单（CSV / TXT）</button>
+      </div>
+      <div class="import-note" id="roster-import-note" hidden></div>
 
       <div class="actions"><button class="btn btn-primary" id="btn-class-save">保存班级预设</button></div>
     </div>
@@ -118,6 +141,9 @@
   <script src="app.js"></script>
   <script src="presets.js"></script>
   <script src="preset-class-ui.js"></script>
+  <script src="class-roster-ui.js"></script>
+  <script src="class-lessons-ui.js"></script>
+  <script src="smart-import.js"></script>
   <script>
     document.getElementById('brand-mark').innerHTML = Icons.svg('clipboard-check', 22);
   </script>

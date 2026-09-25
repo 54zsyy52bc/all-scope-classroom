@@ -104,6 +104,30 @@ if (!gotLock) {
       const raw = fs.readFileSync(res.filePaths[0], 'utf8');
       return { pkg: JSON.parse(raw), fileName: path.basename(res.filePaths[0]) };
     }));
+
+    // 智能生成：选学生名单文本（CSV/TSV/TXT，Excel 另存为 CSV 即可），返回文本内容
+    ipcMain.handle('import:pick-roster', wrap(async () => {
+      const res = await dialog.showOpenDialog(mainWindow, {
+        title: '导入学生名单（CSV / TXT）',
+        properties: ['openFile'],
+        filters: [{ name: '学生名单', extensions: ['csv', 'txt', 'tsv'] }],
+      });
+      if (res.canceled || !res.filePaths || !res.filePaths[0]) return null;
+      const text = fs.readFileSync(res.filePaths[0], 'utf8');
+      return { text, fileName: path.basename(res.filePaths[0]) };
+    }));
+
+    // 智能生成：选课件文件（按文件名生成课时骨架；内容解析属后期增强）
+    ipcMain.handle('import:pick-courseware', wrap(async () => {
+      const res = await dialog.showOpenDialog(mainWindow, {
+        title: '导入课件生成课时',
+        properties: ['openFile'],
+        filters: [{ name: '课件', extensions: ['ppt', 'pptx', 'doc', 'docx', 'pdf'] }],
+      });
+      if (res.canceled || !res.filePaths || !res.filePaths[0]) return null;
+      const fileName = path.basename(res.filePaths[0]);
+      return { fileName, baseName: fileName.replace(/\.[^.]+$/, ''), filePath: res.filePaths[0] };
+    }));
   }
 
   app.whenReady().then(() => {

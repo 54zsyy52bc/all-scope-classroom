@@ -1,11 +1,7 @@
 'use strict';
-// =============================================================================
-// 教室编辑器 · 预设管理（班级 / 活动 CRUD）
-//
-// 依赖 window.Editor（app.js 注入的公共工具：api / toast / esc / refreshPresets）
-// 班级预设：name / totalSeats / groupSize / note
-// 活动预设：name / category / note + equipment[]（eqId/eqName/category/preset）+ taskTemplates[]（title/desc）
-// =============================================================================
+// 教室编辑器 · 预设管理（班级/活动 CRUD）。依赖 window.Editor。
+// 班级：name/totalSeats/groupSize/note + info/students[]/lessons[]（v5）
+// 活动：name/category/note + equipment[] + taskTemplates[]
 (function (global) {
   const Editor = global.Editor;
 
@@ -16,7 +12,10 @@
     host.innerHTML = classes.map((c) =>
       '<div class="list-item">'
       + '<div class="li-main"><div class="li-title">' + Editor.esc(c.name) + '</div>'
-      + '<div class="li-sub">' + c.totalSeats + ' 座 · 每组 ' + c.groupSize + ' 人' + (c.note ? ' · ' + Editor.esc(c.note) : '') + '</div></div>'
+      + '<div class="li-sub">' + c.totalSeats + ' 座 · 每组 ' + c.groupSize + ' 人'
+      + (c.students && c.students.length ? ' · 学生 ' + c.students.length : '')
+      + (c.lessons && c.lessons.length ? ' · 课时 ' + c.lessons.length : '')
+      + (c.note ? ' · ' + Editor.esc(c.note) : '') + '</div></div>'
       + '<div class="li-actions">'
       + '<button class="mini-btn" data-class-edit="' + Editor.esc(c.presetId) + '">编辑</button>'
       + '<button class="mini-btn danger" data-class-del="' + Editor.esc(c.presetId) + '">删除</button>'
@@ -29,6 +28,13 @@
     Editor.el('c-seats').value = c.totalSeats;
     Editor.el('c-group').value = c.groupSize;
     Editor.el('c-note').value = c.note || '';
+    // v5：信息包 / 学生包 / 课时包 回填
+    const info = c.info || {};
+    Editor.el('c-grade').value = info.grade || '';
+    Editor.el('c-room').value = info.room || '';
+    Editor.el('c-teacher').value = info.teacher || '';
+    if (global.PresetRoster) global.PresetRoster.fill(c.students || []);
+    if (global.PresetLessons) global.PresetLessons.fill(c.lessons || []);
     Editor.el('c-name').dataset.editId = c.presetId;
     Editor.el('btn-class-save').textContent = '保存修改';
     // v4.2：分组配置 + 上课器材 回填
@@ -42,6 +48,15 @@
       groupSize: Number(Editor.el('c-group').value) || 5,
       note: Editor.el('c-note').value.trim(),
     };
+    // v5：信息包 / 学生包 / 课时包 随预设保存
+    body.info = {
+      grade: Editor.el('c-grade').value.trim() || null,
+      room: Editor.el('c-room').value.trim() || null,
+      teacher: Editor.el('c-teacher').value.trim() || null,
+      semester: null,
+    };
+    if (global.PresetRoster) body.students = global.PresetRoster.collect();
+    if (global.PresetLessons) body.lessons = global.PresetLessons.collect();
     // v4.2：分组配置与上课器材随预设保存（服务端标准化并联动座位数）
     if (global.PresetClassUi) {
       body.groups = global.PresetClassUi.collectGroups();
@@ -69,6 +84,12 @@
     Editor.el('c-seats').value = 50;
     Editor.el('c-group').value = 5;
     Editor.el('c-note').value = '';
+    // v5：信息包 / 学生包 / 课时包 重置
+    Editor.el('c-grade').value = '';
+    Editor.el('c-room').value = '';
+    Editor.el('c-teacher').value = '';
+    if (global.PresetRoster) global.PresetRoster.reset();
+    if (global.PresetLessons) global.PresetLessons.reset();
     delete Editor.el('c-name').dataset.editId;
     Editor.el('btn-class-save').textContent = '保存班级预设';
     if (global.PresetClassUi) global.PresetClassUi.reset();

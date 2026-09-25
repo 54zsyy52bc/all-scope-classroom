@@ -35,7 +35,7 @@ function makeEl(id) {
 const byId = [
   'brand-mark', 'btn-import-pkg', 'btn-export-pkg',
   'panel-classes', 'panel-activities', 'panel-dict',
-  'c-name', 'c-seats', 'c-group', 'c-note', 'btn-class-save', 'class-list',
+  'c-name', 'c-seats', 'c-group', 'c-note', 'c-grade', 'c-room', 'c-teacher', 'btn-class-save', 'class-list',
   'a-name', 'a-category', 'a-note', 'a-timed', 'a-duration',
   'eq-editor', 'btn-eq-add', 'tpl-editor', 'btn-tpl-add', 'btn-activity-save', 'activity-list',
   'd-eqid', 'd-eqname', 'd-category', 'btn-dict-save', 'dict-list',
@@ -109,6 +109,9 @@ memory.activities.push({
 (0, eval)(fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'presets.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'preset-class-ui.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'class-roster-ui.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'class-lessons-ui.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'smart-import.js'), 'utf8'));
 if (domReady) domReady();
 
 async function main() {
@@ -124,6 +127,9 @@ async function main() {
   elsMap['c-seats'].value = '48';
   elsMap['c-group'].value = '6';
   elsMap['c-note'].value = '东机房';
+  elsMap['c-grade'].value = '初二';
+  elsMap['c-room'].value = '东机房';
+  elsMap['c-teacher'].value = '张老师';
   elsMap['btn-class-save'].onclick();
   await new Promise((r) => setTimeout(r, 30));
   const clsSave = studioLog.find((l) => l.op === 'class:save');
@@ -132,6 +138,12 @@ async function main() {
     clsSave ? JSON.stringify(clsSave.body) : '无调用');
   check('班级保存：v4.2 挂载 groups/equipment 键', !!clsSave && Array.isArray(clsSave.body.groups)
     && Array.isArray(clsSave.body.equipment), clsSave ? JSON.stringify(clsSave.body.groups) : '');
+  check('班级保存：v5 信息包进负载', !!clsSave && !!clsSave.body.info
+    && clsSave.body.info.grade === '初二' && clsSave.body.info.teacher === '张老师',
+    clsSave ? JSON.stringify(clsSave.body.info) : '');
+  check('班级保存：v5 学生包/课时包键存在', !!clsSave && Array.isArray(clsSave.body.students)
+    && Array.isArray(clsSave.body.lessons),
+    clsSave ? JSON.stringify([clsSave.body.students, clsSave.body.lessons]) : '');
   check('PresetClassUi 已装配', !!global.PresetClassUi && typeof global.PresetClassUi.collectGroups === 'function');
   check('班级保存后表单重置', elsMap['c-name'].value === '');
   check('班级保存后列表刷新', elsMap['class-list'].innerHTML.includes('初二(1)班'),

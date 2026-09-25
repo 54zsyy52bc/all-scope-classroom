@@ -183,8 +183,10 @@
       Editor.dict = all.dict || [];
       if (global.PresetView) global.PresetView.render(Editor.classes, Editor.activities);
       renderDict();
-      // v4.2：器材字典 → 输入联想（活动器材行 / 上课器材行共用 datalist）
-      if (global.PresetClassUi) global.PresetClassUi.refreshDictOptions(Editor.dict);
+    // v4.2：器材字典 → 输入联想（活动器材行 / 上课器材行共用 datalist）
+    if (global.PresetClassUi) global.PresetClassUi.refreshDictOptions(Editor.dict);
+    // v5：课时包引用活动包 —— 活动列表变化后刷新课时勾选 chips（保留已填内容）
+    if (global.PresetLessons) global.PresetLessons.refreshChips();
     } catch (e) { toast('读取本地数据失败：' + (e && e.message || e), true); }
   }
   Editor.refreshPresets = refreshPresets;
@@ -207,6 +209,10 @@
     if (global.PresetView) global.PresetView.bindPresetEvents();
     // v4.2：班级分组配置 / 上课器材 UI + 初始空态
     if (global.PresetClassUi) { global.PresetClassUi.bind(); global.PresetClassUi.reset(); }
+    // v5：学生包 / 课时包 / 智能生成
+    if (global.PresetRoster) { global.PresetRoster.bind(); global.PresetRoster.reset(); }
+    if (global.PresetLessons) { global.PresetLessons.bind(); global.PresetLessons.reset(); }
+    if (global.PresetSmart) global.PresetSmart.bind();
   }
 
   function init() {

@@ -51,6 +51,7 @@ call :run_case "teacher command-notice"   "%ROOT%teacher" "%NODE%" test\command-
 
 rem --- preset studio ---
 call :run_case "studio store"             "%ROOT%preset-studio" "%NODE%" test\store.test.js
+call :run_case "studio class-parts"       "%ROOT%preset-studio" "%NODE%" test\class-parts.test.js
 call :run_case "studio renderer.dom"      "%ROOT%preset-studio" "%NODE%" test\renderer.dom.test.js
 
 rem --- student ---

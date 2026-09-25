@@ -86,7 +86,11 @@ const pkg2 = {
   pkg: 'kct-preset-package', schemaVersion: 1, exportedAt: T0,
   classes: [
     { presetId: 'CP-TEST01', name: '包内旧版本', totalSeats: 46, groupSize: 5, updatedAt: T0 }, // 本地较新 → skipped
-    { presetId: 'CP-NEW001', name: '初二(3)班', totalSeats: 46, groupSize: 5, updatedAt: T0 },  // 新增
+    { presetId: 'CP-NEW001', name: '初二(3)班', totalSeats: 46, groupSize: 5, updatedAt: T0, // 新增
+      info: { grade: '初二', room: '东机房', teacher: '张老师', semester: null },
+      students: [{ studentNo: '01', name: '张三', group: '1组', seat: 1 }, { studentNo: '02', name: '李四', group: '', seat: 2 }],
+      lessons: [{ lessonId: 'L1', name: '第1课 点亮LED', activityIds: ['AP-TEST01'], equipment: [{ eqId: 'LED-5', eqName: 'LED', category: '元件', preset: 2 }], note: null }],
+    }, // 新增（v5：携带信息包/学生包/课时包）
   ],
   activities: [
     { presetId: 'AP-TEST01', name: '包内更新活动', category: null, equipment: [], taskTemplates: [], timed: false, updatedAt: Date.now() + 5000 }, // 覆盖
@@ -102,6 +106,27 @@ check('提交：摘要正确', ret.added === 1 && ret.updated === 1 && ret.skipp
 check('提交：本地较新班级未被覆盖', store.getClass('CP-TEST01').name === '本地新版本');
 check('提交：新班级已入库', store.getClass('CP-NEW001').name === '初二(3)班');
 check('提交：活动被包内版本覆盖', store.getActivity('AP-TEST01').name === '包内更新活动');
+// ---- v5 往返：信息包/学生包/课时包 导入后原样读回（snake_case 落库） ----
+const cNew = store.getClass('CP-NEW001');
+check('v5 往返：信息包', !!cNew.info && cNew.info.grade === '初二' && cNew.info.teacher === '张老师'
+  && cNew.info.semester === null, JSON.stringify(cNew.info));
+check('v5 往返：学生包', cNew.students.length === 2 && cNew.students[0].studentNo === '01'
+  && cNew.students[1].name === '李四' && cNew.students[1].group === '', JSON.stringify(cNew.students));
+check('v5 往返：课时包', cNew.lessons.length === 1 && cNew.lessons[0].name === '第1课 点亮LED'
+  && cNew.lessons[0].activityIds[0] === 'AP-TEST01'
+  && cNew.lessons[0].equipment[0].eqId === 'LED-5' && cNew.lessons[0].equipment[0].preset === 2,
+  JSON.stringify(cNew.lessons));
+// v5 再导出：新字段原样进包（跨 Studio 分发不丢数据）
+const pkgV5 = store.exportPackage({ classes: ['CP-NEW001'], activities: [] });
+const clsV5 = pkgV5.classes[0];
+check('v5 再导出：包内携带 info/students/lessons', !!clsV5.info && clsV5.info.grade === '初二'
+  && clsV5.students.length === 2 && clsV5.lessons.length === 1
+  && clsV5.lessons[0].activityIds[0] === 'AP-TEST01', JSON.stringify(Object.keys(clsV5)));
+// 部分更新不改 v5 字段：只改名的 upsert 不清空学生包/课时包
+store.upsertClass({ preset_id: 'CP-NEW001', name: '初二(3)班(改)', updated_at: T0 });
+const cKeep = store.getClass('CP-NEW001');
+check('v5 部分 upsert：students/lessons/info 保留', cKeep.name === '初二(3)班(改)'
+  && cKeep.students.length === 2 && cKeep.lessons.length === 1 && !!cKeep.info, JSON.stringify(Object.keys(cKeep)));
 const createdKeep = store.getClass('CP-NEW001').created_at;
 store.upsertClass({ preset_id: 'CP-NEW001', name: '初二(3)班', updated_at: T0 });
 check('提交：created_at 保留', store.getClass('CP-NEW001').created_at === createdKeep);

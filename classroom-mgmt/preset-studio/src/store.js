@@ -12,6 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const presetPkg = require('../../shared/preset-package');
+const parts = require('./class-parts');
 
 const DEFAULT_DICT = [
   { eqId: 'DEV-BOARD', eqName: '开发板', category: '主控' },
@@ -102,6 +103,10 @@ function createStore(dataFile) {
     }
     if (input.created_at !== undefined) r.created_at = input.created_at;
     if (input.updated_at !== undefined) r.updated_at = input.updated_at;
+    // v5 预设编辑器大改：信息包 / 学生包 / 课时包（教师端导入时忽略这些扩展字段）
+    Object.assign(r, parts.normInfo(input.info));
+    Object.assign(r, parts.normStudents(input.students));
+    Object.assign(r, parts.normLessons(input.lessons));
     return r;
   }
   function upsertClass(input) {
@@ -111,6 +116,7 @@ function createStore(dataFile) {
       const row = Object.assign({
         preset_id: input.preset_id, name: '未命名班级', total_seats: 50, group_size: 5,
         groups: [], equipment: [], note: null, created_at: now(), updated_at: now(),
+        info: null, students: [], lessons: [],
       }, r);
       state.classes.push(row);
       persist();
@@ -209,6 +215,7 @@ function createStore(dataFile) {
     const toPkgClass = (c) => ({
       presetId: c.preset_id, name: c.name, totalSeats: c.total_seats, groupSize: c.group_size,
       groups: c.groups || [], equipment: c.equipment || [],
+      info: c.info || null, students: c.students || [], lessons: c.lessons || [],
       note: c.note, createdAt: c.created_at, updatedAt: c.updated_at,
     });
     const toPkgActivity = (a) => ({
@@ -253,7 +260,9 @@ function createStore(dataFile) {
         const c = (pkg.classes || []).find((x) => x.presetId === it.presetId);
         upsertClass({
           preset_id: c.presetId, name: c.name, total_seats: c.totalSeats, group_size: c.groupSize,
-          groups: c.groups, equipment: c.equipment, note: c.note,
+          groups: c.groups, equipment: c.equipment,
+          info: c.info, students: c.students, lessons: c.lessons,
+          note: c.note,
           created_at: c.createdAt, updated_at: c.updatedAt,
         });
       } else {

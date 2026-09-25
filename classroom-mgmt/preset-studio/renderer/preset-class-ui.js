@@ -176,5 +176,6 @@
     collectGroups: readGroups,
     collectClassEq,
     refreshDictOptions,
+    renderGroups, // v5：供学生包「从名单生成分组」复用
   };
 })(window);
