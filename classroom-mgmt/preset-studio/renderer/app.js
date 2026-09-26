@@ -79,6 +79,10 @@
       });
     });
   }
+  // 连贯化：动作完成后可程序化跳页签（入库→班级页、OOBE→落位等）
+  function gotoTab(name) {
+    document.querySelectorAll('.tab').forEach((b) => { if (b.dataset.tab === name) b.click(); });
+  }
 
   // ---------- 器材字典 ----------
   function renderDict() {
@@ -187,10 +191,19 @@
     if (global.PresetClassUi) global.PresetClassUi.refreshDictOptions(Editor.dict);
     // v5：课时包引用活动包 —— 活动列表变化后刷新课时勾选 chips（保留已填内容）
     if (global.PresetLessons) global.PresetLessons.refreshChips();
+    // 连贯化：智能生成页的「入库目标班级」下拉随班级数据联动刷新
+    if (global.PresetSmartStudio) global.PresetSmartStudio.refreshClassOptions();
     } catch (e) { toast('读取本地数据失败：' + (e && e.message || e), true); }
   }
   Editor.refreshPresets = refreshPresets;
   Editor.importPkg = importPkg; // OOBE 导入步骤复用同一导入流程
+  Editor.gotoTab = gotoTab;
+  // 连贯化：跨页签直达班级编辑（智能生成入库 / OOBE 建班后自动落位）
+  Editor.openClass = (id) => {
+    gotoTab('classes');
+    const c = (Editor.classes || []).find((x) => x.presetId === id);
+    if (c && global.PresetView && global.PresetView.editClass) global.PresetView.editClass(c);
+  };
 
   // ---------- 事件 ----------
   function bind() {

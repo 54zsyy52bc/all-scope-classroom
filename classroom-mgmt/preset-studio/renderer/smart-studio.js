@@ -273,6 +273,7 @@
     renderDrafts();
     note('入库完成：新增课时 ' + newLessons.length + ' 个 → 「' + esc(cls.name) + '」，新建活动 ' + actCreated + ' 个。');
     toast('已入库：' + newLessons.length + ' 个课时，' + actCreated + ' 个新活动');
+    if (Editor.openClass) Editor.openClass(cls.presetId); // 连贯化：入库后直达班级课时编辑
   }
 
   // ---------- 绑定 ----------

@@ -29,7 +29,8 @@ function makeEl(id) {
     onclick: null, focus() {},
     querySelector() { return null; }, querySelectorAll() { return []; },
     closest() { return null; },
-    appendChild() {}, removeChild() {}, prepend() {}, click() {},
+    appendChild() {}, removeChild() {}, prepend() {},
+    click() { if (this._listeners.click) this._listeners.click(); },
     insertAdjacentHTML(_pos, html) { this.innerHTML += html; },
   };
 }
@@ -37,6 +38,7 @@ const byId = [
   'brand-mark', 'btn-import-pkg', 'btn-export-pkg',
   'panel-classes', 'panel-activities', 'panel-dict',
   'c-name', 'c-seats', 'c-group', 'c-note', 'c-grade', 'c-room', 'c-teacher', 'btn-class-save', 'class-list',
+  'btn-class-reset', 'btn-activity-reset',
   'a-name', 'a-category', 'a-note', 'a-timed', 'a-duration',
   'eq-editor', 'btn-eq-add', 'tpl-editor', 'btn-tpl-add', 'btn-activity-save', 'activity-list',
   'd-eqid', 'd-eqname', 'd-category', 'btn-dict-save', 'dict-list',
@@ -50,6 +52,7 @@ const byId = [
 for (const id of byId) elsMap[id] = makeEl(id);
 
 const tabBtns = [makeEl('tab-classes'), makeEl('tab-activities'), makeEl('tab-dict')];
+tabBtns[0].dataset = { tab: 'classes' }; tabBtns[1].dataset = { tab: 'activities' }; tabBtns[2].dataset = { tab: 'dict' };
 const documentStub = {
   readyState: 'loading',
   addEventListener(ev, fn) { if (ev === 'DOMContentLoaded') domReady = fn; },
@@ -157,7 +160,14 @@ async function main() {
     && Array.isArray(clsSave.body.lessons),
     clsSave ? JSON.stringify([clsSave.body.students, clsSave.body.lessons]) : '');
   check('PresetClassUi 已装配', !!global.PresetClassUi && typeof global.PresetClassUi.collectGroups === 'function');
-  check('班级保存后表单重置', elsMap['c-name'].value === '');
+  const savedCls = (global.Editor.classes || []).find((c) => c.name === '初二(1)班');
+  check('班级保存后保持编辑态（不清空，可继续调整）', elsMap['c-name'].value === '初二(1)班'
+    && elsMap['c-name'].dataset.editId === savedCls.presetId
+    && elsMap['btn-class-save'].textContent === '保存修改',
+    JSON.stringify([elsMap['c-name'].value, elsMap['c-name'].dataset.editId]));
+  elsMap['btn-class-reset'].onclick();
+  check('清空新建：回到新建态', elsMap['c-name'].value === ''
+    && elsMap['btn-class-save'].textContent !== '保存修改');
   check('班级保存后列表刷新', elsMap['class-list'].innerHTML.includes('初二(1)班'),
     elsMap['class-list'].innerHTML.slice(0, 120));
 
@@ -189,6 +199,10 @@ async function main() {
   check('活动保存：器材行字段收集', !!actSave && actSave.body.equipment.length === 1
     && actSave.body.equipment[0].eqId === 'SENSOR-T' && actSave.body.equipment[0].preset === 2,
     actSave ? JSON.stringify(actSave.body.equipment) : '');
+  const savedAct = (global.Editor.activities || []).find((a) => a.name === '传感器实验');
+  check('活动保存后保持编辑态', elsMap['a-name'].value === '传感器实验'
+    && !!savedAct && elsMap['a-name'].dataset.editId === savedAct.presetId
+    && elsMap['btn-activity-save'].textContent === '保存修改');
 
   // 器材字典保存
   elsMap['d-eqid'].value = 'SENSOR-X';
@@ -232,6 +246,7 @@ async function main() {
 
   // ===================== 智能生成页：快速识别 → AI 回贴 → 确认入库 =====================
   // 前置：保存一个班级进入缓存（作为入库目标）
+  elsMap['btn-class-reset'].onclick(); // 连贯化出口：编辑态下先清空再新建
   elsMap['c-name'].value = '初二(9)班';
   elsMap['btn-class-save'].onclick();
   await new Promise((r) => setTimeout(r, 30));
@@ -286,6 +301,12 @@ async function main() {
     && mergedLesson.equipment[0].eqId === 'LED' && mergedLesson.equipment[0].preset === 3,
     smartSave ? JSON.stringify(smartSave.body.lessons) : '无调用');
   check('智能生成：入库后草稿清空', global.PresetSmartStudio._drafts().length === 0);
+  // 连贯化：入库后自动跳到班级页签并载入目标班级进入编辑态
+  check('智能生成：入库后跳转班级页签', tabBtns[0].classList.contains('active')
+    && tabBtns[1].classList.contains('active') === false);
+  check('智能生成：入库后自动载入目标班级', elsMap['c-name'].value === '初二(9)班'
+    && elsMap['c-name'].dataset.editId === clsSmart.presetId,
+    JSON.stringify([elsMap['c-name'].value, elsMap['c-name'].dataset.editId]));
 
   // 适配层拒绝不支持的接口（无课堂接口可用）
   const j = await global.Editor.api('POST', '/api/v1/task', { title: 'x' });
@@ -301,11 +322,11 @@ async function main() {
   await global.Oobe.next(); // 2→3：保存教师信息
   check('OOBE：教师信息写入 meta', metaStore.teacherInfo && metaStore.teacherInfo.name === '王老师'
     && metaStore.teacherInfo.school === '实验中学', JSON.stringify(metaStore.teacherInfo));
-  elsMap['ob-class-name'].value = '初二(1)班';
+  elsMap['ob-class-name'].value = 'OOBE班';
   elsMap['ob-seats'].value = '48';
   await global.Oobe.next(); // 3→4：创建班级
   const oobeCls = studioLog.filter((l) => l.op === 'class:save').pop();
-  check('OOBE：创建班级', !!oobeCls && oobeCls.body.name === '初二(1)班'
+  check('OOBE：创建班级', !!oobeCls && oobeCls.body.name === 'OOBE班'
     && oobeCls.body.totalSeats === 48 && oobeCls.body.note === 'OOBE 创建', JSON.stringify(oobeCls && oobeCls.body));
   check('OOBE：进入导入步骤', elsMap['ob-step-import'].hidden === false && elsMap['ob-step-1'].hidden === true);
   await global.Oobe.next(); // 3→4：导入步骤无操作
@@ -319,6 +340,12 @@ async function main() {
   await global.Oobe.next(); // 5→6：完成
   check('OOBE：完成写 meta 标记并关闭弹层', metaStore.oobeDone === true
     && elsMap['overlay-oobe'].hidden === true, 'oobeDone=' + metaStore.oobeDone);
+  // 连贯化：OOBE 建班后自动落位到班级页签并载入该班
+  const oobeClsSaved = (global.Editor.classes || []).find((c) => c.name === 'OOBE班');
+  check('OOBE：完成后落位到新班级', tabBtns[0].classList.contains('active')
+    && !!oobeClsSaved && elsMap['c-name'].value === 'OOBE班'
+    && elsMap['c-name'].dataset.editId === oobeClsSaved.presetId,
+    JSON.stringify([elsMap['c-name'].value, elsMap['c-name'].dataset.editId]));
 
   // OOBE 导入入口：点击隐藏向导并复用主导入流程（桩 pkgOpenFile 返回 null = 用户取消）
   elsMap['overlay-oobe'].hidden = false;

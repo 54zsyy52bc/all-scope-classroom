@@ -4,7 +4,6 @@
 // 活动：name/category/note + equipment[] + taskTemplates[]
 (function (global) {
   const Editor = global.Editor;
-
   // ---------- 班级预设 ----------
   function renderClassList(classes) {
     const host = Editor.el('class-list');
@@ -22,7 +21,6 @@
       + '</div></div>'
     ).join('');
   }
-
   function fillClassForm(c) {
     Editor.el('c-name').value = c.name;
     Editor.el('c-seats').value = c.totalSeats;
@@ -40,7 +38,6 @@
     // v4.2：分组配置 + 上课器材 回填
     if (global.PresetClassUi) global.PresetClassUi.fill(c);
   }
-
   function collectClassForm() {
     const body = {
       name: Editor.el('c-name').value.trim(),
@@ -64,7 +61,6 @@
     }
     return body;
   }
-
   async function saveClass() {
     const body = collectClassForm();
     if (!body.name) { Editor.toast('班级名称不能为空', true); return; }
@@ -73,12 +69,14 @@
       ? await Editor.api('PUT', '/api/v1/presets/classes/' + editId, body)
       : await Editor.api('POST', '/api/v1/presets/classes', body);
     if (j && j.code === 0) {
-      Editor.toast(editId ? '班级预设已更新' : '班级预设已保存');
-      resetClassForm();
-      Editor.refreshPresets();
+      // 连贯化：保存后保持编辑态（表单=最新内容），继续调整不必重新「编辑」
+      await Editor.refreshPresets();
+      const pid = (j.data && (j.data.preset_id || j.data.presetId)) || editId;
+      const saved = (Editor.classes || []).find((c) => c.presetId === pid);
+      if (saved) fillClassForm(saved); else resetClassForm();
+      Editor.toast(saved ? '已保存，可继续调整（新建班级请点「清空新建」）' : '班级预设已保存');
     }
   }
-
   function resetClassForm() {
     Editor.el('c-name').value = '';
     Editor.el('c-seats').value = 50;
@@ -94,13 +92,11 @@
     Editor.el('btn-class-save').textContent = '保存班级预设';
     if (global.PresetClassUi) global.PresetClassUi.reset();
   }
-
   async function removeClass(id, name) {
     if (!await global.PresetDialog.confirmDialog({ title: '删除班级预设', message: '删除班级预设「' + name + '」？', confirmText: '删除', danger: true })) return;
     const j = await Editor.api('DELETE', '/api/v1/presets/classes/' + id);
     if (j && j.code === 0) { Editor.toast('已删除'); Editor.refreshPresets(); }
   }
-
   // ---------- 器材编辑器行 ----------
   function renderEqEditor(rows) {
     const host = Editor.el('eq-editor');
@@ -115,7 +111,6 @@
       + '</div>'
     ).join('');
   }
-
   function collectEqRows() {
     const rows = [];
     const host = Editor.el('eq-editor');
@@ -132,7 +127,6 @@
     });
     return rows;
   }
-
   // ---------- 任务模板编辑器行 ----------
   function renderTplEditor(rows) {
     const host = Editor.el('tpl-editor');
@@ -228,9 +222,12 @@
       ? await Editor.api('PUT', '/api/v1/presets/activities/' + editId, body)
       : await Editor.api('POST', '/api/v1/presets/activities', body);
     if (j && j.code === 0) {
-      Editor.toast(editId ? '活动预设已更新' : '活动预设已保存');
-      resetActivityForm();
-      Editor.refreshPresets();
+      // 连贯化：保存后保持编辑态，器材/模板可接着改
+      await Editor.refreshPresets();
+      const pid = (j.data && (j.data.preset_id || j.data.presetId)) || editId;
+      const saved = (Editor.activities || []).find((a) => a.presetId === pid);
+      if (saved) fillActivityForm(saved); else resetActivityForm();
+      Editor.toast(saved ? '已保存，可继续调整（新建活动请点「清空新建」）' : '活动预设已保存');
     }
   }
 
@@ -287,7 +284,9 @@
       }
     });
     Editor.el('btn-class-save').onclick = saveClass;
+    Editor.el('btn-class-reset').onclick = resetClassForm;
     Editor.el('btn-activity-save').onclick = saveActivity;
+    Editor.el('btn-activity-reset').onclick = resetActivityForm;
     Editor.el('a-timed').addEventListener('change', (e) => { Editor.el('a-duration').disabled = !e.target.checked; });
   }
 
@@ -296,5 +295,5 @@
     renderActivityList(activities);
   }
 
-  global.PresetView = { render, bindPresetEvents, renderEqEditor, renderTplEditor };
+  global.PresetView = { render, bindPresetEvents, renderEqEditor, renderTplEditor, editClass: fillClassForm, editActivity: fillActivityForm };
 })(window);

@@ -8,6 +8,7 @@
   const S = () => global.StudioApi;
   const STEP_IDS = ['ob-step-1', 'ob-step-teacher', 'ob-step-2', 'ob-step-import', 'ob-step-3', 'ob-step-4'];
   let step = 1; // 1 基下标（1..6）
+  let createdClassId = null; // 向导里创建的班级 id，完成后自动落位
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -34,6 +35,7 @@
     const ov = $('overlay-oobe');
     if (ov) ov.hidden = true;
     if (global.Editor && global.Editor.refreshPresets) await global.Editor.refreshPresets();
+    if (createdClassId && global.Editor && global.Editor.openClass) global.Editor.openClass(createdClassId); // 落位
     toast('设置完成，欢迎使用全域预设编辑器');
   }
 
@@ -57,7 +59,7 @@
           note: 'OOBE 创建',
         };
         const j = await S().saveClass(body);
-        if (j && j.preset_id) toast('班级「' + name + '」已创建');
+        if (j && j.preset_id) { createdClassId = j.preset_id; toast('班级「' + name + '」已创建'); }
         if (global.Editor) global.Editor.classes = global.Editor.classes || [];
       }
     }
