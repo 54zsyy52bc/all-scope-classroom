@@ -48,6 +48,7 @@
       $('ab-time').textContent = fmt(barTask.remainingMs);
       $('ab-state').textContent = running ? '进行中' : barTask.timerState === 'paused' ? '已暂停' : '已截止';
       $('ab-time').dataset.state = barTask.timerState;
+      updateRing();
       if (barTask.timerState === 'expired' && !expiredToasted) {
         expiredToasted = true;
         D.toast('活动已截止：' + (barTask.title || ''), true);
@@ -61,6 +62,17 @@
     }
   }
 
+  // 倒计时圆环：--pct ∈ [0,1] 喂给 .ab-ring 的 conic-gradient
+  function updateRing() {
+    const ring = $('ab-ring');
+    if (!ring) return;
+    let pct = 1;
+    if (barTask && barTask.timed && barTask.durationSec) {
+      pct = Math.max(0, Math.min(1, barTask.remainingMs / (barTask.durationSec * 1000)));
+    }
+    ring.style = '--pct:' + pct.toFixed(4);
+  }
+
   function startTick() {
     if (barTimer) return;
     barTimer = setInterval(() => {
@@ -69,6 +81,7 @@
         if (barTask.remainingMs <= 0) { barTask.timerState = 'expired'; }
         $('ab-time').textContent = fmt(barTask.remainingMs);
         $('ab-state').textContent = barTask.timerState === 'expired' ? '已截止' : '进行中';
+        updateRing();
       }
     }, 1000);
   }

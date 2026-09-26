@@ -698,3 +698,59 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
   outline: 3px solid var(--accent, var(--indigo, #0078D7));
   outline-offset: 2px;
 }
+
+/* =============================================================================
+   版式升级 v2（2026-09-25，对齐答辩样机）：
+   ① 浅灰画布 + 白卡片层次（Metro 直角保留）
+   ② 统计区 = 大数字展示：在线 / 已登记为 hero 大号，求助保持警示色
+   ③ 操作按钮三分组：主流程（大按钮）/ 课堂互动 / 管理与导出（紧凑按钮）
+   ④ 活动计时条移入右侧栏顶部 = 活动卡片：倒计时圆环 + 暂停/调时长/结束
+   ============================================================================= */
+:root { --bg: #F3F3F3; }
+
+/* ---- ② 统计：大数字（覆盖 Win8 彩色磁贴配色，改为白卡大数） ---- */
+.stats { grid-template-columns: 1.35fr 1.35fr repeat(4, 1fr); gap: 12px; }
+.stats .stat {
+  background: #FFFFFF; color: var(--text);
+  border: 1px solid var(--line);
+  min-height: 96px; padding: 14px 18px 12px;
+}
+.stats .stat b { font-size: 34px; color: var(--text); }
+.stats .stat span { color: var(--muted); font-size: 14px; }
+.stats .stat .mini { color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); }
+.stats .stat b.hl-help { color: var(--help); }
+.stats .stat.hero b { font-size: 60px; letter-spacing: -1px; }
+.stats .stat.hero span { font-size: 16px; font-weight: 600; }
+.stats .stat.hero .mini { font-size: 14px; }
+
+/* ---- ③ 操作按钮三分组 ---- */
+.controls { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.ctrl-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.ctrl-group + .ctrl-group { border-left: 1px solid var(--line); padding-left: 16px; }
+.ctrl-main .btn { min-height: 72px; }
+.ctrl-interact .btn, .ctrl-admin .btn { min-height: 56px; padding: 0 20px; font-size: 16px; }
+
+/* ---- ④ 右侧栏：活动卡片（置顶）+ 提醒 + 事件流 ---- */
+.workspace { grid-template-columns: minmax(0, 1fr) 400px; }
+.workspace .side .activity-bar {
+  display: flex; flex-direction: column; gap: 12px;
+  background: #FFFFFF; border: 1px solid var(--line); border-left: 6px solid var(--indigo);
+  padding: 16px 18px; flex-shrink: 0;
+}
+.ab-info { min-width: 0; }
+.ab-info b { font-size: 20px; }
+.ab-info p { white-space: normal; word-break: break-all; }
+.ab-timer { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.ab-ring {
+  display: grid; place-items: center;
+  width: 108px; height: 108px; border-radius: 50%;
+  background: conic-gradient(var(--indigo) calc(var(--pct, 1) * 360deg), var(--line) 0);
+  flex-shrink: 0;
+}
+.ab-ring-in {
+  width: 86px; height: 86px; border-radius: 50%;
+  background: #FFFFFF; display: grid; place-items: center;
+}
+.ab-time { font-size: 24px; }
+.workspace .side .ab-actions .btn { min-height: 48px; padding: 0 14px; font-size: 14px; }
+.workspace .side .events { border: 1px solid var(--line); }

@@ -359,3 +359,37 @@ select:focus-visible, [tabindex]:focus-visible {
   outline: 3px solid var(--indigo, #0078D7);
   outline-offset: 2px;
 }
+
+/* =============================================================================
+   左侧边栏导航（2026-09-25，对齐样机）：页签从顶部横排改为左栏竖排
+   body 变两列网格：顶栏跨两列；左侧 210px 页签栏（吸顶），右侧面板主体。
+   overlay/toast 为 fixed 定位，不参与网格布局。
+   ============================================================================= */
+body {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "head head"
+    "nav main";
+  column-gap: 18px;
+  align-items: start;
+}
+.topbar { grid-area: head; margin-bottom: 18px; align-self: center; }
+.tabs {
+  grid-area: nav;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 0;
+  position: sticky;
+  top: 0;
+}
+.tab { text-align: left; padding: 0 18px; min-height: 52px; }
+.tab.active { box-shadow: inset 4px 0 0 #fff; }
+.tab-panel { grid-area: main; min-width: 0; }
+@media (max-width: 900px) {
+  body { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "nav" "main"; }
+  .tabs { flex-direction: row; flex-wrap: wrap; position: static; }
+  .tab { text-align: center; }
+}
