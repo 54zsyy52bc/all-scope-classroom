@@ -23,6 +23,7 @@
     .sb-logo { height:26px; }
     .chip { border:1px solid var(--line); padding:3px 10px; font-size:12px; color:var(--muted); }
     .chip.guard-on { color:var(--ok); border-color:#bfe5bf; background:#f0faf0; }
+    .chip.guard-off { color:var(--warn); border-color:#e6b4ac; background:#fdf3f2; }
     .link { font-size:13px; color:var(--accent); background:none; border:0; cursor:pointer; padding:4px 6px; }
     .link:hover{text-decoration:underline}
     /* 主屏容器（桌面 chrome）：磁贴/首页(.welcome/.home-grid/.tile*/.d-app*/.empty-guide)
@@ -99,6 +100,11 @@
         { animation:none!important; transition:none!important; }
       .tile:hover .tile-inner, .d-app:hover .tile-inner { transform:none!important; }
     }
+    /* 评审修复（可访问性）：键盘焦点可见 */
+    .tile:focus-visible, .dock-btn:focus-visible, .chip:focus-visible, button:focus-visible,
+    input:focus-visible, select:focus-visible {
+      outline: 3px solid var(--accent); outline-offset: 2px;
+    }
   </style>
 </head>
 <body data-page-node-id="8Dt9XFHEfFEiMNxdAwsTXb">
@@ -107,6 +113,7 @@
     <div class="sb-right" data-page-node-id="086xMJcWEOfIUzGseCgv8e">
       <span class="chip" id="sb-machine" data-page-node-id="oBUCXYDXoEswr9hchHM55q">机器 -</span>
       <span class="chip" id="sb-room" data-page-node-id="6znHxxvyUxenpPrr4utswc">教室 -</span>
+      <span class="chip" id="sb-elev" hidden>未用管理员运行</span>
       <span class="chip guard-on" id="sb-guard" data-page-node-id="YKLDEmMiVAz4kcn2tCAUTC">防护中</span>
       <span class="clock" id="sb-clock" data-page-node-id="eFeXuxHEAU1esuJdoI52LC"></span>
       <button class="link" id="sb-settings" data-page-node-id="C8AzG98ylefU1sCHRCktvE">设置</button>

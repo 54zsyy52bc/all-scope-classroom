@@ -571,13 +571,15 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
 .activity-bar { transition: opacity 220ms cubic-bezier(0.2, 0, 0, 1),
                             transform 220ms cubic-bezier(0.2, 0, 0, 1); }
 
-/* ---- 鼠标交互：3D 微倾斜 + 微抬 + 按下回弹 ---- */
+/* ---- 鼠标交互：3D 微倾斜 + 微抬 + 按下回弹（仅精确指针设备；触摸屏无 hover，粘滞态表现为乱闪）---- */
 .btn, .mini-btn {
   transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .16s ease, background .14s ease;
 }
-.btn:hover, .mini-btn:hover {
-  transform: perspective(600px) rotateX(6deg) rotateY(-2deg) translateY(-3px) scale(1.04);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, .20);
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover, .mini-btn:hover {
+    transform: perspective(600px) rotateX(6deg) rotateY(-2deg) translateY(-3px) scale(1.04);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .20);
+  }
 }
 .btn:active, .mini-btn:active { transform: scale(.94); transition-duration: .06s; }
 
@@ -672,3 +674,27 @@ legend { font-weight: 600; font-size: 14px; padding: 0 6px; }
 #overlay-oobe .modal { width: min(860px, 94vw); max-height: 92vh; overflow: auto; padding: 44px 52px; }
 #overlay-oobe .modal-hint { font-size: 17px; }
 #overlay-oobe .ob-list { font-size: 17px; }
+
+/* ---- 评审修复 2.1：小组墙 + 事件区并排（原纵向堆叠导致事件区挤成 420px 窄条）---- */
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+.workspace .side { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.workspace .events { width: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.workspace .events-body { max-height: none; flex: 1; }
+@media (max-width: 1100px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .workspace .events-body { max-height: 200px; }
+}
+
+/* ---- 评审修复（可访问性）：键盘焦点可见 ---- */
+.btn:focus-visible, .mini-btn:focus-visible, input:focus-visible, select:focus-visible,
+.tab:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid var(--accent, var(--indigo, #0078D7));
+  outline-offset: 2px;
+}

@@ -49,6 +49,10 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
     .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
     [hidden] { display: none !important; }
+    /* 评审修复（可访问性）：键盘焦点可见 */
+    button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid var(--accent, #0078d7); outline-offset: 2px;
+    }
   </style>
 </head>
 <body>

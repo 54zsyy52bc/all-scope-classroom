@@ -63,7 +63,12 @@
     renderHome(); renderState();
   }
   function renderState() {
-    $('sb-guard').textContent = dcfg.guard && dcfg.guard.enabled ? '防护中' : '防护未启用';
+    // 防护状态：文字 + 语义色同步切换（不能只靠文字，绿底徽标配「未启用」会误导）
+    const g = $('sb-guard');
+    const on = !!(dcfg.guard && dcfg.guard.enabled);
+    g.textContent = on ? '防护中' : '防护未启用';
+    g.classList.toggle('guard-on', on);
+    g.classList.toggle('guard-off', !on);
   }
   function apps() { return (dcfg.course && dcfg.course.apps) || []; }
   // 磁贴生成已抽到 shared/tiles.js（window.Tiles），桌面页与课堂页共用一份，防止漂移。
