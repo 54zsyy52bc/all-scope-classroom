@@ -352,3 +352,10 @@ button, .btn { box-shadow: none; }
 #overlay-oobe .modal-hint { font-size: 16px; }
 #overlay-oobe .ob-list { font-size: 16px; }
 #overlay-oobe h2 { margin-bottom: 4px; }
+
+/* ---- 评审修复（可访问性）：键盘焦点可见 ---- */
+.btn:focus-visible, .mini-btn:focus-visible, .tab:focus-visible, input:focus-visible,
+select:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid var(--indigo, #0078D7);
+  outline-offset: 2px;
+}
