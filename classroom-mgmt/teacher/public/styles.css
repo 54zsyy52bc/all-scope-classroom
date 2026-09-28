@@ -491,7 +491,7 @@ body { background: var(--bg); color: var(--text); }
 /* 平面化：所有卡片/弹层去掉阴影圆角 */
 .card, .panel, .sheet, .overlay-card, section, .eq-card, .group-card,
 .modal-card, .editor-card, .row-card { box-shadow: none !important; border-radius: 0 !important; }
-.btn, input, select, textarea, .chip, .tile, .seat-tile, .stat-tile { border-radius: 0 !important; }
+.btn, input, select, textarea, .chip, .tile, .seat, .seat-tile, .stat-tile, .group-badge { border-radius: 0 !important; }
 button, .btn { box-shadow: none; }
 
 /* ===== Metro 磁贴（2026-09-07 v4.5）：课堂统计 = Win8 Live Tile 彩色块白字 ===== */
