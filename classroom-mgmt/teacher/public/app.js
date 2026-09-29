@@ -13,13 +13,11 @@
   const $ = (id) => document.getElementById(id);
   let snapTimer = null;
   const presets = { classes: [], activities: [] };
-
   // 公共 API：供 presets.js / activity.js / manage.js / stream.js 复用
   window.Dashboard = {
     api, toast, esc, presets, refreshSoon,
     refreshPresets: () => (window.DashboardPreset ? window.DashboardPreset.refresh() : Promise.resolve()),
   };
-
   // ---------- 工具 ----------
   function toast(text, isErr) {
     const t = $('toast');
@@ -191,7 +189,9 @@
     if (first) setTimeout(() => first.focus(), 50);
   }
   function closeModal(name) {
-    $('overlay-' + name).hidden = true;
+    // data-close 绑定传完整 id（overlay-xxx），内部调用传短名（xxx）：两种都兼容
+    const box = name.indexOf('overlay-') === 0 ? $(name) : $('overlay-' + name);
+    if (box) box.hidden = true;
   }
   async function onStart() {
     const teacher = $('f-teacher').value.trim();
