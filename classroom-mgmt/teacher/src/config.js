@@ -4,8 +4,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = __dirname; // src/
-const PROJECT_ROOT = path.resolve(ROOT, '..');
+const ROOT = __dirname; // src/（pkg 打包后为虚拟快照路径）
+// pkg 单文件 exe 模式：db/logs/exports/public 等可写数据与静态资源必须落在 exe 所在的真实
+// 目录，快照内路径（/snapshot/...）不持久。process.pkg 由 @yao-pkg/pkg 注入。
+const PROJECT_ROOT = process.pkg ? path.dirname(process.execPath) : path.resolve(ROOT, '..');
 const CONFIG_PATH = path.join(PROJECT_ROOT, 'app-config.json');
 
 function loadFileConfig() {
@@ -82,6 +84,7 @@ for (const pkey of ['SEATS_FILE', 'EQUIP_FILE', 'DB_PATH']) {
 }
 cfg.EXPORTS_DIR = path.join(PROJECT_ROOT, 'exports');
 cfg.PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
+cfg.PROJECT_ROOT = PROJECT_ROOT; // 供 server.js/system.js 等落 logs 用（pkg 模式下 ≠ __dirname 派生路径）
 
 // broker 地址派生
 cfg.SIOT_TCP_URL = `mqtt://${cfg.SIOT_IP}:${cfg.SIOT_TCP_PORT}`;

@@ -22,5 +22,14 @@
     "papaparse": "5.7.0",
     "cors": "2.8.5"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "pkg": {
+    "assets": [
+      "public/**/*",
+      "seeds/**/*",
+      "node_modules/better-sqlite3/prebuilds/**"
+    ],
+    "targets": ["node22-win-x64"],
+    "outputPath": "dist"
+  }
 }

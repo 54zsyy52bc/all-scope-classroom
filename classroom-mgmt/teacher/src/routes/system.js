@@ -54,8 +54,8 @@ router.post('/audit', asyncHandler(async (req, res) => {
   // eslint-disable-next-line no-console
   console.log('[audit-ui]', line);
   try {
-    fs.mkdirSync(path.join(__dirname, '..', '..', 'logs'), { recursive: true });
-    fs.appendFileSync(path.join(__dirname, '..', '..', 'logs', 'audit.log'), line + '\n', { flag: 'a' });
+    fs.mkdirSync(path.join(cfg.PROJECT_ROOT, 'logs'), { recursive: true });
+    fs.appendFileSync(path.join(cfg.PROJECT_ROOT, 'logs', 'audit.log'), line + '\n', { flag: 'a' });
   } catch (_e) { /* 落盘失败不阻断 */ }
   ok(res, { logged: true });
 }));

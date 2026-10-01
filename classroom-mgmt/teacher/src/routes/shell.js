@@ -6,10 +6,12 @@ const express = require('express');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const cfg = require('../config');
 const { ok, error, asyncHandler } = require('../response');
 
 const router = express.Router();
-const FILE = path.join(__dirname, '..', '..', 'data', 'shell.json');
+// pkg exe 模式下 __dirname 是只读快照路径，数据必须落 exe 所在真实目录
+const FILE = path.join(cfg.PROJECT_ROOT, 'data', 'shell.json');
 
 function defaults() {
   return {

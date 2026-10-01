@@ -78,8 +78,8 @@ function flushAudit() {
   try {
     const fsa = require('fs');
     const pa = require('path');
-    fsa.mkdirSync(pa.join(__dirname, 'logs'), { recursive: true });
-    fsa.appendFileSync(pa.join(__dirname, 'logs', 'audit.log'), chunk, { flag: 'a' });
+    fsa.mkdirSync(pa.join(cfg.PROJECT_ROOT, 'logs'), { recursive: true });
+    fsa.appendFileSync(pa.join(cfg.PROJECT_ROOT, 'logs', 'audit.log'), chunk, { flag: 'a' });
   } catch (_e) { /* 审计落盘失败不阻断 */ }
 }
 function createApp() {
