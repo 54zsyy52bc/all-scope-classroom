@@ -131,10 +131,10 @@
       <label data-page-node-id="dzTd3Axfwxbjn2GCDAjZX6">机房终端台数（每组一台）<input id="f-term" type="number" min="1" max="50" value="14" data-page-node-id="sem8oillYHb8jrKBsFNxCA" /></label>
       <label data-page-node-id="M0oAiAiOI5RRua2MPirLXB">每组人数上限<input id="f-members" type="number" min="1" max="20" value="6" data-page-node-id="i3oMMEcOm91acKVFwWp2FV" /></label>
       <label data-page-node-id="r6xwbJGyqHAMOHyiYhNlrb">总座位数 <strong id="f-seats-note" data-page-node-id="5mV8MCrXRt9jvoxKgdKPdF">84</strong>（=台数×每组人数，自动）<input id="f-seats" type="hidden" data-page-node-id="3PN2FTyXfKDY7JrSAU67As" /></label>
-      <label data-page-node-id="lANaNrkM1nukPvJusdilw8">活动预设
-        <select id="f-activity-preset" data-page-node-id="11AC5gWUPYPjqL8tq3Wn3i"><option value="" data-page-node-id="pI1Uv0GQ1JZCeeoE2EudSO">（不使用预设）</option></select>
+      <label data-page-node-id="lANaNrkM1nukPvJusdilw8">课时预设
+        <select id="f-lesson-preset" data-page-node-id="11AC5gWUPYPjqL8tq3Wn3i"><option value="" data-page-node-id="pI1Uv0GQ1JZCeeoE2EudSO">（不使用课时）</option></select>
       </label>
-      <p class="modal-hint" id="f-activity-hint" data-page-node-id="GcjlwfYDC3diTelXgHBCuo">选活动预设后，器材清单与活动模板将随课堂下发</p>
+      <p class="modal-hint" id="f-lesson-hint" data-page-node-id="GcjlwfYDC3diTelXgHBCuo">选班级预设后可从此处选课时，该课时的器材与活动将随课堂下发</p>
       <div class="modal-actions" data-page-node-id="FlPb14SQf4J2fmbBuq2H0e">
         <button class="btn btn-ghost" data-close="overlay-start" data-page-node-id="Pl1Q021TteHtEagjNa4ykr">取消</button>
         <button class="btn btn-primary" id="confirm-start" data-page-node-id="NSpPpNnKlpvvcR719GnPnj">开始上课</button>
@@ -381,7 +381,7 @@
       <div id="tb-step-2" hidden>
         <p class="modal-hint">课堂四步（顶部按钮随阶段自动增减）：</p>
         <ul class="ob-list">
-          <li><b>① 开始上课</b> —— 填教师姓名，选班级/活动预设</li>
+          <li><b>① 开始上课</b> —— 填教师姓名，选班级/课时预设</li>
           <li><b>② 学生登记</b> —— 各组学生在学生机上输入座位号登记</li>
           <li><b>③ 发布活动</b> —— 选活动预设或现场自定义，可启用倒计时</li>
           <li><b>④ 下课</b> —— 学生归还器材 → 结束课堂（可导出 Excel/CSV）</li>
@@ -392,7 +392,7 @@
         <ul class="ob-list">
           <li>预设编辑器 → <b>导出预设包</b>（.kctpreset）→ U 盘拷到本机</li>
           <li>大屏「预设管理」→ <b>导入预设包</b>；也可在此导出本机备份</li>
-          <li>导入后「开始上课」弹窗里就能直接选班级/活动预设</li>
+          <li>导入后「开始上课」弹窗里就能直接选班级/课时预设</li>
         </ul>
         <div class="modal-actions">
           <button class="btn btn-primary" id="tb-import-now">直接导入预设包</button>

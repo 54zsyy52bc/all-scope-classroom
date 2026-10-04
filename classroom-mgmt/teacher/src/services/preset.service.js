@@ -5,14 +5,12 @@
 const db = require('../db');
 const { fail } = require('../errors');
 const { nowMs, genId } = require('../utils');
-
 function safeParseJSON(s) {
   try { return JSON.parse(s); } catch (_e) { return null; }
 }
 function toJSON(v) {
   return v == null ? null : JSON.stringify(v);
 }
-
 // ---------------- 班级预设 ----------------
 function toClassPreset(row) {
   if (!row) return null;
@@ -23,22 +21,21 @@ function toClassPreset(row) {
     groupSize: row.group_size,
     groups: safeParseJSON(row.groups_json) || [],
     equipment: safeParseJSON(row.equipment_json) || [],
+    // v5.2 课时包（随预设包导入；结构 {lessonId, name, activityIds, equipment}）
+    lessons: safeParseJSON(row.lessons_json) || [],
     note: row.note || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };
 }
-
 function listClasses() {
   return db.listClassPresets().map(toClassPreset);
 }
-
 function getClass(presetId) {
   const row = db.getClassPreset(presetId);
   if (!row) fail('E-NOTFOUND', '班级预设不存在');
   return toClassPreset(row);
 }
-
 // 分组配置标准化（v4.2）：[{ groupId, size }]，组名必填、人数 1-99
 function normGroups(groups) {
   const out = [];
@@ -53,7 +50,6 @@ function normGroups(groups) {
   if (total > 99) fail('E-VAL-01', '各组人数合计不能超过 99');
   return { list: out, total };
 }
-
 // 上课器材标准化（v4.2）：与活动器材同构 eqId/eqName/category/preset
 function normEqList(list) {
   const out = [];
@@ -68,12 +64,30 @@ function normEqList(list) {
   }
   return out;
 }
-
+// 课时包标准化（v5.2）：[{ lessonId, name, activityIds, equipment }]，与 Studio class-parts 同构
+function normLessons(list) {
+  const out = [];
+  for (const l of list || []) {
+    if (!l || !String(l.name || '').trim()) fail('E-VAL-01', '课时名称不能为空');
+    const ids = Array.isArray(l.activityIds)
+      ? l.activityIds.map((x) => String(x)).filter((x) => x)
+      : [];
+    out.push({
+      lessonId: l.lessonId ? String(l.lessonId).trim().slice(0, 30) : 'LS-' + genId().slice(0, 8).toUpperCase(),
+      name: String(l.name).trim().slice(0, 40),
+      activityIds: ids,
+      equipment: normEqList(l.equipment),
+      note: l.note ? String(l.note).trim() : null,
+    });
+  }
+  return out;
+}
 function validateClassInput(body, isUpdate) {
   const name = body.name == null ? undefined : String(body.name).trim();
   if (name !== undefined && !name) fail('E-VAL-01', '班级预设名称不能为空');
   if (isUpdate && name === undefined && body.totalSeats === undefined && body.groupSize === undefined
-    && body.note === undefined && body.groups === undefined && body.equipment === undefined) {
+    && body.note === undefined && body.groups === undefined && body.equipment === undefined
+    && body.lessons === undefined) {
     fail('E-VAL-01', '没有可更新的字段');
   }
   let totalSeats = body.totalSeats;
@@ -108,14 +122,18 @@ function validateClassInput(body, isUpdate) {
     if (!Array.isArray(body.equipment)) fail('E-VAL-01', 'equipment 必须为数组');
     equipment = normEqList(body.equipment);
   }
+  let lessons;
+  if (body.lessons !== undefined) {
+    if (!Array.isArray(body.lessons)) fail('E-VAL-01', 'lessons 必须为数组');
+    lessons = normLessons(body.lessons);
+  }
   const note = body.note === undefined ? undefined : (body.note == null ? null : String(body.note).trim());
   return {
-    name, totalSeats, groupSize, groups, groupsTotal, equipment, note,
+    name, totalSeats, groupSize, groups, groupsTotal, equipment, lessons, note,
     // 自定义分组时座位数跟随各组之和（前端已同步，此处兜底）
     effectiveTotal: groupsTotal || totalSeats,
   };
 }
-
 function createClass(body) {
   const v = validateClassInput(body, false);
   if (!v.name) fail('E-VAL-01', '班级预设名称不能为空');
@@ -128,13 +146,13 @@ function createClass(body) {
     group_size: v.groupSize != null ? v.groupSize : 5,
     groups_json: toJSON(v.groups || null),
     equipment_json: toJSON(v.equipment != null ? v.equipment : []),
+    lessons_json: toJSON(v.lessons != null ? v.lessons : []),
     note: v.note != null ? v.note : null,
     created_at: now,
     updated_at: now,
   });
   return getClass(presetId);
 }
-
 function updateClass(presetId, body) {
   getClass(presetId); // 不存在则抛 E-NOTFOUND
   const v = validateClassInput(body, true);
@@ -145,17 +163,16 @@ function updateClass(presetId, body) {
   if (v.groupSize !== undefined) patch.group_size = v.groupSize;
   if (v.groups !== undefined) patch.groups_json = toJSON(v.groups);
   if (v.equipment !== undefined) patch.equipment_json = toJSON(v.equipment);
+  if (v.lessons !== undefined) patch.lessons_json = toJSON(v.lessons);
   if (v.note !== undefined) patch.note = v.note;
   db.upsertClassPreset(Object.assign({ preset_id: presetId }, patch));
   return getClass(presetId);
 }
-
 function removeClass(presetId) {
   getClass(presetId);
   db.removeClassPreset(presetId);
   return { presetId };
 }
-
 // ---------------- 活动预设 ----------------
 function toActivityPreset(row) {
   if (!row) return null;
@@ -172,26 +189,21 @@ function toActivityPreset(row) {
     updatedAt: row.updated_at || null,
   };
 }
-
 function listActivities() {
   return db.listActivityPresets().map(toActivityPreset);
 }
-
 function getActivity(presetId) {
   const row = db.getActivityPreset(presetId);
   if (!row) fail('E-NOTFOUND', '活动预设不存在');
   return toActivityPreset(row);
 }
-
 function validateActivityInput(body, isUpdate) {
   const name = body.name == null ? undefined : String(body.name).trim();
   if (name !== undefined && !name) fail('E-VAL-01', '活动预设名称不能为空');
   const category = body.category === undefined ? undefined : (body.category == null ? null : String(body.category).trim());
   const note = body.note === undefined ? undefined : (body.note == null ? null : String(body.note).trim());
-
   let timed;
   if (body.timed !== undefined) timed = !!body.timed;
-
   let durationSec;
   if (body.durationSec !== undefined) {
     durationSec = Number(body.durationSec);
@@ -200,7 +212,6 @@ function validateActivityInput(body, isUpdate) {
     }
     if (timed === true && durationSec <= 0) fail('E-VAL-01', '启用计时时默认时长必须 > 0');
   }
-
   let equipment;
   if (body.equipment !== undefined) {
     if (!Array.isArray(body.equipment)) fail('E-VAL-01', 'equipment 必须为数组');
@@ -214,7 +225,6 @@ function validateActivityInput(body, isUpdate) {
       preset: Number.isInteger(Number(e.preset)) && Number(e.preset) >= 0 ? Number(e.preset) : 1,
     }));
   }
-
   let taskTemplates;
   if (body.taskTemplates !== undefined) {
     if (!Array.isArray(body.taskTemplates)) fail('E-VAL-01', 'taskTemplates 必须为数组');
@@ -223,14 +233,12 @@ function validateActivityInput(body, isUpdate) {
       desc: t && t.desc ? String(t.desc).trim() : '',
     }));
   }
-
   if (isUpdate && name === undefined && category === undefined && note === undefined
     && equipment === undefined && taskTemplates === undefined && timed === undefined && durationSec === undefined) {
     fail('E-VAL-01', '没有可更新的字段');
   }
   return { name, category, note, equipment, taskTemplates, timed, durationSec };
 }
-
 function createActivity(body) {
   const v = validateActivityInput(body, false);
   if (!v.name) fail('E-VAL-01', '活动预设名称不能为空');
@@ -250,7 +258,6 @@ function createActivity(body) {
   });
   return getActivity(presetId);
 }
-
 function updateActivity(presetId, body) {
   getActivity(presetId);
   const v = validateActivityInput(body, true);
@@ -265,13 +272,11 @@ function updateActivity(presetId, body) {
   db.upsertActivityPreset(Object.assign({ preset_id: presetId }, patch));
   return getActivity(presetId);
 }
-
 function removeActivity(presetId) {
   getActivity(presetId);
   db.removeActivityPreset(presetId);
   return { presetId };
 }
-
 module.exports = {
   toClassPreset, listClasses, getClass, createClass, updateClass, removeClass,
   toActivityPreset, listActivities, getActivity, createActivity, updateActivity, removeActivity,

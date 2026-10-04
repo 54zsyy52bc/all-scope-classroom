@@ -99,10 +99,70 @@ try {
   check('commitImport: 坏包被拒绝（E-PKG-01）', e.errorCode === 'E-PKG-01' || /E-PKG-01/.test(String(e.message || e.code || '')), String(e.errorCode || e.message));
 }
 
+// ---- 6) v5.2 课时包：lessons 协议校验 + 导入落库 + 导出带出 + 开课快照 ----
+// 桥接打桩：单测环境不开 MQTT（startSession 内 publishCommand 不触碰真实 broker）
+const bridgeId = require.resolve('../src/mqtt/bridge');
+require.cache[bridgeId] = {
+  id: bridgeId, filename: bridgeId, loaded: true,
+  exports: {
+    publishCommand: async () => ({ delivered: false }), publishSync: async () => ({}), publish: async () => ({ delivered: false }),
+    setMessageHandler() {}, setOnStateChange() {}, getState() { return { state: 'offline' }; }, isOnline: () => false,
+    CMD_BROADCAST: 'siot/ict_cmd', STU_UP: 'siot/ict_up', STU_HB: 'siot/ict_hb', SYNC: 'siot/ict_sync',
+  },
+};
+const sessionSvc = require('../src/services/session.service');
+
+// 6a 协议：带 lessons 的班级通过校验；坏 lessons 被拒
+const lsPkg = presetPkg.buildPackage({
+  classes: [{
+    presetId: 'CP-LS001', name: '课时测试班', totalSeats: 40, groupSize: 5, updatedAt: T0,
+    lessons: [{ lessonId: 'L-AAA0001', name: '第1课 点亮LED', activityIds: ['AP-LSX1'],
+      equipment: [{ eqId: 'LED', eqName: 'LED灯', category: '元件', preset: 2 }] }],
+  }],
+  activities: [{
+    presetId: 'AP-LSX1', name: '点亮LED', updatedAt: T0,
+    equipment: [{ eqId: 'LED', eqName: 'LED灯', category: '元件', preset: 1 }],
+    taskTemplates: [{ title: '点亮第一颗灯', desc: '接面包板' }],
+  }],
+});
+check('lessons: 带课时包通过校验', presetPkg.validatePackage(lsPkg).length === 0, JSON.stringify(presetPkg.validatePackage(lsPkg)));
+const lsBad = { pkg: presetPkg.PKG_MARK, schemaVersion: 1,
+  classes: [{ presetId: 'CP-LS002', name: 'x', totalSeats: 40, groupSize: 5, lessons: [{ name: '' }] }], activities: [] };
+check('lessons: 空课时名被拒绝', presetPkg.validatePackage(lsBad).length > 0);
+
+// 6b 导入落库：lessons 随班级写入
+presetPkgSvc.commitImport(lsPkg);
+const lsCls = presetSvc.getClass('CP-LS001');
+check('lessons: 导入后班级含 1 课时', !!lsCls && lsCls.lessons.length === 1, JSON.stringify(lsCls && lsCls.lessons));
+check('lessons: 课时结构完整（id/活动引用/器材）', !!lsCls && lsCls.lessons[0].lessonId === 'L-AAA0001'
+  && lsCls.lessons[0].activityIds[0] === 'AP-LSX1' && lsCls.lessons[0].equipment[0].preset === 2);
+
+// 6c 导出带出：教师端再导出不丢课时（对照 9/11 事故：lessons 曾被静默丢弃）
+const lsExport = presetPkgSvc.exportPackage().classes.find((c) => c.presetId === 'CP-LS001');
+check('lessons: 导出包携带课时', !!lsExport && lsExport.lessons && lsExport.lessons.length === 1);
+
+// 6d 开课快照：lessonId → 器材合并 + 课时活动模板 + 会话快照
+const started = sessionSvc.startSession({ teacher: '测试老师', classPresetId: 'CP-LS001', lessonId: 'L-AAA0001' });
+check('开课：会话带课时快照', !!started.session.lesson && started.session.lesson.lessonId === 'L-AAA0001'
+  && started.session.lesson.name === '第1课 点亮LED');
+check('开课：课时器材并入下发清单', started.equipment.some((e) => e.eqId === 'LED' && e.preset === 2),
+  JSON.stringify(started.equipment));
+check('开课：任务模板来自课时活动', started.taskTemplates.length === 1 && started.taskTemplates[0].title === '点亮第一颗灯',
+  JSON.stringify(started.taskTemplates));
+check('开课：返回课时名', started.lessonName === '第1课 点亮LED');
+// 6e 错误路径：班级下不存在该课时
+try {
+  sessionSvc.startSession({ teacher: '测试老师', classPresetId: 'CP-LS001', lessonId: 'L-NOPE' });
+  check('开课：未知课时被拒绝', false, '未抛错');
+} catch (e) {
+  check('开课：未知课时被拒绝（E-NOTFOUND）', e.errorCode === 'E-NOTFOUND' || /E-NOTFOUND/.test(String(e.errorCode || e.message || e.code || '')), String(e.errorCode || e.message));
+}
+
 // ---- 清理测试数据 ----
 presetSvc.removeClass(c1.presetId); presetSvc.removeClass(c2.presetId);
-presetSvc.removeClass('CP-NEW001');
+presetSvc.removeClass('CP-NEW001'); presetSvc.removeClass('CP-LS001');
 presetSvc.removeActivity(a1.presetId); presetSvc.removeActivity(a2.presetId); presetSvc.removeActivity('AP-NEW001');
+presetSvc.removeActivity('AP-LSX1');
 db.close();
 
 console.log('\n预设包协议验证：' + pass + ' 通过, ' + fail + ' 失败');

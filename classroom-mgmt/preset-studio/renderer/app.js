@@ -198,6 +198,8 @@
   Editor.refreshPresets = refreshPresets;
   Editor.importPkg = importPkg; // OOBE 导入步骤复用同一导入流程
   Editor.gotoTab = gotoTab;
+  // P0-2：带回跳的页签跳转（班级页→活动页建活动，保存成功后 presets.js 自动跳回）
+  Editor.gotoTabWithReturn = (name, ret) => { Editor._returnTo = ret || null; gotoTab(name); };
   // 连贯化：跨页签直达班级编辑（智能生成入库 / OOBE 建班后自动落位）
   Editor.openClass = (id) => {
     gotoTab('classes');

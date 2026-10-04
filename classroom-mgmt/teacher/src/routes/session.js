@@ -7,7 +7,7 @@ const { fail } = require('../errors');
 
 const router = express.Router();
 
-// 开始上课（可携带班级/活动预设；返回器材清单与任务模板供大屏/编辑器展示）
+// 开始上课（可携带班级/课时/活动预设；返回器材清单与任务模板供大屏/编辑器展示）
 router.post('/sessions', asyncHandler(async (req, res) => {
   const r = sessionSvc.startSession(req.body || {});
   ok(res, {
@@ -17,6 +17,7 @@ router.post('/sessions', asyncHandler(async (req, res) => {
     equipment: r.equipment,
     taskTemplates: r.taskTemplates,
     activityName: r.activityName,
+    lessonName: r.lessonName,
   }, 201);
 }));
 

@@ -91,6 +91,7 @@ function commitImport(pkg) {
         group_size: Number(c.groupSize),
         groups_json: Array.isArray(c.groups) ? toJSON(c.groups) : null,
         equipment_json: Array.isArray(c.equipment) ? toJSON(c.equipment) : null,
+        lessons_json: Array.isArray(c.lessons) ? toJSON(c.lessons) : null,
         note: c.note ? String(c.note).trim() : null,
         created_at: local ? local.created_at : (c.createdAt != null ? c.createdAt : nowMs()),
         updated_at: c.updatedAt != null ? c.updatedAt : nowMs(),

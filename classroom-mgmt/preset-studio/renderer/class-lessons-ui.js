@@ -16,9 +16,14 @@
   }
   function toast(t, err) { if (Editor.toast) Editor.toast(t, err); }
 
+  // P2-6：稳定课时 id（随机生成、随 DOM data-lid 保持；顺序号跨班级重复且重排错位，弃用）
+  function newLessonId() {
+    return 'L-' + Math.random().toString(16).slice(2, 10).toUpperCase();
+  }
+
   function actChipsHTML(selectedIds) {
     const acts = Editor.activities || [];
-    if (!acts.length) return '<p class="hint">还没有活动预设，先到「活动预设」页创建，再回来勾选。</p>';
+    if (!acts.length) return '<p class="hint">还没有活动预设，可点上方「去创建活动预设」。</p>';
     const sel = new Set(selectedIds || []);
     return '<div class="lesson-acts">' + acts.map((a) =>
       '<label class="tpl-chip"><input type="checkbox" data-l-act value="' + esc(a.presetId) + '"'
@@ -35,7 +40,7 @@
   }
 
   function lessonHTML(l) {
-    return '<div class="lesson-row" data-lesson>'
+    return '<div class="lesson-row" data-lesson data-lid="' + esc(l.lessonId || newLessonId()) + '">'
       + '<div class="lesson-head">'
       + '<input data-l-name value="' + esc(l.name || '') + '" placeholder="课时名称（如 第1课 点亮 LED）" maxlength="40" />'
       + '<button type="button" class="row-del" data-l-del>×</button></div>'
@@ -49,16 +54,20 @@
     const host = $('c-lessons-editor');
     if (!host) return;
     const list = lessons && lessons.length ? lessons : [];
-    host.innerHTML = list.length
+    // P0-2：无活动预设时把"先去建活动"前置为可点的一步（带回跳，避免表单白填）
+    const prereq = (Editor.activities || []).length ? ''
+      : '<p class="hint lesson-prereq">本班课时需要勾选活动，还没有活动预设 —— '
+        + '<button type="button" class="btn btn-ghost" data-goto-activities>去创建活动预设</button></p>';
+    host.innerHTML = prereq + (list.length
       ? list.map(lessonHTML).join('')
-      : '<p class="hint">未安排课时 → 手动添加，或「导入课件生成课时」骨架（活动/器材后补）。</p>';
+      : '<p class="hint">未安排课时 → 手动添加，或「导入课件生成课时」骨架（活动/器材后补）。</p>');
   }
 
   function collect() {
     const host = $('c-lessons-editor');
     if (!host) return [];
     const rows = [];
-    host.querySelectorAll('[data-lesson]').forEach((rowEl, li) => {
+    host.querySelectorAll('[data-lesson]').forEach((rowEl) => {
       const name = rowEl.querySelector('[data-l-name]').value.trim();
       if (!name) return;
       const activityIds = [];
@@ -75,7 +84,10 @@
           preset: Math.max(0, Number(eq.querySelector('[data-le-preset]').value) || 1),
         });
       });
-      rows.push({ lessonId: 'L' + (li + 1), name, activityIds, equipment, note: null });
+      rows.push({
+        lessonId: (rowEl.dataset && rowEl.dataset.lid) || newLessonId(),
+        name, activityIds, equipment, note: null,
+      });
     });
     return rows;
   }
@@ -112,7 +124,12 @@
         const del = e.target.closest('[data-l-del]');
         const eqAdd = e.target.closest('[data-l-eq-add]');
         const eqDel = e.target.closest('[data-le-del]');
-        if (del) {
+        const gotoAct = e.target.closest('[data-goto-activities]');
+        if (gotoAct) {
+          // P0-2：跳活动页签并带回跳（活动保存成功后自动回班级页）
+          if (Editor.gotoTabWithReturn) Editor.gotoTabWithReturn('activities', 'classes');
+          else if (Editor.gotoTab) Editor.gotoTab('activities');
+        } else if (del) {
           del.closest('[data-lesson]').remove();
           if (!host.querySelector('[data-lesson]')) render([]);
         } else if (eqAdd) {

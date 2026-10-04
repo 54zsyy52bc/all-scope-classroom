@@ -131,8 +131,19 @@
   function bind() {
     const r = $('btn-roster-import');
     if (r) r.onclick = importRoster;
+    // P0-1：课件导入只保留智能生成页一条路径（草稿→确认入库）。
+    // 旧内联路径会"活动立即落库、课时只挂 DOM"，用户未保存就切走 → 孤儿活动，且会被预设包带到教师机。
     const c = $('btn-lesson-courseware');
-    if (c) c.onclick = importCourseware;
+    if (c) {
+      c.onclick = () => {
+        if (global.PresetSmartStudio && global.PresetSmartStudio.preselectClass) {
+          const editId = (global.Editor && global.Editor.el && global.Editor.el('c-name').dataset.editId) || null;
+          global.PresetSmartStudio.preselectClass(editId);
+        }
+        if (global.Editor && global.Editor.gotoTab) global.Editor.gotoTab('smart');
+        toast('已切到「智能生成」：导入课件 → 修改草稿 → 确认入库到本班级');
+      };
+    }
   }
 
   global.PresetSmart = { bind, importRoster, importCourseware, parseRosterText };

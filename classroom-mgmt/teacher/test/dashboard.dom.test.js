@@ -63,7 +63,7 @@ const byId = new Set([
   'groups', 'alerts', 'events-body', 'toast', 'btn-start', 'btn-task', 'btn-end', 'btn-shutdown',
   'btn-export-xlsx', 'btn-export-csv', 'confirm-start', 'confirm-task', 'f-teacher', 'f-class',
   'f-seats', 'f-task-title', 'f-task-desc', 'overlay-start', 'overlay-task',
-  'f-class-preset', 'f-activity-preset', 'f-activity-hint', 'tpl-chips',
+  'f-class-preset', 'f-lesson-preset', 'f-lesson-hint', 'tpl-chips',
   'manage', 'btn-manage', 'btn-manage-close', 'm-import-file', 'm-import-btn', 'm-export-btn',
   'm-import-result', 'm-class-list', 'm-activity-list',
   'f-task-preset', 'f-task-timed', 'f-task-duration',

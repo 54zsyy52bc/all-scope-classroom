@@ -3,7 +3,7 @@
 // 通过白名单列名构造参数化 SQL，避免注入。所有接口同步（better-sqlite3 同步 API）。
 
 const TABLES = {
-  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'policy_mode', 'terminal_count', 'group_members'],
+  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'lesson_json', 'policy_mode', 'terminal_count', 'group_members'],
   t_student: ['stu_id', 'session_id', 'seat', 'group_id', 'name', 'student_no', 'checkin_time', 'checkin_status', 'machine_id', 'last_seen_at', 'return_status', 'exited'],
   t_equipment: ['eq_id', 'eq_name', 'category', 'total'],
   t_equipment_borrow: ['borrow_id', 'session_id', 'seat', 'group_id', 'eq_id', 'qty', 'borrow_time', 'return_time', 'status'],
@@ -11,7 +11,7 @@ const TABLES = {
   t_task_status: ['id', 'task_id', 'seat', 'group_id', 'status', 'ts'],
   t_event_log: ['id', 'session_id', 'ts', 'type', 'seat', 'detail', 'msg_id', 'qos', 'raw_topic'],
   t_conflict: ['seat', 'machine_ids', 'first_seen_at', 'last_seen_at', 'message_count'],
-  t_class_preset: ['preset_id', 'name', 'total_seats', 'group_size', 'note', 'created_at', 'updated_at', 'groups_json', 'equipment_json'],
+  t_class_preset: ['preset_id', 'name', 'total_seats', 'group_size', 'note', 'created_at', 'updated_at', 'groups_json', 'equipment_json', 'lessons_json'],
   t_activity_preset: ['preset_id', 'name', 'category', 'equipment_json', 'task_templates_json', 'note', 'created_at', 'updated_at', 'timed', 'duration_sec'],
 };
 
@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS t_session (
   activity_preset_id TEXT,
   activity_name TEXT,
   equipment_json TEXT,
+  lesson_json TEXT,
   policy_mode TEXT DEFAULT 'open'
 );
 CREATE TABLE IF NOT EXISTS t_student (
@@ -131,6 +132,7 @@ CREATE TABLE IF NOT EXISTS t_class_preset (
   note TEXT,
   groups_json TEXT,
   equipment_json TEXT,
+  lessons_json TEXT,
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -197,10 +199,12 @@ class SqlStorage {
         ['duration_sec', 'INTEGER'], ['timer_state', 'TEXT DEFAULT \'idle\''], ['timer_started_at', 'INTEGER'],
         ['timer_paused_at', 'INTEGER'], ['timer_remaining_ms', 'INTEGER']]],
       ['t_activity_preset', [['timed', 'INTEGER DEFAULT 0'], ['duration_sec', 'INTEGER']]],
-      ['t_class_preset', [['groups_json', 'TEXT'], ['equipment_json', 'TEXT']]],
+      ['t_class_preset', [['groups_json', 'TEXT'], ['equipment_json', 'TEXT'], ['lessons_json', 'TEXT']]],
       // v5 组机（全域学生桌面）：组终端参数 + 登记角色（组长 leader / 成员 member）
       ['t_session', [['terminal_count', 'INTEGER'], ['group_members', 'INTEGER']]],
       ['t_student', [["role", "TEXT DEFAULT 'member'"], ["exited", "INTEGER DEFAULT 0"]]],
+      // v5.2 课时预设：会话快照课时（lessonId/name/activityIds），随开课落库
+      ['t_session', [['lesson_json', 'TEXT']]],
     ];
     for (const [table, cols] of RUNS) {
       for (const [name, type] of cols) {

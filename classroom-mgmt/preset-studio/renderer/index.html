@@ -32,8 +32,9 @@
       <div class="card-head" data-page-node-id="xoUxC8yXhp7lA70ebRu4cS">
         <h2 data-page-node-id="nnryLrAIUF9Cz4QlI8y5OA">班级预设编辑器</h2>
         <button class="btn btn-primary" id="btn-class-save" data-page-node-id="Q04hm5fHQSPdGbwTIUCBam">保存班级预设</button>
-        <button class="btn btn-ghost" id="btn-class-reset">清空新建</button>
       </div>
+      <!-- P1-3：保存后的持久化"下一步"引导（toast 3.2s 会消失，此条不消失） -->
+      <div class="nextstep-bar" id="class-nextstep" hidden></div>
 
       <div class="sub-card" data-page-node-id="jOCaaj5hwUPlWUQi0DO7SX">
         <div class="sub-head" data-page-node-id="2Vsur6EAtBwkpCKhPntGUb">① 基本信息<span class="hint" data-page-node-id="vWH7ShntyV4CRlXi6nW10b">信息包选填，随预设包导出</span></div>
@@ -68,7 +69,7 @@
       </div>
 
       <div class="sub-card" data-page-node-id="xgFxjqlBylNDw9524VyENe">
-        <div class="sub-head" data-page-node-id="JCSpccSe2VydYUljrpyYIC">③ 课时安排<span class="hint" data-page-node-id="phfbxcgJgHEiom2OmqBuY7">批量导入课件可识别活动（PPTX/DOCX），自动建课时并挂活动</span></div>
+        <div class="sub-head" data-page-node-id="JCSpccSe2VydYUljrpyYIC">③ 课时安排<span class="hint" data-page-node-id="phfbxcgJgHEiom2OmqBuY7">导入课件请用「智能生成」页：草稿可改 → 确认入库（避免产生孤儿活动）</span></div>
         <div class="mini-actions" data-page-node-id="chiLJAMAuQjVCbgytRqfL4">
           <button class="btn btn-ghost" id="btn-lesson-add" data-page-node-id="hiMmwWCHmyf7qa0lCq3JIk">+ 添加课时</button>
           <button class="btn btn-ghost" id="btn-lesson-courseware" data-page-node-id="ahrhBxiAKYboBwxYc4CRkZ">批量导入课件生成课时</button>
@@ -80,6 +81,11 @@
         <div class="sub-head" data-page-node-id="Z5gdCkAJyZNg0dDNndPNNb">④ 上课器材<span class="hint" data-page-node-id="mHOVkbZ8jrZljEMkZ1jmO7">每节课固定发放的器材，选填</span></div>
         <div class="eq-editor" id="class-eq-editor" data-page-node-id="DbnToQl94R3ifisZ35bZxx"></div>
         <button class="btn btn-ghost" id="btn-class-eq-add" data-page-node-id="qF0pdFJdS0Uw8Qt8MOdEEE">+ 添加上课器材</button>
+      </div>
+
+      <!-- P1-5：「清空新建」远离保存按钮并独立成危险区，防手抖误点丢整个班级录入 -->
+      <div class="danger-row">
+        <button class="btn btn-ghost" id="btn-class-reset">清空新建（不保留已保存班级）</button>
       </div>
     </div>
     <div class="card" data-page-node-id="RKSnvpr4bfvOD2vXcCCaZM">

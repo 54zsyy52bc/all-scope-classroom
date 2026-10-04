@@ -31,8 +31,10 @@
     if (!list.length) { host.innerHTML = '<p class="list-empty">暂无班级预设。请在办公电脑「预设编辑器」中创建后，点「导入预设包」。</p>'; return; }
     host.innerHTML = list.map((c) =>
       '<div class="list-item">'
-      + '<div class="li-main"><div>' + esc(c.name) + '（' + c.totalSeats + ' 座 · ' + c.groupSize + ' 人/组）</div>'
-      + '<div class="li-sub">更新于 ' + timeText(c.updatedAt) + (c.note ? ' · ' + esc(c.note) : '') + '</div></div>'
+      +       '<div class="li-main"><div>' + esc(c.name) + '（' + c.totalSeats + ' 座 · ' + c.groupSize + ' 人/组）</div>'
+      + '<div class="li-sub">更新于 ' + timeText(c.updatedAt)
+      + (c.lessons && c.lessons.length ? ' · ' + c.lessons.length + ' 课时' : '')
+      + (c.note ? ' · ' + esc(c.note) : '') + '</div></div>'
       + '<span class="li-actions"><button class="mini-btn danger" data-class-del="' + esc(c.presetId) + '">删除</button></span>'
       + '</div>'
     ).join('');

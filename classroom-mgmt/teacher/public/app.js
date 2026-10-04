@@ -27,7 +27,6 @@
     clearTimeout(t._t);
     t._t = setTimeout(() => { t.hidden = true; }, 3200);
   }
-
   async function api(method, url, body) {
     try {
       const r = await fetch(url, {
@@ -43,17 +42,14 @@
       return null;
     }
   }
-
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
-
   function icon(name, size, cls) {
     return window.Icons && window.Icons.svg ? window.Icons.svg(name, size || 24, cls || '') : '';
   }
-
   // ---------- 渲染 ----------
   function applySnapshot(snap) {
     if (!snap) return;
@@ -67,7 +63,6 @@
     setConn(snap.mqtt);
     if (window.DashboardPreset) window.DashboardPreset.renderTaskTemplates(sess);
     if (window.DashboardActivity) window.DashboardActivity.onSnapshot(sess, snap.currentTask);
-
     const s = snap.stats || {};
     $('st-checkin').textContent = s.checkedIn || 0;
     $('st-checkin-rate').textContent = Math.round((s.checkinRate || 0) * 100) + '%';
@@ -77,14 +72,12 @@
     $('st-help').textContent = s.taskHelp || 0;
     $('st-task-done').textContent = s.taskDone || 0;
     $('st-returned').textContent = s.returned || 0;
-
     renderTask(snap.currentTask, s);
     renderGroups(snap.groups || [], snap.seats || []);
     const hlp = window.DashboardStream; // 求助提醒与快照对齐：F5 刷新/重连后仍能看到未处理的求助
     if (hlp && hlp.syncHelpFromSeats) hlp.syncHelpFromSeats(snap.seats || []);
     renderAlerts(snap.conflicts || []);
   }
-
   function setConn(mqtt) {
     const st = (mqtt && mqtt.state) || 'offline';
     const pill = $('conn-pill');
@@ -93,7 +86,6 @@
     pill.innerHTML = icon(ic, 16)
       + ({ online: 'SIoT 在线', reconnecting: '重连中', offline: 'SIoT 离线' }[st] || st);
   }
-
   function renderTask(task, stats) {
     const banner = $('task-banner');
     if (!task) { banner.hidden = true; return; }
@@ -105,7 +97,6 @@
     $('ts-done').textContent = (stats && stats.taskDone) || 0;
     $('ts-help').textContent = (stats && stats.taskHelp) || 0;
   }
-
   function renderGroups(groups, seats) {
     const host = $('groups');
     if (!groups.length) {
@@ -114,7 +105,6 @@
     }
     const bySeat = {};
     for (const s of seats) bySeat[s.seat] = s;
-
     host.innerHTML = groups.map((g) => {
       const tiles = g.seats.map((seatNo) => {
         const st = bySeat[seatNo] || {};
@@ -133,7 +123,6 @@
           + '<span class="nm">' + esc(st.name || (st.checkinStatus === 'pending' ? '未登记' : '')) + '</span>'
           + '</div>';
       }).join('');
-
       const badge = g.complete
         ? '<span class="group-badge b-complete">登记完成</span>'
         : (g.hasHelp
@@ -141,13 +130,11 @@
           : (g.returned
             ? '<span class="group-badge b-done">已归还</span>'
             : '<span class="group-badge">' + g.checkedIn + '/' + g.seats.length + ' 登记</span>'));
-
       return '<section class="group' + (g.hasHelp ? ' has-help' : '') + (g.returned ? ' all-returned' : '') + '">'
         + '<div class="group-head"><span class="group-name">' + termLabel(g.groupId) + '</span>' + badge + '</div>'
         + '<div class="group-seats">' + tiles + '</div>'
         + '</section>';
     }).join('');
-
     // 全部组完成 → 绿色横幅提示老师可以发布任务
     const all = groups.length > 0 && groups.every((g) => g.complete);
     const db = $('all-done-banner'); if (db) db.hidden = !all;
@@ -203,11 +190,12 @@
     const presetMode = !!$('f-class-preset').value;
     if (presetMode) body.classPresetId = $('f-class-preset').value;
     else { body.terminalCount = Number($('f-term').value) || 14; body.groupMembers = Number($('f-members').value) || 6; } // v5 组机
-    if ($('f-activity-preset').value) body.activityPresetId = $('f-activity-preset').value;
+    if ($('f-lesson-preset') && $('f-lesson-preset').value) body.lessonId = $('f-lesson-preset').value; // v5.2 课时预设
     const j = await api('POST', API.start, body);
     if (j && j.code === 0) {
       closeModal('start');
-      const act = j.data && j.data.activityName ? ' · 活动：' + j.data.activityName : '';
+      const act = j.data && j.data.lessonName ? ' · 课时：' + j.data.lessonName
+        : (j.data && j.data.activityName ? ' · 活动：' + j.data.activityName : '');
       logEvent('开始上课：' + teacher + ' · ' + (className || '未命名班级') + ' · ' + (presetMode ? totalSeats + ' 座' : ($('f-term').value + ' 台终端×' + $('f-members').value + ' 人')) + act);
       refreshSoon();
     }

@@ -393,3 +393,20 @@ body {
   .tabs { flex-direction: row; flex-wrap: wrap; position: static; }
   .tab { text-align: center; }
 }
+
+/* ---------- P1-3 下一步引导条 / P1-5 危险区 ---------- */
+.nextstep-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 12px; margin-bottom: 14px;
+  background: var(--panel-raised, rgba(255,255,255,.06));
+  border-left: 3px solid #5170FF; border-radius: 4px;
+}
+.nextstep-bar .ns-label { font-size: 13px; opacity: .85; }
+.nextstep-bar .ns-ok { font-size: 13px; color: #3ecf6f; }
+.nextstep-bar .mini-btn { cursor: pointer; }
+.nextstep-bar .nextstep-export { border: 1px solid #5170FF; color: #8aa4ff; }
+.danger-row {
+  display: flex; justify-content: flex-end;
+  padding-top: 12px; margin-top: 14px; border-top: 1px dashed var(--line, rgba(255,255,255,.14));
+}
+.card-head { position: sticky; top: 0; z-index: 5; background: var(--panel, #1b1b1f); padding: 8px 0 12px; }

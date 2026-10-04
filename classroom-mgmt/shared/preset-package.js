@@ -17,6 +17,26 @@ function isNonEmptyStr(v) {
   return typeof v === 'string' && v.trim().length > 0;
 }
 
+// 课时条目校验（v5.2 加性字段）：班级条目内的可选 lessons[]，老端忽略、新端消费。
+function validateLesson(l, path) {
+  const errs = [];
+  if (!l || typeof l !== 'object') return [path + '必须为对象'];
+  if (!isNonEmptyStr(l.name)) errs.push(path + '.name 不能为空');
+  if (l.activityIds != null && !Array.isArray(l.activityIds)) errs.push(path + '.activityIds 必须为数组');
+  if (l.equipment != null) {
+    if (!Array.isArray(l.equipment)) errs.push(path + '.equipment 必须为数组');
+    else {
+      for (let i = 0; i < l.equipment.length; i += 1) {
+        const e = l.equipment[i];
+        if (!e || !isNonEmptyStr(e.eqId) || !isNonEmptyStr(e.eqName)) {
+          errs.push(path + '.equipment[' + i + '] 须含 eqId/eqName');
+        }
+      }
+    }
+  }
+  return errs;
+}
+
 // ---------------- 单条目校验 ----------------
 function validateClassPreset(c, path) {
   const errs = [];
@@ -28,6 +48,10 @@ function validateClassPreset(c, path) {
   }
   if (!Number.isInteger(Number(c.groupSize)) || Number(c.groupSize) < 1 || Number(c.groupSize) > 20) {
     errs.push(p + 'groupSize 须为 1-20 整数');
+  }
+  if (c.lessons != null) {
+    if (!Array.isArray(c.lessons)) errs.push(p + 'lessons 必须为数组');
+    else c.lessons.forEach((l, i) => errs.push(...validateLesson(l, p + 'lessons[' + i + ']')));
   }
   return errs;
 }
