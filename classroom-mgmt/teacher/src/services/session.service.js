@@ -16,14 +16,10 @@ const ALLOWED = {
 };
 function toSession(row) {
   if (!row) return null;
-  let equipment = null;
-  if (row.equipment_json) {
-    try { equipment = JSON.parse(row.equipment_json); } catch (_e) { /* 忽略坏 JSON */ }
-  }
-  let lesson = null;
-  if (row.lesson_json) {
-    try { lesson = JSON.parse(row.lesson_json); } catch (_e) { /* 忽略坏 JSON */ }
-  }
+  // 坏 JSON 一律安全回落 null（safeParseJSON 函数声明提升，此处可前置使用）
+  let equipment = row.equipment_json ? safeParseJSON(row.equipment_json) : null;
+  let lesson = row.lesson_json ? safeParseJSON(row.lesson_json) : null;
+  let appSet = row.appset_json ? safeParseJSON(row.appset_json) : null; // v5.6 应用包快照
   return {
     sessionId: row.session_id,
     teacher: row.teacher,
@@ -38,6 +34,8 @@ function toSession(row) {
     activityName: row.activity_name || null,
     // v5.2 课时快照：{ lessonId, name, activityIds }（开课时快照，之后编辑预设不影响本节课）
     lesson: lesson || null,
+    // v5.6 应用包快照（应用名列表随 sync 下发，学生端按名过滤本机磁贴）
+    appSet: appSet || null,
     equipment: equipment || [],
     policyMode: row.policy_mode || 'open',
     // v5 组机：terminalCount=机房台数 / groupMembers=每组人数（totalSeats = T×K）
@@ -59,12 +57,10 @@ function loadEquipmentSeeds() {
 // 活动预设的器材清单 → t_equipment 行（供借还台账 eqName 映射）+ 学生端下发结构
 function safeParseJSON(s) { try { return JSON.parse(s); } catch (_e) { return null; } }
 function activityEquipment(activityPreset) {
-  if (!activityPreset) return [];
-  return safeParseJSON(activityPreset.equipment_json) || [];
+  return activityPreset ? (safeParseJSON(activityPreset.equipment_json) || []) : [];
 }
 function activityTemplates(activityPreset) {
-  if (!activityPreset) return [];
-  return safeParseJSON(activityPreset.task_templates_json) || [];
+  return activityPreset ? (safeParseJSON(activityPreset.task_templates_json) || []) : [];
 }
 // 班级预设的"上课器材"（v4.2：与器材字典互通，随开课与活动器材合并下发）
 function classEquipment(classPreset) {
@@ -116,7 +112,7 @@ function equipmentForStudents(activityPreset, classEquip, lessonEquip) {
     eqId: e.eq_id, eqName: e.eq_name, category: e.category || '其他', preset: 1,
   }));
 }
-function startSession({ teacher, className, totalSeats, groupSize, classPresetId, activityPresetId, lessonId, terminalCount, groupMembers }) {
+function startSession({ teacher, className, totalSeats, groupSize, classPresetId, activityPresetId, lessonId, appSetId, terminalCount, groupMembers }) {
   if (!teacher || !String(teacher).trim()) {
     fail('E-VAL-01', 'teacher 为必填项');
   }
@@ -156,13 +152,17 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
     if (!lesson) fail('E-NOTFOUND', '该班级预设下不存在所选课时');
     lessonEquip = Array.isArray(lesson.equipment) ? lesson.equipment : [];
   }
+  // v5.6 应用包（与班级/课时互不绑定，开课时选用）；未知 appSetId 拒绝开课
+  let appSet = null;
+  if (appSetId) {
+    appSet = require('./appset.service').getAppSet(appSetId);
+  }
   // v4.2：上课器材 = 班级"上课器材" + 课时器材 + 活动器材 合并去重；全无 → 种子
   const clsEquip = classEquipment(classPreset);
   const equipment = equipmentForStudents(activityPreset, clsEquip, lessonEquip);
   // v4.2：班级预设自定义分组（组名/每组人数）→ 座位种子按分组生成
   const groups = classGroups(classPreset);
-  const sessionId = makeSessionId();
-  const now = nowMs();
+  const sessionId = makeSessionId(), now = nowMs();
   // 服务端兜底范围校验（前端已有，防 API 直调造出超大/非法会话）
   const seatsRaw = totalSeats != null ? Number(totalSeats) : cfg.SEAT_COUNT;
   if (!Number.isInteger(seatsRaw) || seatsRaw < 1 || seatsRaw > 99) {
@@ -172,8 +172,7 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
   if (!Number.isInteger(gsRaw) || gsRaw < 1 || gsRaw > 20) {
     fail('E-VAL-01', '分组大小须为 1-20 的整数');
   }
-  let seats = seatsRaw;
-  let groupSeed = null;
+  let seats = seatsRaw, groupSeed = null;
   // v5 组机（全域学生桌面）：无班级预设但给了终端台数×每组人数 → 每台=一组（终端），座位=组内序号
   const termRaw = terminalCount != null ? Number(terminalCount) : null;
   const memRaw = groupMembers != null ? Number(groupMembers) : null;
@@ -208,6 +207,7 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
     activity_name: activityName,
     equipment_json: JSON.stringify(equipment),
     lesson_json: lesson ? JSON.stringify({ lessonId: lesson.lessonId, name: lesson.name, activityIds: lesson.activityIds || [] }) : null,
+    appset_json: appSet ? JSON.stringify({ appSetId: appSet.appSetId, name: appSet.name, apps: appSet.apps }) : null,
     terminal_count: termMode ? termRaw : null,
     group_members: termMode ? memRaw : null,
   });
@@ -230,6 +230,7 @@ function startSession({ teacher, className, totalSeats, groupSize, classPresetId
     taskTemplates: lesson ? lessonTemplates(lesson) : activityTemplates(activityPreset),
     activityName,
     lessonName: lesson ? lesson.name : null,
+    appSetName: appSet ? appSet.name : null,
   };
 }
 // v5.2：课时挂的活动 → 任务模板合集（去重按标题；无模板的活动用活动名占位，保证课时内容可见）

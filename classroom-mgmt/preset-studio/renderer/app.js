@@ -62,7 +62,7 @@
   // ---------- Editor 全局（供 presets.js 复用）----------
   const Editor = {
     el, esc, toast, icon, api,
-    classes: [], activities: [], dict: [],
+    classes: [], activities: [], dict: [], appSets: [],
     refreshPresets: null, // init 后注入
   };
   global.Editor = Editor;
@@ -128,12 +128,14 @@
   async function exportPkg() {
     try {
       const pkg = await global.StudioApi.pkgExport();
-      if (!pkg.classes.length && !pkg.activities.length) {
-        toast('当前没有可导出的预设（先创建班级/活动预设）', true);
+      const asLen = (pkg.appSets || []).length;
+      if (!pkg.classes.length && !pkg.activities.length && !asLen) {
+        toast('当前没有可导出的预设（先创建班级/活动/应用包）', true);
         return;
       }
       const file = await global.StudioApi.pkgSaveFile(pkg);
-      if (file) toast('已导出：' + pkg.classes.length + ' 班级 / ' + pkg.activities.length + ' 活动 → ' + file);
+      if (file) toast('已导出：' + pkg.classes.length + ' 班级 / ' + pkg.activities.length + ' 活动'
+        + (asLen ? ' / ' + asLen + ' 应用包' : '') + ' → ' + file);
       // file 为 null = 用户取消
     } catch (e) { toast((e && e.message) || '导出失败', true); }
   }
@@ -153,7 +155,7 @@
     el('import-file-name').textContent = '文件：' + opened.fileName + '（导出于 ' + new Date(opened.pkg.exportedAt).toLocaleString() + '）';
     const items = (prev.items || []).map((it) =>
       '<div><span class="tag ' + (it.action === 'added' ? 'add' : it.action === 'updated' ? 'upd' : 'skip') + '">'
-      + ACTION_LABEL[it.action] + '</span>' + (it.kind === 'class' ? '班级 · ' : '活动 · ') + esc(it.name)
+      + ACTION_LABEL[it.action] + '</span>' + (it.kind === 'class' ? '班级 · ' : it.kind === 'appset' ? '应用包 · ' : '活动 · ') + esc(it.name)
       + (it.action === 'skipped' ? '（本机版本较新，保留）' : '') + '</div>'
     ).join('');
     const hasChange = (prev.added || 0) + (prev.updated || 0) > 0;
@@ -185,8 +187,11 @@
       Editor.classes = all.classes || [];
       Editor.activities = all.activities || [];
       Editor.dict = all.dict || [];
+      Editor.appSets = all.appSets || [];
       if (global.PresetView) global.PresetView.render(Editor.classes, Editor.activities);
       renderDict();
+      // v5.6：应用包列表随数据刷新
+      if (global.AppSetsUi) global.AppSetsUi.render();
     // v4.2：器材字典 → 输入联想（活动器材行 / 上课器材行共用 datalist）
     if (global.PresetClassUi) global.PresetClassUi.refreshDictOptions(Editor.dict);
     // v5：课时包引用活动包 —— 活动列表变化后刷新课时勾选 chips（保留已填内容）
@@ -228,6 +233,8 @@
     // v5：学生包 / 课时包 / 智能生成
     if (global.PresetRoster) { global.PresetRoster.bind(); global.PresetRoster.reset(); }
     if (global.PresetLessons) { global.PresetLessons.bind(); global.PresetLessons.reset(); }
+    // v5.6 应用包编辑器
+    if (global.AppSetsUi) { global.AppSetsUi.bind(); global.AppSetsUi.render(); }
     if (global.PresetSmart) global.PresetSmart.bind();
     if (global.PresetSmartStudio) global.PresetSmartStudio.bind();
   }

@@ -97,13 +97,14 @@
   // 无应用时引导文案指向老师，避免初中生自己去折腾设置。
   // 课程名/磁贴数据来自 app.js 注入的 ctx（window.Views.setHomeContext）。
   // ---------------------------------------------------------------------------
-  let _homeCtx = { courseName: '信息技术课', apps: [], homeApps: [] };
+  let _homeCtx = { courseName: '信息技术课', apps: [], homeApps: [], emptyText: '' };
   function setHomeContext(ctx) {
     if (ctx && typeof ctx === 'object') {
       _homeCtx = {
         courseName: ctx.courseName || '信息技术课',
         apps: ctx.apps || [],
         homeApps: ctx.homeApps || [],
+        emptyText: ctx.emptyText || '', // v5.6 应用包空匹配时的提示文案
       };
     }
   }
@@ -111,7 +112,8 @@
     const tip = (state.phase === 'task')
       ? '点下面的应用磁贴打开课程应用 · 活动状态看左下角浮窗'
       : '老师点【开始上课】后，这里会出现要做的活动';
-    const grid = global.Tiles.gridHtml(_homeCtx.apps, _homeCtx.homeApps, '还没有课程应用，请老师来设置');
+    const empty = _homeCtx.emptyText || '还没有课程应用，请老师来设置';
+    const grid = global.Tiles.gridHtml(_homeCtx.apps, _homeCtx.homeApps, empty);
     return '<div class="home-screen">'
       + '<div class="welcome"><h1>' + esc(_homeCtx.courseName) + '</h1><p>' + esc(tip) + '</p></div>'
       + '<div class="home-grid">' + grid + '</div></div>';

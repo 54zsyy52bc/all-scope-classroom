@@ -3,6 +3,7 @@
 const express = require('express');
 const presetSvc = require('../services/preset.service');
 const presetPkgSvc = require('../services/preset-pkg.service');
+const appSetSvc = require('../services/appset.service');
 const { ok, asyncHandler } = require('../response');
 
 const router = express.Router();
@@ -49,6 +50,12 @@ router.put('/presets/activities/:presetId', asyncHandler(async (req, res) => {
 }));
 router.delete('/presets/activities/:presetId', asyncHandler(async (req, res) => {
   ok(res, presetSvc.removeActivity(req.params.presetId));
+}));
+
+// ---------------- 应用包（v5.6：独立桌面应用清单，开始上课时选用）----------------
+// 应用包由 Studio 预设包导入维护；这里提供列表给开课下拉。如需手工增删，走导入或后续接口。
+router.get('/presets/appsets', asyncHandler(async (req, res) => {
+  ok(res, appSetSvc.listAppSets());
 }));
 
 module.exports = router;

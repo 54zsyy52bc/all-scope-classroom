@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('StudioApi', {
   removeClass: (id) => call('class:remove', id),
   saveActivity: (row) => call('activity:save', row),
   removeActivity: (id) => call('activity:remove', id),
+  // v5.6 应用包：独立桌面应用清单（开课时选用，学生端按应用名匹配本机）
+  saveAppSet: (row) => call('appset:save', row),
+  removeAppSet: (id) => call('appset:remove', id),
   saveDict: (item) => call('dict:save', item),
   removeDict: (eqId) => call('dict:remove', eqId),
   pkgExport: (filter) => call('pkg:export', filter),

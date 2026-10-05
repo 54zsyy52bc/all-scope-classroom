@@ -23,6 +23,7 @@
     <button class="tab active" data-tab="classes" data-page-node-id="SEklgiPprZQzoj7PkRnByP">班级预设</button>
     <button class="tab" data-tab="activities" data-page-node-id="rFiANXVDGqVlzaBYGBIqYX">活动预设</button>
     <button class="tab" data-tab="dict" data-page-node-id="qZutvFpL8njbIf45B5whYU">器材字典</button>
+    <button class="tab" data-tab="appsets">应用包</button>
     <button class="tab" data-tab="smart">智能生成</button>
   </nav>
 
@@ -137,6 +138,29 @@
     </div>
   </section>
 
+  <!-- ===================== 应用包（v5.6：独立桌面应用清单，开课时选用） ===================== -->
+  <section class="tab-panel" id="panel-appsets">
+    <div class="card">
+      <h2>新建应用包</h2>
+      <p class="hint">应用包是一套"学生桌面磁贴"清单：老师开始上课时选用一套，学生桌面只显示与包内应用<b>同名</b>的磁贴。
+        名称须与学生机「设置 → 课程应用」里的应用名一致（exe 路径仍由学生机本机配置）。</p>
+      <div class="form-grid">
+        <label>应用包名称<input id="as-name" type="text" placeholder="例如：焊接课套件" maxlength="40" /></label>
+        <label>备注<input id="as-note" type="text" placeholder="选填" maxlength="60" /></label>
+      </div>
+      <h3>应用名清单 <span class="hint">每行一个应用名，须与学生机上配置的应用名完全一致</span></h3>
+      <textarea id="as-apps" class="ai-textarea" rows="6" placeholder="Arduino IDE&#10;串口调试助手&#10;Mixly 图形化编程"></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-appset-save">保存应用包</button>
+        <button class="btn btn-ghost" id="btn-appset-reset">清空新建</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>已保存的应用包</h2>
+      <div class="list" id="appset-list"></div>
+    </div>
+  </section>
+
   <!-- ===================== 智能生成（课件 → 课时包：快速 / AI） ===================== -->
   <section class="tab-panel" id="panel-smart">
     <div class="card">
@@ -205,6 +229,7 @@
   <script src="preset-class-ui.js"></script>
   <script src="class-roster-ui.js"></script>
   <script src="class-lessons-ui.js"></script>
+  <script src="appsets-ui.js"></script>
   <script src="smart-import.js"></script>
   <script src="smart-studio.js"></script>
 

@@ -17,6 +17,39 @@ function isNonEmptyStr(v) {
   return typeof v === 'string' && v.trim().length > 0;
 }
 
+// 课时条目校验（v5.2 加性字段）：班级条目内的可选 lessons[]，老端忽略、新端消费。
+function validateLesson(l, path) {
+  const errs = [];
+  if (!l || typeof l !== 'object') return [path + '必须为对象'];
+  if (!isNonEmptyStr(l.name)) errs.push(path + '.name 不能为空');
+  if (l.activityIds != null && !Array.isArray(l.activityIds)) errs.push(path + '.activityIds 必须为数组');
+  if (l.equipment != null) {
+    if (!Array.isArray(l.equipment)) errs.push(path + '.equipment 必须为数组');
+    else {
+      for (let i = 0; i < l.equipment.length; i += 1) {
+        const e = l.equipment[i];
+        if (!e || !isNonEmptyStr(e.eqId) || !isNonEmptyStr(e.eqName)) {
+          errs.push(path + '.equipment[' + i + '] 须含 eqId/eqName');
+        }
+      }
+    }
+  }
+  return errs;
+}
+
+// 应用包条目校验（v5.6 加性字段）：独立应用清单，开课时选用；apps 为应用名列表，
+// 学生端按名称匹配本机 desktop-config 里的应用（id 跨机不稳定，只有名称可靠）。
+function validateAppSet(s, path) {
+  const errs = [];
+  if (!s || typeof s !== 'object') return [path + '必须为对象'];
+  if (!isNonEmptyStr(s.name)) errs.push(path + '.name 不能为空');
+  if (s.apps != null) {
+    if (!Array.isArray(s.apps)) errs.push(path + '.apps 必须为数组');
+    else s.apps.forEach((a, i) => { if (!isNonEmptyStr(a)) errs.push(path + '.apps[' + i + '] 不能为空'); });
+  }
+  return errs;
+}
+
 // ---------------- 单条目校验 ----------------
 function validateClassPreset(c, path) {
   const errs = [];
@@ -28,6 +61,10 @@ function validateClassPreset(c, path) {
   }
   if (!Number.isInteger(Number(c.groupSize)) || Number(c.groupSize) < 1 || Number(c.groupSize) > 20) {
     errs.push(p + 'groupSize 须为 1-20 整数');
+  }
+  if (c.lessons != null) {
+    if (!Array.isArray(c.lessons)) errs.push(p + 'lessons 必须为数组');
+    else c.lessons.forEach((l, i) => errs.push(...validateLesson(l, p + 'lessons[' + i + ']')));
   }
   return errs;
 }
@@ -70,7 +107,13 @@ function validatePackage(pkg) {
   else pkg.classes.forEach((c, i) => errs.push(...validateClassPreset(c, 'classes[' + i + ']')));
   if (!Array.isArray(pkg.activities)) errs.push('activities 必须为数组');
   else pkg.activities.forEach((a, i) => errs.push(...validateActivityPreset(a, 'activities[' + i + ']')));
-  if (errs.length === 0 && pkg.classes.length === 0 && pkg.activities.length === 0) {
+  // v5.6 应用包：可选加性字段；老包无此字段照常通过
+  if (pkg.appSets != null) {
+    if (!Array.isArray(pkg.appSets)) errs.push('appSets 必须为数组');
+    else pkg.appSets.forEach((s, i) => errs.push(...validateAppSet(s, 'appSets[' + i + ']')));
+  }
+  if (errs.length === 0 && pkg.classes.length === 0 && pkg.activities.length === 0
+    && !(Array.isArray(pkg.appSets) && pkg.appSets.length)) {
     errs.push('包内没有任何预设条目');
   }
   return errs;
@@ -86,6 +129,7 @@ function buildPackage(opts) {
     source: o.source || null,
     classes: Array.isArray(o.classes) ? o.classes : [],
     activities: Array.isArray(o.activities) ? o.activities : [],
+    appSets: Array.isArray(o.appSets) ? o.appSets : [],
   };
 }
 

@@ -18,6 +18,7 @@ router.post('/sessions', asyncHandler(async (req, res) => {
     taskTemplates: r.taskTemplates,
     activityName: r.activityName,
     lessonName: r.lessonName,
+    appSetName: r.appSetName,
   }, 201);
 }));
 

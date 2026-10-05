@@ -5,6 +5,7 @@
 const db = require('../db');
 const presetPkg = require('../../../shared/preset-package');
 const presetSvc = require('./preset.service');
+const appSetSvc = require('./appset.service');
 const { fail } = require('../errors');
 const { nowMs } = require('../utils');
 
@@ -13,6 +14,7 @@ function exportPackage() {
   return presetPkg.buildPackage({
     classes: presetSvc.listClasses(),
     activities: presetSvc.listActivities(),
+    appSets: appSetSvc.listAppSets(),
     source: 'teacher-dashboard',
   });
 }
@@ -42,6 +44,17 @@ function previewImport(pkg) {
     summary[action] += 1;
     summary.items.push({
       kind: 'activity', presetId: a.presetId, name: a.name, action,
+      pkgUpdatedAt: pkgTs, localUpdatedAt: local ? local.updated_at : null,
+    });
+  }
+  // v5.6 应用包：同样按 updatedAt 仲裁（appSetId 唯一依据）
+  for (const s of pkg.appSets || []) {
+    const local = db.getAppSet(s.appSetId);
+    const pkgTs = s.updatedAt != null ? s.updatedAt : 0;
+    const action = !local ? 'added' : (pkgTs >= (local.updated_at || 0) ? 'updated' : 'skipped');
+    summary[action] += 1;
+    summary.items.push({
+      kind: 'appset', presetId: s.appSetId, name: s.name, action,
       pkgUpdatedAt: pkgTs, localUpdatedAt: local ? local.updated_at : null,
     });
   }
@@ -96,6 +109,9 @@ function commitImport(pkg) {
         created_at: local ? local.created_at : (c.createdAt != null ? c.createdAt : nowMs()),
         updated_at: c.updatedAt != null ? c.updatedAt : nowMs(),
       }));
+    } else if (it.kind === 'appset') {
+      const s = (pkg.appSets || []).find((x) => x.appSetId === it.presetId);
+      writes.push(() => appSetSvc.upsertAppSets([s]));
     } else {
       const a = (pkg.activities || []).find((x) => x.presetId === it.presetId);
       const local = db.getActivityPreset(it.presetId);

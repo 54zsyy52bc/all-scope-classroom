@@ -7,7 +7,7 @@
 //
 // 依赖注入：create(ctx) 接收控制器闭包内的共享值，避免本文件持有全局可变状态。
 // ctx = { state, toast, renderStage, renderShutdown, bridge, log, pad2,
-//         resetEquipQty, getRuntime, onEquipment, onTimer, onPolicy }
+//         resetEquipQty, getRuntime, onEquipment, onTimer, onPolicy, onAppNames }
 // onEquipment(payload)：教师端下发/同步器材清单时回调（app.js 注入）
 // onTimer(payload)：计时控制/截止回调；onPolicy(payload)：锁定策略回调
 // =============================================================================
@@ -25,6 +25,7 @@
     const onEquipment = c.onEquipment;
     const onTimer = c.onTimer;
     const onPolicy = c.onPolicy;
+    const onAppNames = c.onAppNames;
     let cdTimer = null;
 
     function onCommand(env) {
@@ -88,6 +89,8 @@
       if (typeof audit === 'function') audit('sync', 'phase=' + String(p.phase) + ' checkin=' + !!p.checkinDone + ' ret=' + !!p.returnDone + ' task=' + (p.currentTask ? p.currentTask.taskId : '-'));
       // 器材清单随 sync 下发：迟到/重连学生据此恢复登记页器材列表
       if (p.equipment && typeof onEquipment === 'function') onEquipment({ equipment: p.equipment });
+      // v5.6 应用包随 sync 下发：appNames 为应用名列表（null = 未选应用包，不过滤）
+      if ('appNames' in p && typeof onAppNames === 'function') onAppNames(p.appNames);
       // 锁定策略随 sync 下发：迟到/重连学生恢复锁定状态
       if (p.policy && typeof onPolicy === 'function') onPolicy(p.policy);
       // 残缺 sync 容错：只应用报文里**明确存在**的字段（'字段' in p）。

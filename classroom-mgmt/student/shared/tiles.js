@@ -39,5 +39,15 @@
     return shown.map((a) => tileHtml(a, true)).join('');
   }
 
-  global.Tiles = { tileHtml, gridHtml, esc };
+  // v5.6 应用包：按应用名过滤本机应用（教师端开课选应用包后随 sync 下发 appNames）。
+  // 学生机应用 id 跨机不稳定，只有名称可对应，故按 name 精确匹配（去首尾空格）。
+  // names 为 null / 空数组 = 不过滤（返回本机全部应用）；全部匹配失败时返回 []，由调用方决定空态文案。
+  function filterByNames(apps, names) {
+    if (!Array.isArray(names) || !names.length) return apps || [];
+    const set = new Set(names.map((n) => String(n == null ? '' : n).trim()).filter(Boolean));
+    if (!set.size) return apps || [];
+    return (apps || []).filter((a) => set.has(String((a && a.name) || '').trim()));
+  }
+
+  global.Tiles = { tileHtml, gridHtml, filterByNames, esc };
 })(window);

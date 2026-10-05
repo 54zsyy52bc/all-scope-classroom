@@ -158,11 +158,66 @@ try {
   check('开课：未知课时被拒绝（E-NOTFOUND）', e.errorCode === 'E-NOTFOUND' || /E-NOTFOUND/.test(String(e.errorCode || e.message || e.code || '')), String(e.errorCode || e.message));
 }
 
+// ---- 7) v5.6 应用包：独立应用清单，校验 + 导入落库 + 导出带出 + 开课快照 + sync appNames ----
+const appSetSvc = require('../src/services/appset.service');
+const syncSvc = require('../src/services/sync.service');
+
+// 7a 协议：带 appSets 的包通过校验；坏 appSets（空名 / 非数组 / 空应用项）被拒
+const asPkg = presetPkg.buildPackage({
+  classes: [],
+  activities: [],
+  appSets: [{ appSetId: 'AS-TEST0001', name: '焊接课套件', apps: ['Arduino IDE', '串口调试助手'], updatedAt: T0 }],
+});
+check('appsets: 纯应用包通过校验', presetPkg.validatePackage(asPkg).length === 0, JSON.stringify(presetPkg.validatePackage(asPkg)));
+const asBad1 = { pkg: presetPkg.PKG_MARK, schemaVersion: 1, classes: [], activities: [],
+  appSets: [{ appSetId: 'AS-BAD1', name: '', apps: ['X'] }] };
+check('appsets: 空包名被拒绝', presetPkg.validatePackage(asBad1).length > 0);
+const asBad2 = { pkg: presetPkg.PKG_MARK, schemaVersion: 1, classes: [], activities: [],
+  appSets: [{ appSetId: 'AS-BAD2', name: 'x', apps: ['OK', '  '] }] };
+check('appsets: 空应用名被拒绝', presetPkg.validatePackage(asBad2).length > 0);
+const asBad3 = { pkg: presetPkg.PKG_MARK, schemaVersion: 1, classes: [], activities: [], appSets: [{ appSetId: 'AS-BAD3', name: 'x' }] };
+check('appsets: 缺 apps 字段不拒绝（导入侧再校验）', presetPkg.validatePackage(asBad3).length === 0);
+
+// 7b 导入落库 + 服务侧校验
+presetPkgSvc.commitImport(asPkg);
+const asGot = appSetSvc.listAppSets().find((s) => s.appSetId === 'AS-TEST0001');
+check('appsets: 导入后可查询且应用名完整', !!asGot && asGot.apps.length === 2 && asGot.apps[0] === 'Arduino IDE',
+  JSON.stringify(asGot));
+try {
+  appSetSvc.upsertAppSets([{ appSetId: 'AS-BADVAL', name: '坏包', apps: [] }]);
+  check('appsets: 服务侧拒绝空应用清单', false, '未抛错');
+} catch (e) {
+  check('appsets: 服务侧拒绝空应用清单（E-VAL-01）', /E-VAL-01/.test(String(e.errorCode || e.message)), String(e.errorCode || e.message));
+}
+
+// 7c 导出带出：教师端再导出不丢应用包
+const asExport = presetPkgSvc.exportPackage().appSets || [];
+check('appsets: 导出包携带应用包', asExport.some((s) => s.appSetId === 'AS-TEST0001' && s.apps.length === 2));
+
+// 7d 开课快照：appSetId → 会话快照 + sync 下发 appNames
+const startedAs = sessionSvc.startSession({ teacher: '测试老师', appSetId: 'AS-TEST0001' });
+check('开课：会话带应用包快照', !!startedAs.session.appSet && startedAs.session.appSet.appSetId === 'AS-TEST0001'
+  && startedAs.session.appSet.apps.length === 2, JSON.stringify(startedAs.session.appSet));
+check('开课：返回应用包名', startedAs.appSetName === '焊接课套件');
+const syncPayload = syncSvc.buildSyncPayload(db.getSession(startedAs.session.sessionId), '01');
+check('sync：payload 含 appNames 且为应用名列表', Array.isArray(syncPayload.appNames)
+  && syncPayload.appNames.length === 2 && syncPayload.appNames[0] === 'Arduino IDE',
+  JSON.stringify(syncPayload.appNames));
+
+// 7e 错误路径：未知 appSetId
+try {
+  sessionSvc.startSession({ teacher: '测试老师', appSetId: 'AS-NOPE' });
+  check('开课：未知应用包被拒绝', false, '未抛错');
+} catch (e) {
+  check('开课：未知应用包被拒绝（E-NOTFOUND）', e.errorCode === 'E-NOTFOUND' || /E-NOTFOUND/.test(String(e.errorCode || e.message || e.code || '')), String(e.errorCode || e.message));
+}
+
 // ---- 清理测试数据 ----
 presetSvc.removeClass(c1.presetId); presetSvc.removeClass(c2.presetId);
 presetSvc.removeClass('CP-NEW001'); presetSvc.removeClass('CP-LS001');
 presetSvc.removeActivity(a1.presetId); presetSvc.removeActivity(a2.presetId); presetSvc.removeActivity('AP-NEW001');
 presetSvc.removeActivity('AP-LSX1');
+db.S().remove('t_app_set', {}); // v5.6 应用包测试数据一并清理
 db.close();
 
 console.log('\n预设包协议验证：' + pass + ' 通过, ' + fail + ' 失败');

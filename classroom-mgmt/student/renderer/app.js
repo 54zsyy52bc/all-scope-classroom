@@ -6,7 +6,6 @@
   const Views = window.Views;
   const HB_INTERVAL_MS = 15000;
   const LS_KEY = 'classroom.student.v1';
-
   const els = {};
   const state = {
     machineId: '', seat: '', name: '', studentNo: '',
@@ -17,7 +16,6 @@
     shutdownIn: null, shutdownDryRun: false,
     locked: false,
   };
-
   let net = null;
   let runtime = null;
   let hbTimer = null;
@@ -25,25 +23,31 @@
   let downlink = null;
   let actions = null;
   let homeCtx = null; // 桌面配置：课程名 + 应用列表（viewHome 渲染磁贴主屏用）
+  let appNames = null; // v5.6 应用包：当前课时应显示的应用名列表（null = 未选应用包，不过滤）
   let uiForce = null; // 浮窗跳转强制阶段（自清除，见 renderStage）
   let floatLink = null; // 置顶独立浮窗联动（状态推送 + 动作接收，见 float-link.js）
-
   // 审计：关键操作打 [audit]（stdout + userData/audit.log 落盘）
   function audit(type, detail) { try { const line = '[audit][' + type + '] ' + (detail == null ? '' : String(detail)); console.log(line); if (window.classroom && window.classroom.log) window.classroom.log(line); } catch (_e) { /* 审计不阻断 */ } }
-
   function bridge() { return window.classroom || null; }
-
   function log(msg) { console.log('[student]', msg); const b = bridge(); if (b && b.log) b.log(String(msg)); }
-
   function pad2(v) { const m = String(v == null ? '' : v).trim().match(/^\d{1,2}$/); if (!m) return ''; const n = parseInt(m[0], 10); return n >= 1 && n <= 99 ? String(n).padStart(2, '0') : ''; }
-
+  // v5.6 应用包：按应用名过滤本机磁贴（appNames 为 null = 不过滤）；零匹配 → 空磁贴 + 提示老师
+  function applyHomeFilter() {
+    if (!homeCtx) return;
+    const filtered = window.Tiles.filterByNames(homeCtx.apps, appNames);
+    Views.setHomeContext({
+      courseName: homeCtx.courseName,
+      apps: filtered,
+      homeApps: homeCtx.homeApps,
+      emptyText: (appNames && appNames.length && !filtered.length)
+        ? '本节课应用与本机不匹配，请老师检查应用包或到本机设置里核对应用名' : '',
+    });
+  }
   // ---------------------------------------------------------------------------
   // 本地会话快照：localStorage 尽力而为，失败不阻断主流程（座位/姓名另由主进程持久化）
   // ---------------------------------------------------------------------------
   function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify({ seat: state.seat, name: state.name, studentNo: state.studentNo, borrowed: state.borrowed, taskStatus: state.taskStatus, equipQty: state.equipQty, checkinDone: state.checkinDone, returnDone: state.returnDone, returnChecked: state.returnChecked })); } catch (_e) { /* 隐私模式/配额满，忽略 */ } }
-
   function loadLocal() { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (_e) { return {}; } }
-
   // ---------------------------------------------------------------------------
   // 渲染
   // ---------------------------------------------------------------------------
@@ -57,7 +61,6 @@
     if (window.StageFx) window.StageFx.onPhase(phase);
     if (floatLink) floatLink.push(); // 状态快照推给置顶浮窗（独立 BrowserWindow，经主进程转发）
   }
-
   function renderConn() {
     const map = {
       online: { name: 'wifi', text: '已连接' },
@@ -69,14 +72,12 @@
     els.connIcon.innerHTML = window.Icons.svg(m.name, 20, state.conn === 'reconnecting' ? 'spin' : '');
     els.connText.textContent = m.text;
   }
-
   function renderMeta() {
     els.seatChip.innerHTML = window.Icons.svg('hash', 16)
       + '<span>' + Views.esc(state.seat || '未设置') + '</span>';
     els.machineChip.innerHTML = window.Icons.svg('monitor', 16)
       + '<span>' + Views.esc(state.machineId) + '</span>';
   }
-
   function renderShutdown() {
     if (state.shutdownIn == null) {
       els.shutdown.hidden = true;
@@ -88,7 +89,6 @@
       ? '关机演练：真实环境将在 ' + state.shutdownIn + ' 秒后关机（当前为演练，不会执行）'
       : '计算机将在 ' + state.shutdownIn + ' 秒后关机，请及时保存作品';
   }
-
   function toast(msg, kind) {
     els.toast.textContent = msg;
     els.toast.dataset.kind = kind || 'info';
@@ -96,7 +96,6 @@
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { els.toast.hidden = true; }, 3600);
   }
-
   // ---------------------------------------------------------------------------
   // 上行
   // ---------------------------------------------------------------------------
@@ -113,7 +112,6 @@
     if (!sent) toast('当前与教师机未连接，操作暂未送出', 'warn');
     return sent;
   }
-
   function sendHeartbeat() {
     if (!state.seat || !net.isOnline()) return;
     net.publishHeartbeat(T.makeEnvelope({
@@ -124,18 +122,15 @@
       payload: { online: true, phase: state.phase },
     }));
   }
-
   function sendHello() {
     if (!state.seat || !net.isOnline()) return false;
     return sendUp('hello', { phase: state.phase });
   }
-
   function startHeartbeat() {
     if (hbTimer) clearInterval(hbTimer);
     sendHeartbeat();
     hbTimer = setInterval(sendHeartbeat, HB_INTERVAL_MS);
   }
-
   // ---------------------------------------------------------------------------
   // 连接状态
   // ---------------------------------------------------------------------------
@@ -150,7 +145,6 @@
       hbTimer = null;
     }
   }
-
   // ---------------------------------------------------------------------------
   // 事件委托
   // ---------------------------------------------------------------------------
@@ -162,7 +156,6 @@
     if (t) { launchApp(t.dataset.id); return; }
     if (actions) actions.onStageClick(e);
   }
-
   // 启动课程应用：复用主进程 bridge.launchApp，成功/失败都不静默（桌面端曾因静默 return 无反馈）
   async function launchApp(id) {
     const b = bridge();
@@ -174,7 +167,6 @@
     else if (r.ok === false) toast((r.err || '启动失败') + '，请先保存设置', 'error');
     else toast('已打开：' + (app ? app.name : id), 'info');
   }
-
   function onStageKeydown(e) {
     if (actions) actions.onStageKeydown(e);
   }
@@ -229,6 +221,13 @@
       },
       onTimer: control.applyTimer,
       onPolicy: control.applyPolicy,
+      // v5.6 应用包：sync 下发 appNames（应用名列表，null = 未选应用包）→ 重算磁贴上下文
+      onAppNames: (names) => {
+        appNames = Array.isArray(names) ? names.map((n) => String(n == null ? '' : n).trim()).filter(Boolean) : null;
+        applyHomeFilter();
+        audit('sync:appNames', 'n=' + (appNames ? appNames.length : 'null'));
+        if (appNames && appNames.length) toast('本节课桌面应用已切换（' + appNames.length + ' 个）', 'info');
+      },
     });
     // 业务动作 → Actions（登记/任务状态/归还/器材交互）
     actions = window.Actions.create({
@@ -277,7 +276,7 @@
           apps: (d.course && d.course.apps) || [],
           homeApps: (d.course && d.course.homeApps) || [],
         };
-        Views.setHomeContext(homeCtx);
+        applyHomeFilter(); // 经过滤器设置（尊重已收到的 appNames；无则原样全显）
       } catch (_e) { /* 桌面配置不可得则空主屏 */ }
     } else {
       runtime = { machineId: 'M-WEBPREVIEW', siotIp: '127.0.0.1', siotWsPort: 1888, username: 'siot', password: 'dfrobot', shutdownDelaySec: 60 };

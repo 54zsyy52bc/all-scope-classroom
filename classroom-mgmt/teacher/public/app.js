@@ -12,7 +12,7 @@
   const SEAT_LABEL = { doing: '进行中', done: '已完成', help: '求助' };
   const $ = (id) => document.getElementById(id);
   let snapTimer = null;
-  const presets = { classes: [], activities: [] };
+  const presets = { classes: [], activities: [], appSets: [] };
   // 公共 API：供 presets.js / activity.js / manage.js / stream.js 复用
   window.Dashboard = {
     api, toast, esc, presets, refreshSoon,
@@ -191,12 +191,14 @@
     if (presetMode) body.classPresetId = $('f-class-preset').value;
     else { body.terminalCount = Number($('f-term').value) || 14; body.groupMembers = Number($('f-members').value) || 6; } // v5 组机
     if ($('f-lesson-preset') && $('f-lesson-preset').value) body.lessonId = $('f-lesson-preset').value; // v5.2 课时预设
+    if ($('f-appset') && $('f-appset').value) body.appSetId = $('f-appset').value; // v5.6 应用包
     const j = await api('POST', API.start, body);
     if (j && j.code === 0) {
       closeModal('start');
       const act = j.data && j.data.lessonName ? ' · 课时：' + j.data.lessonName
         : (j.data && j.data.activityName ? ' · 活动：' + j.data.activityName : '');
-      logEvent('开始上课：' + teacher + ' · ' + (className || '未命名班级') + ' · ' + (presetMode ? totalSeats + ' 座' : ($('f-term').value + ' 台终端×' + $('f-members').value + ' 人')) + act);
+      const asName = j.data && j.data.appSetName ? ' · 应用包：' + j.data.appSetName : '';
+      logEvent('开始上课：' + teacher + ' · ' + (className || '未命名班级') + ' · ' + (presetMode ? totalSeats + ' 座' : ($('f-term').value + ' 台终端×' + $('f-members').value + ' 人')) + act + asName);
       refreshSoon();
     }
   }

@@ -2,35 +2,24 @@
 // =============================================================================
 // Preset Studio · 本地预设库（JSON 文件存储，办公电脑独立应用的数据层）。
 // 纯 Node 模块，不依赖 Electron —— 可无头单测；Electron 主进程负责读写与 IPC。
-//
-// 职责：
-//   - 班级预设 / 活动预设 CRUD（created_at/updated_at 维护，upsert 保留创建时间）
-//   - 器材字典（常用器材速选，编辑活动时引用）
-//   - 预设包导出 / 导入（shared/preset-package.js 协议；冲突仲裁同 teacher 端）
+// 职责：班级/活动/应用包 CRUD（created_at/updated_at 维护）、器材字典、
+//       预设包导出/导入（shared/preset-package.js 协议；冲突仲裁同 teacher 端）。
 // 持久化：单 JSON 文件，写入原子化（临时文件 + rename）。
 // =============================================================================
 const fs = require('node:fs');
 const path = require('node:path');
 const presetPkg = require('../../shared/preset-package');
 const parts = require('./class-parts');
-
 const DEFAULT_DICT = [
-  { eqId: 'DEV-BOARD', eqName: '开发板', category: '主控' },
-  { eqId: 'ARDUINO-UNO', eqName: 'Arduino UNO', category: '主控' },
-  { eqId: 'LED', eqName: 'LED 发光二极管', category: '元件' },
-  { eqId: 'RESISTOR', eqName: '电阻', category: '元件' },
-  { eqId: 'BREADBOARD', eqName: '面包板', category: '工具' },
-  { eqId: 'SOLDER-KIT', eqName: '焊接套件', category: '焊接' },
-  { eqId: 'SENSOR-TEMP', eqName: '温度传感器', category: '传感器' },
-  { eqId: 'SENSOR-LIGHT', eqName: '光敏传感器', category: '传感器' },
-  { eqId: 'MOTOR-CAR', eqName: '小车底盘套件', category: '套件' },
-  { eqId: 'DUPONT-WIRE', eqName: '杜邦线', category: '线材' },
+  { eqId: 'DEV-BOARD', eqName: '开发板', category: '主控' }, { eqId: 'ARDUINO-UNO', eqName: 'Arduino UNO', category: '主控' },
+  { eqId: 'LED', eqName: 'LED 发光二极管', category: '元件' }, { eqId: 'RESISTOR', eqName: '电阻', category: '元件' },
+  { eqId: 'BREADBOARD', eqName: '面包板', category: '工具' }, { eqId: 'SOLDER-KIT', eqName: '焊接套件', category: '焊接' },
+  { eqId: 'SENSOR-TEMP', eqName: '温度传感器', category: '传感器' }, { eqId: 'SENSOR-LIGHT', eqName: '光敏传感器', category: '传感器' },
+  { eqId: 'MOTOR-CAR', eqName: '小车底盘套件', category: '套件' }, { eqId: 'DUPONT-WIRE', eqName: '杜邦线', category: '线材' },
 ];
-
 function createStore(dataFile) {
   const file = dataFile || path.join(__dirname, '..', 'data', 'presets.json');
   const dir = path.dirname(file);
-
   function load() {
     try {
       const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -38,6 +27,7 @@ function createStore(dataFile) {
         version: raw.version || 1,
         classes: Array.isArray(raw.classes) ? raw.classes : [],
         activities: Array.isArray(raw.activities) ? raw.activities : [],
+        appSets: Array.isArray(raw.appSets) ? raw.appSets : [], // v5.6 应用包
         dict: Array.isArray(raw.dict) ? raw.dict : DEFAULT_DICT.map((d) => Object.assign({}, d)),
         meta: raw.meta && typeof raw.meta === 'object' && !Array.isArray(raw.meta) ? raw.meta : {},
       };
@@ -46,33 +36,25 @@ function createStore(dataFile) {
       try {
         if (fs.existsSync(file)) fs.renameSync(file, file + '.bak-' + Date.now());
       } catch (_e2) { /* 忽略 */ }
-      return { version: 1, classes: [], activities: [], dict: DEFAULT_DICT.map((d) => Object.assign({}, d)), meta: {} };
+      return { version: 1, classes: [], activities: [], appSets: [], dict: DEFAULT_DICT.map((d) => Object.assign({}, d)), meta: {} };
     }
   }
-
   let state = load();
-
   function persist() {
     fs.mkdirSync(dir, { recursive: true });
     const tmp = file + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf8');
     fs.renameSync(tmp, file);
   }
-
   function now() { return Date.now(); }
   function genId(prefix) {
     return prefix + '-' + Math.random().toString(16).slice(2, 10).toUpperCase();
   }
-
   // ---------------- 班级预设 ----------------
-  function toClass(row) {
-    // presetId：渲染层 camelCase 别名（历史遗留——渲染层按 presetId 读，库内 snake_case）
-    return row ? Object.assign({}, row, { presetId: row.preset_id }) : null;
-  }
+  // presetId：渲染层 camelCase 别名（历史遗留——渲染层按 presetId 读，库内 snake_case）
+  function toClass(row) { return row ? Object.assign({}, row, { presetId: row.preset_id }) : null; }
   function listClasses() { return state.classes.map(toClass).sort((a, b) => (a.updated_at || 0) - (b.updated_at || 0)); }
-  function getClass(presetId) {
-    return toClass(state.classes.find((c) => c.preset_id === presetId) || null);
-  }
+  function getClass(presetId) { return toClass(state.classes.find((c) => c.preset_id === presetId) || null); }
   // 增量合并语义：只覆盖 input 提供的字段（与 teacher updateClass 一致，防局部更新丢字段）
   function normClass(input) {
     const r = {};
@@ -82,26 +64,20 @@ function createStore(dataFile) {
     if (input.note !== undefined) r.note = input.note ? String(input.note).trim() : null;
     // v4.2：分组配置（[{groupId,size}]）——提供即标准化；非空时座位数联动 = 各组之和
     if (input.groups !== undefined) {
-      r.groups = Array.isArray(input.groups)
-        ? input.groups
-          .map((g) => ({
-            groupId: String((g && g.groupId) || '').trim(),
-            size: Math.max(1, Math.floor(Number(g && g.size)) || 1),
-          }))
-          .filter((g) => g.groupId) : [];
+      r.groups = Array.isArray(input.groups) ? input.groups.map((g) => ({
+        groupId: String((g && g.groupId) || '').trim(),
+        size: Math.max(1, Math.floor(Number(g && g.size)) || 1),
+      })).filter((g) => g.groupId) : [];
       if (r.groups.length) r.total_seats = r.groups.reduce((acc, g) => acc + g.size, 0);
     }
     // v4.2：上课器材（与活动器材同构，随上课下发并与活动器材合并）
     if (input.equipment !== undefined) {
-      r.equipment = Array.isArray(input.equipment)
-        ? input.equipment
-          .map((e) => ({
-            eqId: String((e && e.eqId) || '').trim(),
-            eqName: String((e && e.eqName) || '').trim(),
-            category: (e && e.category) ? String(e.category) : '其他',
-            preset: Number.isInteger(Number(e && e.preset)) && Number(e.preset) >= 0 ? Number(e.preset) : 1,
-          }))
-          .filter((e) => e.eqId && e.eqName) : [];
+      r.equipment = Array.isArray(input.equipment) ? input.equipment.map((e) => ({
+        eqId: String((e && e.eqId) || '').trim(),
+        eqName: String((e && e.eqName) || '').trim(),
+        category: (e && e.category) ? String(e.category) : '其他',
+        preset: Number.isInteger(Number(e && e.preset)) && Number(e.preset) >= 0 ? Number(e.preset) : 1,
+      })).filter((e) => e.eqId && e.eqName) : [];
     }
     if (input.created_at !== undefined) r.created_at = input.created_at;
     if (input.updated_at !== undefined) r.updated_at = input.updated_at;
@@ -134,21 +110,15 @@ function createStore(dataFile) {
     if (i >= 0) state.classes.splice(i, 1);
     persist();
   }
-
   // ---------------- 活动预设 ----------------
   function toActivity(row) {
-    return row ? Object.assign({}, row, {
-      presetId: row.preset_id, // 渲染层 camelCase 别名
+    // 渲染层 camelCase 别名（同 toClass）
+    return row ? Object.assign({}, row, { presetId: row.preset_id,
       equipment: Array.isArray(row.equipment) ? row.equipment : [],
-      taskTemplates: Array.isArray(row.taskTemplates) ? row.taskTemplates : [],
-    }) : null;
+      taskTemplates: Array.isArray(row.taskTemplates) ? row.taskTemplates : [] }) : null;
   }
-  function listActivities() {
-    return state.activities.map(toActivity).sort((a, b) => (a.updated_at || 0) - (b.updated_at || 0));
-  }
-  function getActivity(presetId) {
-    return toActivity(state.activities.find((a) => a.preset_id === presetId) || null);
-  }
+  function listActivities() { return state.activities.map(toActivity).sort((a, b) => (a.updated_at || 0) - (b.updated_at || 0)); }
+  function getActivity(presetId) { return toActivity(state.activities.find((a) => a.preset_id === presetId) || null); }
   function normActivity(input) {
     const r = {};
     if (input.name !== undefined) r.name = String(input.name || '').trim();
@@ -167,9 +137,8 @@ function createStore(dataFile) {
     const r = normActivity(input);
     if (!existing) {
       const row = Object.assign({
-        preset_id: input.preset_id, name: '未命名活动', category: null,
-        equipment: [], taskTemplates: [], timed: false, durationSec: null,
-        note: null, created_at: now(), updated_at: now(),
+        preset_id: input.preset_id, name: '未命名活动', category: null, equipment: [],
+        taskTemplates: [], timed: false, durationSec: null, note: null, created_at: now(), updated_at: now(),
       }, r);
       state.activities.push(row);
       persist();
@@ -187,17 +156,46 @@ function createStore(dataFile) {
     if (i >= 0) state.activities.splice(i, 1);
     persist();
   }
-
+  // ---------------- 应用包（v5.6：独立桌面应用清单，开课时选用）----------------
+  // 只存应用名：学生机应用 id 跨机不稳定，按名匹配本机 desktop-config；exe 路径仍在本机。
+  function normAppSetRow(input) {
+    const apps = Array.isArray(input.apps) ? input.apps.map((x) => String(x == null ? '' : x).trim()).filter(Boolean) : [];
+    if (!String(input.name || '').trim()) throw new Error('E-VAL-01: 应用包名称不能为空');
+    if (!apps.length) throw new Error('E-VAL-01: 应用包至少要有一个应用名');
+    if (apps.length > 24) throw new Error('E-VAL-01: 应用包应用数量不能超过 24');
+    return { name: String(input.name).trim().slice(0, 40), apps, note: input.note ? String(input.note).trim() : null };
+  }
+  function listAppSets() { return state.appSets.map((s) => Object.assign({}, s)).sort((a, b) => (a.updated_at || 0) - (b.updated_at || 0)); }
+  function getAppSet(appSetId) { return state.appSets.find((s) => s.app_set_id === appSetId) || null; }
+  function upsertAppSet(input) {
+    const r = normAppSetRow(input);
+    const existing = getAppSet(input.app_set_id);
+    if (existing) {
+      Object.assign(existing, r, { updated_at: input.updated_at != null ? input.updated_at : now() });
+      if (input.created_at != null) existing.created_at = input.created_at;
+      persist();
+      return Object.assign({}, existing);
+    }
+    const row = Object.assign({
+      app_set_id: input.app_set_id || genId('AS'),
+      created_at: input.created_at != null ? input.created_at : now(),
+      updated_at: input.updated_at != null ? input.updated_at : now(),
+    }, r);
+    state.appSets.push(row);
+    persist();
+    return Object.assign({}, row);
+  }
+  function removeAppSet(appSetId) {
+    const i = state.appSets.findIndex((s) => s.app_set_id === appSetId);
+    if (i >= 0) state.appSets.splice(i, 1);
+    persist();
+  }
   // ---------------- 器材字典 ----------------
   function listDict() { return state.dict.map((d) => Object.assign({}, d)); }
   function upsertDictItem(item) {
     if (!item || !item.eqId || !item.eqName) throw new Error('E-VAL-01: 字典项须含 eqId/eqName');
     const existing = state.dict.find((d) => d.eqId === item.eqId);
-    const row = {
-      eqId: String(item.eqId),
-      eqName: String(item.eqName).trim(),
-      category: item.category ? String(item.category).trim() : '其他',
-    };
+    const row = { eqId: String(item.eqId), eqName: String(item.eqName).trim(), category: item.category ? String(item.category).trim() : '其他' };
     if (existing) Object.assign(existing, row);
     else state.dict.push(row);
     persist();
@@ -208,7 +206,6 @@ function createStore(dataFile) {
     if (i >= 0) state.dict.splice(i, 1);
     persist();
   }
-
   // ---------------- 预设包 导出 / 导入 ----------------
   // filter 可选：{ classes?:[id], activities?:[id] } 只导出勾选的（如"单活动预设包"）
   function exportPackage(filter) {
@@ -222,18 +219,21 @@ function createStore(dataFile) {
       note: c.note, createdAt: c.created_at, updatedAt: c.updated_at,
     });
     const toPkgActivity = (a) => ({
-      presetId: a.preset_id, name: a.name, category: a.category,
-      equipment: a.equipment, taskTemplates: a.taskTemplates,
-      timed: a.timed, durationSec: a.durationSec, note: a.note,
-      createdAt: a.created_at, updatedAt: a.updated_at,
+      presetId: a.preset_id, name: a.name, category: a.category, equipment: a.equipment,
+      taskTemplates: a.taskTemplates, timed: a.timed, durationSec: a.durationSec,
+      note: a.note, createdAt: a.created_at, updatedAt: a.updated_at,
+    });
+    const toPkgAppSet = (s) => ({ // v5.6 应用包随包导出（updatedAt 仲裁与班级/活动一致）
+      appSetId: s.app_set_id, name: s.name, apps: s.apps || [], note: s.note,
+      createdAt: s.created_at, updatedAt: s.updated_at,
     });
     return presetPkg.buildPackage({
       classes: cls.map(toPkgClass),
       activities: acts.map(toPkgActivity),
+      appSets: state.appSets.map(toPkgAppSet),
       source: 'preset-studio',
     });
   }
-
   function previewImport(pkg) {
     const errs = presetPkg.validatePackage(pkg);
     if (errs.length) {
@@ -242,19 +242,20 @@ function createStore(dataFile) {
       throw e;
     }
     const summary = { added: 0, updated: 0, skipped: 0, items: [] };
-    const compare = (list, localFind, kind) => (x) => {
-      const local = localFind(x.presetId);
+    // idKey：班级/活动用 presetId，应用包用 appSetId（应用包本地行主键是 app_set_id）
+    const compare = (list, localFind, kind, idKey) => (x) => {
+      const local = localFind(x[idKey]);
       const pkgTs = x.updatedAt != null ? x.updatedAt : 0;
       const action = !local ? 'added' : (pkgTs >= (local.updated_at || 0) ? 'updated' : 'skipped');
       summary[action] += 1;
-      summary.items.push({ kind, presetId: x.presetId, name: x.name, action,
+      summary.items.push({ kind, presetId: x[idKey], name: x.name, action,
         pkgUpdatedAt: pkgTs, localUpdatedAt: local ? local.updated_at : null });
     };
-    (pkg.classes || []).forEach(compare(state.classes, getClass, 'class'));
-    (pkg.activities || []).forEach(compare(state.activities, getActivity, 'activity'));
+    (pkg.classes || []).forEach(compare(state.classes, (id) => state.classes.find((c) => c.preset_id === id), 'class', 'presetId'));
+    (pkg.activities || []).forEach(compare(state.activities, (id) => state.activities.find((a) => a.preset_id === id), 'activity', 'presetId'));
+    (pkg.appSets || []).forEach(compare(state.appSets, getAppSet, 'appset', 'appSetId'));
     return summary;
   }
-
   function commitImport(pkg) {
     const preview = previewImport(pkg);
     for (const it of preview.items) {
@@ -263,36 +264,37 @@ function createStore(dataFile) {
         const c = (pkg.classes || []).find((x) => x.presetId === it.presetId);
         upsertClass({
           preset_id: c.presetId, name: c.name, total_seats: c.totalSeats, group_size: c.groupSize,
-          groups: c.groups, equipment: c.equipment,
-          info: c.info, students: c.students, lessons: c.lessons,
-          note: c.note,
-          created_at: c.createdAt, updated_at: c.updatedAt,
+          groups: c.groups, equipment: c.equipment, info: c.info, students: c.students,
+          lessons: c.lessons, note: c.note, created_at: c.createdAt, updated_at: c.updatedAt,
+        });
+      } else if (it.kind === 'appset') {
+        const s = (pkg.appSets || []).find((x) => x.appSetId === it.presetId);
+        upsertAppSet({
+          app_set_id: s.appSetId, name: s.name, apps: s.apps, note: s.note,
+          created_at: s.createdAt, updated_at: s.updatedAt,
         });
       } else {
         const a = (pkg.activities || []).find((x) => x.presetId === it.presetId);
         upsertActivity({
-          preset_id: a.presetId, name: a.name, category: a.category,
-          equipment: a.equipment, taskTemplates: a.taskTemplates,
-          timed: a.timed, durationSec: a.durationSec, note: a.note,
-          created_at: a.createdAt, updated_at: a.updatedAt,
+          preset_id: a.presetId, name: a.name, category: a.category, equipment: a.equipment,
+          taskTemplates: a.taskTemplates, timed: a.timed, durationSec: a.durationSec,
+          note: a.note, created_at: a.createdAt, updated_at: a.updatedAt,
         });
       }
     }
     return preview;
   }
-
   // ---------------- Meta（OOBE 完成标记等键值） ----------------
   function getMeta(key) { return (state.meta || {})[key]; }
   function setMeta(key, value) { state.meta = state.meta || {}; state.meta[key] = value; persist(); return true; }
-
   return {
     file, genId,
     listClasses, getClass, upsertClass, removeClass,
     listActivities, getActivity, upsertActivity, removeActivity,
+    listAppSets, upsertAppSet, removeAppSet,
     listDict, upsertDictItem, removeDictItem,
     exportPackage, previewImport, commitImport,
     getMeta, setMeta,
   };
 }
-
 module.exports = { createStore, DEFAULT_DICT };

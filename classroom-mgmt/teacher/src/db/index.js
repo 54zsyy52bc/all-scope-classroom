@@ -277,6 +277,11 @@ function getActivityPreset(id) { return S().get('t_activity_preset', { preset_id
 function upsertActivityPreset(row) { return S().upsert('t_activity_preset', row); }
 function removeActivityPreset(id) { return S().remove('t_activity_preset', { preset_id: id }); }
 
+// v5.6 应用包（独立应用清单，随预设包导入/导出）
+function listAppSets() { return presetList('t_app_set'); }
+function getAppSet(id) { return S().get('t_app_set', { app_set_id: id }); }
+function upsertAppSet(row) { return S().upsert('t_app_set', row); }
+
 function safeParseJSON(s) {
   try { return JSON.parse(s); } catch (_e) { return null; }
 }
@@ -302,5 +307,6 @@ module.exports = {
   // presets
   listClassPresets, getClassPreset, upsertClassPreset, removeClassPreset,
   listActivityPresets, getActivityPreset, upsertActivityPreset, removeActivityPreset,
+  listAppSets, getAppSet, upsertAppSet,
   close,
 };

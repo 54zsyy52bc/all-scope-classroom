@@ -50,6 +50,7 @@ if (!gotLock) {
     ipcMain.handle('presets:list', wrap(() => ({
       classes: store.listClasses(),
       activities: store.listActivities(),
+      appSets: store.listAppSets(),
       dict: store.listDict(),
     })));
 
@@ -66,6 +67,14 @@ if (!gotLock) {
       return store.upsertActivity(Object.assign({}, r, { preset_id: id }));
     }));
     ipcMain.handle('activity:remove', wrap((id) => { store.removeActivity(id); return { presetId: id }; }));
+
+    // v5.6 应用包：独立桌面应用清单（开课时选用，学生端按应用名匹配本机）
+    ipcMain.handle('appset:save', wrap((row) => {
+      const r = row || {};
+      const id = r.app_set_id || store.genId('AS');
+      return store.upsertAppSet(Object.assign({}, r, { app_set_id: id }));
+    }));
+    ipcMain.handle('appset:remove', wrap((id) => { store.removeAppSet(id); return { appSetId: id }; }));
 
     ipcMain.handle('dict:save', wrap((item) => store.upsertDictItem(item)));
     ipcMain.handle('dict:remove', wrap((eqId) => { store.removeDictItem(eqId); return { eqId }; }));

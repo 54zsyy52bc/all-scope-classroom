@@ -12,12 +12,14 @@
 
   // ---------- 加载与填充 ----------
   async function refresh() {
-    const [cj, aj] = await Promise.all([
+    const [cj, aj, sj] = await Promise.all([
       D.api('GET', '/api/v1/presets/classes'),
       D.api('GET', '/api/v1/presets/activities'),
+      D.api('GET', '/api/v1/presets/appsets'),
     ]);
     D.presets.classes = (cj && cj.code === 0) ? cj.data : [];
     D.presets.activities = (aj && aj.code === 0) ? aj.data : [];
+    D.presets.appSets = (sj && sj.code === 0) ? sj.data : [];
     fillSelects();
     if (global.DashboardManage) global.DashboardManage.render();
   }
@@ -29,7 +31,29 @@
       + D.presets.classes.map((c) => '<option value="' + esc(c.presetId) + '">'
         + esc(c.name) + '（' + c.totalSeats + ' 座' + (c.lessons && c.lessons.length ? ' · ' + c.lessons.length + ' 课时' : '') + '）</option>').join('');
     if (cur) cs.value = cur;
+    fillAppSetSelect();
     onClassChange();
+  }
+
+  // v5.6：应用包下拉（独立清单，与班级/课时无关；开课时选用）
+  function fillAppSetSelect() {
+    const ss = $('f-appset');
+    if (!ss) return;
+    const cur = ss.value;
+    ss.innerHTML = '<option value="">（不切换：用学生机本机全部课程应用）</option>'
+      + (D.presets.appSets || []).map((s) => '<option value="' + esc(s.appSetId) + '">'
+        + esc(s.name) + '（' + ((s.apps && s.apps.length) || 0) + ' 应用）</option>').join('');
+    if (cur && (D.presets.appSets || []).some((s) => s.appSetId === cur)) ss.value = cur;
+    onAppSetChange();
+  }
+
+  function onAppSetChange() {
+    const hint = $('f-appset-hint');
+    if (!hint) return;
+    const s = (D.presets.appSets || []).find((x) => x.appSetId === $('f-appset').value);
+    hint.textContent = s
+      ? '开课后学生桌面只显示与本机应用同名的磁贴：' + s.apps.join('、')
+      : '应用包在预设编辑器里创建、随预设包导入；开课后学生桌面只显示与包内应用同名的磁贴';
   }
 
   // v5.2：课时预设下拉随所选班级联动（班级无课时 → 仅提示项）
@@ -102,6 +126,8 @@
     $('f-class-preset').addEventListener('change', onClassChange);
     const ls = $('f-lesson-preset');
     if (ls) ls.addEventListener('change', onLessonChange);
+    const as = $('f-appset');
+    if (as) as.addEventListener('change', onAppSetChange);
     $('tpl-chips').addEventListener('click', (e) => {
       const chip = e.target.closest('[data-tpl]');
       if (!chip) return;

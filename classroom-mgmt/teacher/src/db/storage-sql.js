@@ -1,9 +1,8 @@
 'use strict';
 // SQLite 存储后端（better-sqlite3）。实现与 JSON 后端一致的表操作接口。
 // 通过白名单列名构造参数化 SQL，避免注入。所有接口同步（better-sqlite3 同步 API）。
-
 const TABLES = {
-  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'lesson_json', 'policy_mode', 'terminal_count', 'group_members'],
+  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'lesson_json', 'appset_json', 'policy_mode', 'terminal_count', 'group_members'],
   t_student: ['stu_id', 'session_id', 'seat', 'group_id', 'name', 'student_no', 'checkin_time', 'checkin_status', 'machine_id', 'last_seen_at', 'return_status', 'exited'],
   t_equipment: ['eq_id', 'eq_name', 'category', 'total'],
   t_equipment_borrow: ['borrow_id', 'session_id', 'seat', 'group_id', 'eq_id', 'qty', 'borrow_time', 'return_time', 'status'],
@@ -13,8 +12,9 @@ const TABLES = {
   t_conflict: ['seat', 'machine_ids', 'first_seen_at', 'last_seen_at', 'message_count'],
   t_class_preset: ['preset_id', 'name', 'total_seats', 'group_size', 'note', 'created_at', 'updated_at', 'groups_json', 'equipment_json', 'lessons_json'],
   t_activity_preset: ['preset_id', 'name', 'category', 'equipment_json', 'task_templates_json', 'note', 'created_at', 'updated_at', 'timed', 'duration_sec'],
+  // v5.6 应用包：独立应用清单（apps_json = 应用名数组），开课时选用、随 sync 下发
+  t_app_set: ['app_set_id', 'name', 'apps_json', 'note', 'created_at', 'updated_at'],
 };
-
 const PK = {
   t_session: 'session_id',
   t_student: 'stu_id',
@@ -26,8 +26,8 @@ const PK = {
   t_conflict: 'seat',
   t_class_preset: 'preset_id',
   t_activity_preset: 'preset_id',
+  t_app_set: 'app_set_id',
 };
-
 const DDL = `
 CREATE TABLE IF NOT EXISTS t_session (
   session_id TEXT PRIMARY KEY,
@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS t_session (
   activity_name TEXT,
   equipment_json TEXT,
   lesson_json TEXT,
+  appset_json TEXT,
   policy_mode TEXT DEFAULT 'open'
 );
 CREATE TABLE IF NOT EXISTS t_student (
@@ -148,15 +149,21 @@ CREATE TABLE IF NOT EXISTS t_activity_preset (
   created_at INTEGER,
   updated_at INTEGER
 );
+CREATE TABLE IF NOT EXISTS t_app_set (
+  app_set_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  apps_json TEXT,
+  note TEXT,
+  created_at INTEGER,
+  updated_at INTEGER
+);
 CREATE INDEX IF NOT EXISTS idx_student_session ON t_student(session_id);
 CREATE INDEX IF NOT EXISTS idx_borrow_session ON t_equipment_borrow(session_id);
 CREATE INDEX IF NOT EXISTS idx_taskstatus_task ON t_task_status(task_id);
 CREATE INDEX IF NOT EXISTS idx_event_session ON t_event_log(session_id);
 CREATE INDEX IF NOT EXISTS idx_event_ts ON t_event_log(ts);
 `;
-
 const { BusinessError } = require('../errors');
-
 // better-sqlite3 默认开启 PRAGMA foreign_keys=ON（实测 13.0.3 为 1），外键是真实生效的。
 // 原生 SqliteError 禁止穿透到 service / 路由层，统一映射为业务错误 E-REF-01。
 function isFkViolation(e) {
@@ -164,13 +171,11 @@ function isFkViolation(e) {
   return e.code === 'SQLITE_CONSTRAINT_FOREIGNKEY'
     || String(e.message || '').includes('FOREIGN KEY constraint failed');
 }
-
 function toRefError(e, table) {
   return new BusinessError('E-REF-01',
     `参照完整性违规：${table} 的外键目标记录不存在`,
     { table, reason: 'foreign_key' });
 }
-
 function whereClause(table, where) {
   const cols = TABLES[table] || [];
   const keys = Object.keys(where || {}).filter((k) => cols.includes(k));
@@ -180,7 +185,6 @@ function whereClause(table, where) {
     params: keys.map((k) => where[k]),
   };
 }
-
 class SqlStorage {
   constructor(db) {
     this.db = db;
@@ -189,7 +193,6 @@ class SqlStorage {
     this.db.exec(DDL);
     this._migrate();
   }
-
   // 轻量列迁移：为旧库补齐新列（重复添加会抛错，逐个捕获忽略）。
   _migrate() {
     const RUNS = [
@@ -205,6 +208,8 @@ class SqlStorage {
       ['t_student', [["role", "TEXT DEFAULT 'member'"], ["exited", "INTEGER DEFAULT 0"]]],
       // v5.2 课时预设：会话快照课时（lessonId/name/activityIds），随开课落库
       ['t_session', [['lesson_json', 'TEXT']]],
+      // v5.6 应用包：会话快照 { appSetId, name, apps }，随开课落库
+      ['t_session', [['appset_json', 'TEXT']]],
     ];
     for (const [table, cols] of RUNS) {
       for (const [name, type] of cols) {
@@ -212,7 +217,6 @@ class SqlStorage {
       }
     }
   }
-
   insert(table, row) {
     const cols = (TABLES[table] || []).filter((k) => row[k] !== undefined);
     if (cols.length === 0) return null;
@@ -228,7 +232,6 @@ class SqlStorage {
     if (pk === 'id') return Object.assign({ id: info.lastInsertRowid }, row);
     return this.get(table, { [pk]: row[pk] }) || Object.assign({}, row);
   }
-
   // 存在则按主键更新，否则插入
   upsert(table, row) {
     const pk = PK[table];
@@ -241,21 +244,17 @@ class SqlStorage {
     }
     return this.insert(table, row);
   }
-
   get(table, where) {
     const r = this.find(table, where);
     return r[0] || null;
   }
-
   find(table, where) {
     const wc = whereClause(table, where);
     return this.db.prepare(`SELECT * FROM ${table}${wc.clause}`).all(...wc.params);
   }
-
   all(table) {
     return this.db.prepare(`SELECT * FROM ${table}`).all();
   }
-
   update(table, where, patch) {
     const cols = (TABLES[table] || []).filter((k) => patch[k] !== undefined);
     if (cols.length === 0) return 0;
@@ -268,24 +267,20 @@ class SqlStorage {
       throw e;
     }
   }
-
   // 原子执行：事件标记（msg_id 幂等）与业务写入必须同生共死。
   // 业务写入抛错时整段回滚，避免 msg_id 被"毒丸"占用导致 MQTT 重投后消息永久丢失。
   transaction(fn) {
     return this.db.transaction(fn)();
   }
-
   remove(table, where) {
     const wc = whereClause(table, where);
     return this.db.prepare(`DELETE FROM ${table}${wc.clause}`).run(...wc.params).changes;
   }
-
   count(table, where) {
     const wc = whereClause(table, where);
     const r = this.db.prepare(`SELECT COUNT(*) c FROM ${table}${wc.clause}`).get(...wc.params);
     return r.c;
   }
-
   // 事件幂等写入：msg_id UNIQUE，重复直接忽略。返回 { inserted: boolean }
   insertEvent(row) {
     try {
@@ -299,10 +294,8 @@ class SqlStorage {
       throw e;
     }
   }
-
   close() {
     try { this.db.close(); } catch (_e) { /* ignore */ }
   }
 }
-
 module.exports = { SqlStorage, TABLES, PK };

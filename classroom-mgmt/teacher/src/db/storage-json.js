@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const TABLES = {
-  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'lesson_json', 'policy_mode', 'terminal_count', 'group_members'],
+  t_session: ['session_id', 'teacher', 'class_name', 'start_time', 'end_time', 'phase', 'total_seats', 'export_flag', 'topic_plan', 'siot_ver', 'class_preset_id', 'activity_preset_id', 'activity_name', 'equipment_json', 'lesson_json', 'appset_json', 'policy_mode', 'terminal_count', 'group_members'],
   t_student: ['stu_id', 'session_id', 'seat', 'group_id', 'name', 'student_no', 'checkin_time', 'checkin_status', 'machine_id', 'last_seen_at', 'return_status', 'exited'],
   t_equipment: ['eq_id', 'eq_name', 'category', 'total'],
   t_equipment_borrow: ['borrow_id', 'session_id', 'seat', 'group_id', 'eq_id', 'qty', 'borrow_time', 'return_time', 'status'],
@@ -17,6 +17,8 @@ const TABLES = {
   t_conflict: ['seat', 'machine_ids', 'first_seen_at', 'last_seen_at', 'message_count'],
   t_class_preset: ['preset_id', 'name', 'total_seats', 'group_size', 'note', 'created_at', 'updated_at', 'groups_json', 'equipment_json', 'lessons_json'],
   t_activity_preset: ['preset_id', 'name', 'category', 'equipment_json', 'task_templates_json', 'note', 'created_at', 'updated_at', 'timed', 'duration_sec'],
+  // v5.6 应用包：独立应用清单（apps_json = 应用名数组），开课时选用、随 sync 下发
+  t_app_set: ['app_set_id', 'name', 'apps_json', 'note', 'created_at', 'updated_at'],
 };
 
 const PK = {
@@ -30,6 +32,7 @@ const PK = {
   t_conflict: 'seat',
   t_class_preset: 'preset_id',
   t_activity_preset: 'preset_id',
+  t_app_set: 'app_set_id',
 };
 
 function matchRow(row, where) {

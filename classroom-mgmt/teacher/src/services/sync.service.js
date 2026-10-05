@@ -21,6 +21,7 @@ function buildSyncPayload(session, seat) {
   let returnDone = false;
   let equipment = null;
   let policy = null;
+  let appNames = null;
   if (session) {
     const tasks = db.listTasks(sessionId);
     const openTasks = tasks.filter((x) => !x.close_time);
@@ -39,17 +40,25 @@ function buildSyncPayload(session, seat) {
     // 学生已退出课堂：sync 一律回「待课空态」——不推活动、不算已登记、锁定策略按 open
     // （该机停在待课页等老师；重新登记或上报状态会自动清标记回归，见 handlers）
     if (st && st.exited) {
-      return { sessionId, phase: 'idle', currentTask: null, checkinDone: false, returnDone: false, equipment, policy: 'open' };
+      return { sessionId, phase: 'idle', currentTask: null, checkinDone: false, returnDone: false, equipment, appNames: null, policy: 'open' };
     }
     // 器材清单随 sync 下发：迟到/重连学生据此恢复登记页器材列表
     if (session.equipment_json) {
       try { equipment = JSON.parse(session.equipment_json); } catch (_e) { equipment = null; }
     }
+    // v5.6 应用包随 sync 下发：apps 为应用名列表（学生端按名过滤本机磁贴）；
+    // null = 开课时未选应用包 → 学生端维持本机配置的全部应用
+    if (session.appset_json) {
+      try {
+        const as = JSON.parse(session.appset_json);
+        appNames = Array.isArray(as.apps) ? as.apps : null;
+      } catch (_e) { appNames = null; }
+    }
     // 锁定策略随 sync 下发：迟到/重连学生恢复锁定状态
     // （惰性 require：policy.service 反向依赖本模块构造双保险 sync，避免加载环）
     try { policy = require('./policy.service').computePolicy(session); } catch (_e) { policy = null; }
   }
-  return { sessionId, phase, currentTask, checkinDone, returnDone, equipment, policy };
+  return { sessionId, phase, currentTask, checkinDone, returnDone, equipment, appNames, policy };
 }
 
 module.exports = { buildSyncPayload };
