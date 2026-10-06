@@ -171,6 +171,22 @@ function start() {
     // eslint-disable-next-line no-console
     console.log(`课堂管理系统教师端已启动: http://${cfg.HTTP_HOST}:${cfg.HTTP_PORT}  (存储模式: ${initResult.mode})`);
   });
+  // 端口占用等启动失败：给出可读的原因并保持窗口不闪退（双击 exe 场景窗口会随进程退出瞬间关闭）
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      // eslint-disable-next-line no-console
+      console.error(`\n[启动失败] 端口 ${cfg.HTTP_PORT} 已被占用。`);
+      // eslint-disable-next-line no-console
+      console.error('原因：教师端已经在运行（或另一套服务占用了该端口）。请勿重复启动；');
+      // eslint-disable-next-line no-console
+      console.error('如需重启，请先在任务管理器结束旧的 teacher-server / node 进程，再双击本程序。');
+    } else {
+      // eslint-disable-next-line no-console
+      console.error(`\n[启动失败] ${err && err.stack ? err.stack : err}`);
+    }
+    // 保持控制台窗口 5 分钟供阅读（期间可随时关闭窗口）
+    setTimeout(() => process.exit(1), 5 * 60 * 1000); // 未 unref：同时起保活作用，防止窗口闪没
+  });
   return server;
 }
 
