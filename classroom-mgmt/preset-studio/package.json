@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron electron/main.js",
-    "test": "node test/store.test.js && node test/renderer.dom.test.js",
+    "test": "node test/store.test.js && node test/renderer.dom.test.js && node test/ai-chat.test.js",
     "pack": "electron-builder --win portable"
   },
   "devDependencies": {

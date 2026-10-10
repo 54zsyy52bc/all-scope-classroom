@@ -125,6 +125,9 @@ memory.activities.push({
 (0, eval)(fs.readFileSync(path.join(ROOT, 'class-roster-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'class-lessons-ui.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'smart-import.js'), 'utf8'));
+// AI 接入层按页面顺序加载：src/ai-chat.js（window.AiChat）→ smart-ai.js → smart-studio.js
+(0, eval)(fs.readFileSync(path.join(__dirname, '..', 'src', 'ai-chat.js'), 'utf8'));
+(0, eval)(fs.readFileSync(path.join(ROOT, 'smart-ai.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'smart-studio.js'), 'utf8'));
 (0, eval)(fs.readFileSync(path.join(ROOT, 'oobe.js'), 'utf8'));
 if (domReady) domReady();
@@ -279,7 +282,7 @@ async function main() {
     courseware: '点亮LED.pptx', lessonName: '第1课 点亮LED（AI）',
     activities: [{ name: '挑战：设计交通灯' }], equipment: [{ eqId: 'LED', preset: 3 }],
   }]);
-  await global.PresetSmartStudio.applyAiResult();
+  await global.PresetSmartAI.applyPasted();
   const d0 = global.PresetSmartStudio._drafts()[0];
   check('智能生成：AI 回贴覆盖草稿', d0.lessonName === '第1课 点亮LED（AI）'
     && d0.activities[0] === '挑战：设计交通灯' && d0.equipment[0].preset === 3,

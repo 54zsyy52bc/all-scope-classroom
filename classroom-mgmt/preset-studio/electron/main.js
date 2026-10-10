@@ -14,6 +14,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { createStore } = require('../src/store');
 const coursewareParse = require('../src/courseware-parse');
+const aiChat = require('../src/ai-chat');
 
 let mainWindow = null;
 let store = null;
@@ -175,6 +176,14 @@ if (!gotLock) {
       if (prompt) clipboard.writeText(String(prompt));
       if (url && /^https?:\/\//.test(url)) shell.openExternal(url);
       return { opened: !!(url && /^https?:\/\//.test(url)), copied: !!prompt };
+    }));
+
+    // AI 模型直调（OpenAI 兼容 chat/completions）：主进程发请求规避渲染层 CORS。
+    // 接口地址/Key/模型名由用户在渲染层本机配置（meta 库），此处只做无状态转发。
+    ipcMain.handle('ai:chat', wrap(async (payload) => {
+      const req = aiChat.buildChatRequest(payload);
+      return await aiChat.httpPostJson(req.url, req.headers, req.body,
+        payload && payload.timeoutMs);
     }));
   }
 

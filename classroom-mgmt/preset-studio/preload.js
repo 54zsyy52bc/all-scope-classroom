@@ -34,4 +34,6 @@ contextBridge.exposeInMainWorld('StudioApi', {
   parseCourseware: (payload) => call('courseware:parse',
     Array.isArray(payload) ? { paths: payload } : (payload || {})),
   openAiPage: (url, prompt) => call('ai:open', { url, prompt }),
+  // AI 模型直调（OpenAI 兼容）：主进程发请求规避渲染层 CORS；配置存本机 meta 库
+  aiChat: (payload) => call('ai:chat', payload),
 });

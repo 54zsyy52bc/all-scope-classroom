@@ -1,7 +1,7 @@
 'use strict';
 // Preset Studio · 智能生成页（独立）：批量导入课件 → 课时包草稿 → 修改 → 确认入库。
-// 快速=关键词识别+器材字典命中；AI=全文行→提示词→剪贴板+开网页→JSON 回贴合入草稿。
-// 入库=新建活动（同名复用）→ 课时追加到所选班级。依赖 window.Editor。
+// 快速=关键词识别+器材字典命中；AI=本机配置模型直接调用（smart-ai.js 编排）或回退网页回贴。
+// 入库=新建活动（同名复用）→ 课时追加到所选班级。依赖 window.Editor / window.PresetSmartAI。
 (function (global) {
   const Editor = global.Editor;
   const $ = (id) => document.getElementById(id);
@@ -57,7 +57,7 @@
       + '）。可在下方修改后确认入库。');
     toast('已生成草稿：' + parsed.length + ' 条');
   }
-  // ---------- AI 模式 ----------
+  // ---------- AI 结果合入（mergeItems 供 smart-ai.js 一键调用与手动回贴共用） ----------
   function buildPrompt(parsedArr) {
     const dictTxt = (Editor.dict || []).filter((d) => d && d.eqId)
       .map((d) => d.eqId + (d.eqName ? '(' + d.eqName + ')' : '')).join('、');
@@ -68,48 +68,7 @@
       + '要求：activities 从课件中的活动/实验/任务环节提炼；equipment 只用器材字典中的 eqId：'
       + (dictTxt || '（字典为空，equipment 返回 []）') + '。\n只输出 JSON，不要其他文字。\n\n' + body;
   }
-  async function importAi() {
-    const parsed = await pickAndParse();
-    if (!parsed) return;
-    const aiReady = parsed.filter((p) => (p.lines || []).length);
-    if (!aiReady.length) { toast('没有可识别文本的课件（仅支持 PPTX/DOCX），请改用快速识别', true); return; }
-    pushDrafts(aiReady); // 先按文件名落骨架草稿，AI 结果回来后覆盖增强
-    const prompt = buildPrompt(aiReady);
-    global.ssAiPrompt = prompt;
-    const tools = $('ss-ai-tools');
-    const card = $('ss-ai-import-card');
-    if (tools) tools.hidden = false;
-    if (card) card.hidden = false;
-    const saved = localStorage.getItem('ss-ai-url') || '';
-    const urlInput = $('ss-ai-url');
-    if (urlInput) urlInput.value = saved;
-    let r = { copied: false, opened: false };
-    if (global.StudioApi && global.StudioApi.openAiPage) {
-      try { r = await global.StudioApi.openAiPage(saved, prompt); } catch (e) { /* 打开失败不阻断 */ }
-    }
-    note('已提取 ' + aiReady.length + ' 个课件的全文（提示词已' + (r.copied ? '复制到剪贴板' : '生成')
-      + (r.opened ? '，AI 网页已打开' : '') + '）。在 AI 中生成 JSON 后回贴到下方。');
-    toast('AI 生成就绪：请把 AI 返回的 JSON 回贴');
-  }
-  // AI 结果规范化：接受数组或单对象，仅保留白名单字段
-  function normalizeAiItem(it) {
-    if (!it || typeof it !== 'object') return null;
-    const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
-    const acts = (Array.isArray(it.activities) ? it.activities : [])
-      .map((a) => cut(a && a.name, 40)).filter(Boolean).slice(0, 15);
-    const eqs = (Array.isArray(it.equipment) ? it.equipment : []).map((e) => ({
-      eqId: cut(e && e.eqId, 30), eqName: cut(e && e.eqName, 30),
-      preset: Number.isInteger(Number(e && e.preset)) && Number(e.preset) > 0 ? Number(e.preset) : 1,
-    })).filter((e) => e.eqId || e.eqName).slice(0, 20);
-    return { courseware: cut(it.courseware, 120), lessonName: cut(it.lessonName, 40), activities: acts, equipment: eqs };
-  }
-  function applyAiResult() {
-    const ta = $('ss-ai-result');
-    if (!ta || !ta.value.trim()) { toast('请先粘贴 AI 返回的 JSON', true); return; }
-    let data;
-    try { data = JSON.parse(ta.value.trim()); } catch (e) { toast('JSON 解析失败：' + e.message, true); return; }
-    const items = (Array.isArray(data) ? data : [data]).map(normalizeAiItem).filter(Boolean);
-    if (!items.length) { toast('AI 结果里没有可用条目', true); return; }
+  function mergeItems(items) {
     let merged = 0;
     for (const it of items) {
       const target = it.courseware && drafts.find((d) => d.fileName === it.courseware
@@ -127,9 +86,7 @@
     }
     renderDrafts();
     saveDrafts();
-    note('AI 结果已合入草稿：' + merged + ' 条。请检查修改后确认入库。');
-    ta.value = '';
-    toast('已合入 AI 结果：' + merged + ' 条');
+    return merged;
   }
   // ---------- 草稿渲染（事件委托，可修改） ----------
   function draftHTML(d, i) {
@@ -281,20 +238,15 @@
   function bind() {
     const btn = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
     btn('ss-import-quick', importQuick);
-    btn('ss-import-ai', importAi);
-    btn('ss-ai-open', async () => {
-      const url = ($('ss-ai-url') || {}).value || '';
-      localStorage.setItem('ss-ai-url', url);
-      if (global.StudioApi && global.StudioApi.openAiPage) {
-        const r = await global.StudioApi.openAiPage(url, global.ssAiPrompt || '');
-        note('AI 网页' + (r.opened ? '已打开' : '未打开（请填写 http/https 地址）') + '，提示词' + (r.copied ? '已复制' : '未复制') + '。');
-      }
-    });
-    btn('ss-ai-apply', applyAiResult);
+    btn('ss-import-ai', () => { if (global.PresetSmartAI) global.PresetSmartAI.autoGenerate(); });
+    // AI 链路（模型配置 / 一键调用 / 回贴解析 / 开网页）统一在 smart-ai.js 内绑定与编排
+    if (global.PresetSmartAI) {
+      global.PresetSmartAI.init({ pickAndParse, buildPrompt, pushDrafts, mergeItems, note, toast });
+    }
     btn('ss-commit', commit);
     btn('ss-clear', clearDrafts);
     const host = $('ss-drafts');
     if (host) host.addEventListener('click', onDraftClick);
   }
-  global.PresetSmartStudio = { bind, renderDrafts, refreshClassOptions, preselectClass, applyAiResult, clearDrafts, _drafts: () => drafts };
+  global.PresetSmartStudio = { bind, renderDrafts, refreshClassOptions, preselectClass, clearDrafts, _drafts: () => drafts };
 })(window);

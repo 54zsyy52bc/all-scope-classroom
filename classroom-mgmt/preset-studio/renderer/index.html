@@ -173,12 +173,23 @@
         <div class="sub-head">① 批量导入课件</div>
         <div class="mini-actions">
           <button class="btn btn-ghost" id="ss-import-quick">快速识别（关键词 + 器材字典）</button>
-          <button class="btn btn-ghost" id="ss-import-ai">AI 生成（调本机 AI / 打开网页）</button>
+          <button class="btn btn-ghost" id="ss-import-ai">AI 生成（调模型 / 备用手动网页）</button>
         </div>
         <div class="import-note" id="ss-note" hidden></div>
         <div class="mini-actions" id="ss-ai-tools" hidden>
           <button class="btn btn-ghost" id="ss-ai-open">打开 AI 网页（提示词已复制到剪贴板）</button>
           <input id="ss-ai-url" type="text" placeholder="AI 页面地址 https://…（默认浏览器打开，可留空）" maxlength="200" />
+        </div>
+      </div>
+
+      <div class="sub-card" id="ss-ai-config-card">
+        <div class="sub-head">模型接入（OpenAI 兼容，仅存本机）<span class="hint">魔搭 API-Inference / 自建 vLLM / Ollama 均可</span></div>
+        <div class="ss-row"><input id="ss-ai-base" placeholder="接口地址，如 https://api-inference.modelscope.cn/v1" maxlength="200" /></div>
+        <div class="ss-row"><input id="ss-ai-key" type="password" placeholder="API Key（魔搭 SDK Token 或服务方密钥，可留空）" maxlength="200" /></div>
+        <div class="ss-row"><input id="ss-ai-model" placeholder="模型名，如 Qwen/Qwen2.5-7B-Instruct" maxlength="120" /></div>
+        <div class="mini-actions">
+          <button class="btn btn-ghost" id="ss-ai-save">保存模型配置（本机）</button>
+          <button class="btn btn-primary" id="ss-ai-call">对已导入课件调用模型一键生成</button>
         </div>
       </div>
 
@@ -222,6 +233,7 @@
 
   <div class="toast" id="toast" hidden data-page-node-id="nlQGgWntKl1zpSzEsuaBMN"></div>
   <datalist id="dict-eq" data-page-node-id="9k2K5nZWVaH5cNHyi2qiqP"></datalist>
+  <script src="../src/ai-chat.js"></script>
   <script src="icons.js"></script>
   <script src="dialog.js"></script>
   <script src="app.js"></script>
@@ -231,6 +243,7 @@
   <script src="class-lessons-ui.js"></script>
   <script src="appsets-ui.js"></script>
   <script src="smart-import.js"></script>
+  <script src="smart-ai.js"></script>
   <script src="smart-studio.js"></script>
 
   <!-- OOBE 首次运行向导 -->
